@@ -1,0 +1,230 @@
+import React, { useState } from 'react';
+import Icon from '../../../components/AppIcon';
+import Image from '../../../components/AppImage';
+import Button from '../../../components/ui/Button';
+
+const CustomerProfileHeader = ({ customer, onEdit, onCreateTicket, onScheduleCallback }) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedCustomer, setEditedCustomer] = useState(customer);
+
+  const handleSave = () => {
+    onEdit(editedCustomer);
+    setIsEditing(false);
+  };
+
+  const handleCancel = () => {
+    setEditedCustomer(customer);
+    setIsEditing(false);
+  };
+
+  const getStatusColor = (status) => {
+    const statusColors = {
+      'Active': 'bg-success text-success-foreground',
+      'Inactive': 'bg-muted text-muted-foreground',
+      'Suspended': 'bg-error text-error-foreground',
+      'Pending': 'bg-warning text-warning-foreground'
+    };
+    return statusColors?.[status] || 'bg-muted text-muted-foreground';
+  };
+
+  return (
+    <div className="bg-card border border-border rounded-lg p-6 mb-6">
+      <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
+        {/* Profile Information */}
+        <div className="flex flex-col sm:flex-row gap-6 flex-1">
+          {/* Avatar */}
+          <div className="flex-shrink-0">
+            <div className="relative">
+              <Image
+                src={customer?.avatar}
+                alt={customer?.avatarAlt}
+                className="w-24 h-24 rounded-full object-cover border-4 border-border"
+              />
+              <div className={`absolute -bottom-1 -right-1 w-6 h-6 rounded-full border-2 border-card flex items-center justify-center ${getStatusColor(customer?.status)}`}>
+                <Icon name="User" size={12} />
+              </div>
+            </div>
+          </div>
+
+          {/* Basic Information */}
+          <div className="flex-1 min-w-0">
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-4">
+              <div>
+                <h1 className="text-2xl font-semibold text-foreground mb-1">
+                  {customer?.name}
+                </h1>
+                <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+                  <span className="flex items-center gap-1">
+                    <Icon name="Hash" size={14} />
+                    {customer?.customerId}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Icon name="CreditCard" size={14} />
+                    {customer?.icNumber}
+                  </span>
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(customer?.status)}`}>
+                    {customer?.status}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Contact Details Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <Icon name="Mail" size={16} className="text-muted-foreground flex-shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-foreground">{customer?.email}</p>
+                    <p className="text-xs text-muted-foreground">Primary Email</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Icon name="Phone" size={16} className="text-muted-foreground flex-shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-foreground">{customer?.phone}</p>
+                    <p className="text-xs text-muted-foreground">Mobile</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <Icon name="MapPin" size={16} className="text-muted-foreground flex-shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-foreground">{customer?.address}</p>
+                    <p className="text-xs text-muted-foreground">Registered Address</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Icon name="Building" size={16} className="text-muted-foreground flex-shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-foreground">{customer?.organization}</p>
+                    <p className="text-xs text-muted-foreground">Organization</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex flex-col sm:flex-row lg:flex-col gap-2 lg:w-48">
+          <Button
+            variant="default"
+            iconName="Plus"
+            iconPosition="left"
+            onClick={onCreateTicket}
+            className="w-full"
+          >
+            Create Ticket
+          </Button>
+          <Button
+            variant="outline"
+            iconName="Calendar"
+            iconPosition="left"
+            onClick={onScheduleCallback}
+            className="w-full"
+          >
+            Schedule Callback
+          </Button>
+          <Button
+            variant="ghost"
+            iconName="Edit"
+            iconPosition="left"
+            onClick={() => setIsEditing(true)}
+            className="w-full"
+          >
+            Edit Profile
+          </Button>
+        </div>
+      </div>
+      {/* Additional Information */}
+      <div className="mt-6 pt-6 border-t border-border">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div>
+            <h3 className="text-sm font-medium text-foreground mb-2">Customer Since</h3>
+            <p className="text-sm text-muted-foreground">{customer?.customerSince}</p>
+          </div>
+          <div>
+            <h3 className="text-sm font-medium text-foreground mb-2">Preferred Language</h3>
+            <p className="text-sm text-muted-foreground">{customer?.preferredLanguage}</p>
+          </div>
+          <div>
+            <h3 className="text-sm font-medium text-foreground mb-2">Last Contact</h3>
+            <p className="text-sm text-muted-foreground">{customer?.lastContact}</p>
+          </div>
+        </div>
+      </div>
+      {/* Edit Modal */}
+      {isEditing && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-card border border-border rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-semibold text-foreground">Edit Customer Profile</h2>
+              <Button variant="ghost" iconName="X" onClick={handleCancel} />
+            </div>
+            
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">Full Name</label>
+                  <input
+                    type="text"
+                    value={editedCustomer?.name}
+                    onChange={(e) => setEditedCustomer({...editedCustomer, name: e?.target?.value})}
+                    className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">Email</label>
+                  <input
+                    type="email"
+                    value={editedCustomer?.email}
+                    onChange={(e) => setEditedCustomer({...editedCustomer, email: e?.target?.value})}
+                    className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">Phone</label>
+                  <input
+                    type="tel"
+                    value={editedCustomer?.phone}
+                    onChange={(e) => setEditedCustomer({...editedCustomer, phone: e?.target?.value})}
+                    className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">Organization</label>
+                  <input
+                    type="text"
+                    value={editedCustomer?.organization}
+                    onChange={(e) => setEditedCustomer({...editedCustomer, organization: e?.target?.value})}
+                    className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground"
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1">Address</label>
+                <textarea
+                  value={editedCustomer?.address}
+                  onChange={(e) => setEditedCustomer({...editedCustomer, address: e?.target?.value})}
+                  rows={3}
+                  className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground"
+                />
+              </div>
+            </div>
+            
+            <div className="flex justify-end gap-3 mt-6">
+              <Button variant="outline" onClick={handleCancel}>Cancel</Button>
+              <Button variant="default" onClick={handleSave}>Save Changes</Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default CustomerProfileHeader;
