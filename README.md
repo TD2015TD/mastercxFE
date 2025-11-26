@@ -1,73 +1,199 @@
-# React + TypeScript + Vite
+# CRM Frontend - JKDM Customer Relationship Management System
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React + TypeScript + Vite frontend application for the JKDM CRM system with Tailwind CSS and modern UI components.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+### Agent Portal
+- **Agent Dashboard**: Real-time metrics, active tickets queue, performance tracking
+- **Ticket Management**: Create, view, update, and resolve tickets with full workflow
+- **Customer 360 Profile**: Complete customer view with interaction timeline and relationship mapping
+- **Knowledge Base Integration**: Quick access to KB articles during ticket handling
+- **Telephony Bar**: Integrated call controls and call history
+- **Script Assistant**: Context-aware scripts for common customer scenarios
 
-## React Compiler
+### Supervisor Portal
+- **Supervisor Dashboard**: Team performance, workload management, SLA compliance center
+- **Agent Performance Monitoring**: Real-time agent metrics and performance analytics
+- **Department Metrics**: Queue statistics and departmental KPIs
+- **Workload Management**: Ticket assignment and distribution controls
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### Knowledge Base
+- **Content Creator Portal**: Article editor with rich text, directory browser, analytics
+- **Directory Search**: Hierarchical navigation and advanced filtering
+- **Review Workflow**: Article approval queue and version control
+- **Analytics Dashboard**: Usage statistics and effectiveness metrics
 
-## Expanding the ESLint configuration
+### Additional Features
+- **Citizen Self-Service Portal**: Public portal for complaint submission and case tracking
+- **Analytics & Reporting**: Metrics overview, ticket volume charts, SLA performance
+- **System Administration**: User management, system configuration, audit trail, compliance dashboard
+- **Global Navigation**: Command palette (Cmd+K), keyboard shortcuts, breadcrumbs
+- **Multi-language Support**: English and Malay (Bahasa Malaysia)
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Technology Stack
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+- **Framework**: React 18 + TypeScript
+- **Build Tool**: Vite
+- **Styling**: Tailwind CSS
+- **UI Components**: Custom component library
+- **State Management**: React Context + Hooks
+- **API Client**: Axios with JWT authentication
+- **Routing**: React Router v6
+- **Icons**: Lucide React
+- **Date Handling**: date-fns
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+## Prerequisites
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+- Node.js 18+ and npm/yarn
+- Backend API running at http://localhost:8000 (see [crm-api](https://github.com/syafiqapextreasure/crm-api))
+
+## Installation
+
+```bash
+# Clone repository
+git clone https://github.com/syafiqapextreasure/crm-frontend.git
+cd crm-frontend
+
+# Install dependencies
+npm install
+
+# Create environment file
+cp .env.example .env
+
+# Update .env with your backend API URL
+# VITE_API_BASE_URL=http://localhost:8000/api/v1
+
+# Start development server
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Available Scripts
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+```bash
+# Development server (with hot reload)
+npm run dev
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+# Build for production
+npm run build
+
+# Preview production build
+npm run preview
+
+# Run ESLint
+npm run lint
 ```
+
+## Project Structure
+
+```
+crm-frontend/
+├── public/                      # Static assets
+│   └── assets/images/          # Image files
+├── src/
+│   ├── components/             # Reusable components
+│   │   ├── ui/                # UI components (Button, Input, Select, etc.)
+│   │   ├── AgentScriptAssistant.jsx
+│   │   ├── TelephonyBar.jsx
+│   │   └── ...
+│   ├── pages/                 # Page components
+│   │   ├── agent-dashboard/
+│   │   ├── supervisor-dashboard/
+│   │   ├── ticket-management/
+│   │   ├── customer-360-profile/
+│   │   ├── knowledge-base-portal/
+│   │   ├── citizen-self-service-portal/
+│   │   ├── analytics-and-reporting/
+│   │   └── system-administration/
+│   ├── services/              # API service layer
+│   │   ├── api.ts            # Axios instance with interceptors
+│   │   ├── authService.ts    # Authentication services
+│   │   ├── ticketService.ts  # Ticket API calls
+│   │   ├── customerService.ts
+│   │   ├── agentService.ts
+│   │   └── languageService.ts
+│   ├── styles/               # Global styles
+│   │   ├── index.css
+│   │   └── tailwind.css
+│   ├── utils/                # Utility functions
+│   ├── App.tsx               # Main app component
+│   ├── Routes.tsx            # Route definitions
+│   ├── main.tsx              # App entry point
+│   └── types.d.ts            # TypeScript type definitions
+├── eslint.config.js
+├── tailwind.config.cjs
+├── tsconfig.json
+├── vite.config.ts
+└── package.json
+```
+
+## Key Components
+
+### Authentication
+- JWT-based authentication with token refresh
+- Protected routes with role-based access control
+- Login page with bilingual support
+
+### UI Components
+- **BreadcrumbNavigation**: Dynamic breadcrumb trails
+- **CommandPalette**: Global search and navigation (Cmd+K)
+- **NavigationSidebar**: Role-based menu system
+- **NotificationCenter**: Real-time notifications
+- **UserProfileDropdown**: User menu with preferences
+
+### Services
+All API calls are centralized in service files:
+- Automatic JWT token injection
+- Error handling and retry logic
+- Request/response interceptors
+- API base URL configuration
+
+## Environment Variables
+
+```env
+VITE_API_BASE_URL=http://localhost:8000/api/v1
+VITE_APP_NAME=JKDM CRM
+VITE_DEFAULT_LANGUAGE=en
+```
+
+## Development
+
+### Adding New Pages
+1. Create page component in `src/pages/[feature-name]/`
+2. Add route in `src/Routes.tsx`
+3. Update navigation in `src/components/ui/NavigationSidebar.jsx`
+
+### Adding New API Services
+1. Create service file in `src/services/`
+2. Import API instance from `src/services/api.ts`
+3. Export functions for CRUD operations
+
+### Styling Guidelines
+- Use Tailwind utility classes for styling
+- Follow existing component patterns
+- Maintain responsive design (mobile-first)
+- Support both English and Malay text lengths
+
+## Building for Production
+
+```bash
+# Build optimized production bundle
+npm run build
+
+# Output will be in dist/ directory
+# Deploy dist/ to your web server or CDN
+```
+
+## Browser Support
+
+- Chrome/Edge (latest 2 versions)
+- Firefox (latest 2 versions)
+- Safari (latest 2 versions)
+
+## Related Repositories
+
+- **Backend API**: [crm-api](https://github.com/syafiqapextreasure/crm-api)
+
+## License
+
+Proprietary - JKDM Project
