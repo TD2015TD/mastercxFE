@@ -31,7 +31,8 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       // Token expired or invalid, redirect to login
       localStorage.removeItem('jwt_token');
-      window.location.href = '/login';
+      localStorage.removeItem('user-session');
+      window.location.href = '/agent-login';
     }
     return Promise.reject(error);
   }

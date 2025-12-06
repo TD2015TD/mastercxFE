@@ -325,8 +325,17 @@ const TelephonyBar = ({ className = '', onCallEvent }) => {
       </div>
       {/* Transfer Modal */}
       {isTransferModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-card border border-border rounded-lg p-6 w-96">
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]"
+          onClick={() => {
+            setIsTransferModalOpen(false);
+            setTransferTarget('');
+          }}
+        >
+          <div 
+            className="bg-card border border-border rounded-lg p-6 w-96"
+            onClick={(e) => e.stopPropagation()}
+          >
             <h3 className="text-lg font-semibold mb-4">Transfer Call</h3>
             <div className="space-y-4">
               <div>
@@ -367,8 +376,18 @@ const TelephonyBar = ({ className = '', onCallEvent }) => {
       )}
       {/* Wrap-Up Modal */}
       {showWrapUp && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-card border border-border rounded-lg p-6 w-96">
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]"
+          onClick={() => {
+            setShowWrapUp(false);
+            setWrapUpCode('');
+            setWrapUpNotes('');
+          }}
+        >
+          <div 
+            className="bg-card border border-border rounded-lg p-6 w-96"
+            onClick={(e) => e.stopPropagation()}
+          >
             <h3 className="text-lg font-semibold mb-4">Call Wrap-Up</h3>
             <div className="space-y-4">
               <div>

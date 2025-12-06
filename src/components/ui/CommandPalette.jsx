@@ -149,8 +149,15 @@ const CommandPalette = ({ isOpen, onClose, onCommandSelect, navigationItems = []
 
   return (
     <div 
-      className="fixed inset-0 z-50 bg-black/50 flex items-start justify-center pt-[10vh]"
+      className="fixed inset-0 z-[9999] bg-black/50 flex items-start justify-center pt-[10vh] backdrop-blur-sm"
       onClick={handleBackdropClick}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          e.stopPropagation();
+          onClose();
+        }
+      }}
     >
       <div className="bg-card border border-border rounded-lg shadow-modal w-full max-w-2xl mx-4">
         {/* Search Input */}

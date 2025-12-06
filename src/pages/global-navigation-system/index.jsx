@@ -1,230 +1,271 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import GlobalHeader from './components/GlobalHeader';
-import SearchCommandPalette from './components/SearchCommandPalette';
-import KeyboardShortcutsOverlay from './components/KeyboardShortcutsOverlay';
-import NavigationBreadcrumbs from './components/NavigationBreadcrumbs';
+import React, { useState } from 'react';
+import { Helmet } from 'react-helmet-async';
+import { useNavigate } from 'react-router-dom';
+import Icon from '../../components/AppIcon';
+import Button from '../../components/ui/Button';
 
 const GlobalNavigationSystem = () => {
   const navigate = useNavigate();
-  const location = useLocation();
-  const [showCommandPalette, setShowCommandPalette] = useState(false);
-  const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
-  const [currentUser, setCurrentUser] = useState({
-    name: 'Ahmad Rahman',
-    email: 'ahmad.rahman@jkdm.gov.my',
-    role: 'agent',
-    department: 'Customer Service',
-    avatar: null
-  });
+  const [activeTab, setActiveTab] = useState('main');
 
-  // Keyboard shortcuts handler
-  useEffect(() => {
-    const handleKeyDown = (event) => {
-      // Ctrl + H - Go to Dashboard
-      if (event?.ctrlKey && event?.key === 'h') {
-        event?.preventDefault();
-        navigate('/agent-dashboard');
-      }
-      
-      // Ctrl + / - Open Command Palette
-      if (event?.ctrlKey && event?.key === '/') {
-        event?.preventDefault();
-        setShowCommandPalette(true);
-      }
-      
-      // Escape - Close overlays
-      if (event?.key === 'Escape') {
-        setShowCommandPalette(false);
-        setShowKeyboardShortcuts(false);
-      }
-      
-      // F1 - Show keyboard shortcuts
-      if (event?.key === 'F1') {
-        event?.preventDefault();
-        setShowKeyboardShortcuts(true);
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [navigate]);
-
-  const handleNavigation = (path) => {
-    navigate(path);
-  };
-
-  const handleGlobalSearch = (query) => {
-    console.log('Searching for:', query);
-    // In real implementation, this would perform search across tickets, customers, and knowledge articles
-    setShowCommandPalette(false);
-  };
-
-  const handleCommandSelect = (command) => {
-    switch (command?.action) {
-      case 'navigate':
-        navigate(command?.path);
-        break;
-      case 'search':
-        handleGlobalSearch(command?.query);
-        break;
-      case 'shortcuts':
-        setShowKeyboardShortcuts(true);
-        break;
-      default:
-        console.log('Command executed:', command);
+  const stats = [
+    {
+      label: 'Active Modules',
+      value: '14',
+      subtext: 'Available to you',
+      icon: 'Grid',
+      color: 'text-blue-600'
+    },
+    {
+      label: 'Quick Links',
+      value: '8',
+      subtext: 'Frequently used',
+      icon: 'Link',
+      color: 'text-green-600'
+    },
+    {
+      label: 'Recent',
+      value: '12',
+      subtext: 'Last accessed',
+      icon: 'Clock',
+      color: 'text-purple-600'
+    },
+    {
+      label: 'Favorites',
+      value: '6',
+      subtext: 'Pinned modules',
+      icon: 'Star',
+      color: 'text-yellow-600'
     }
-    setShowCommandPalette(false);
+  ];
+
+  const tabs = [
+    { id: 'main', label: 'Main Modules', icon: 'Grid' },
+    { id: 'admin', label: 'Administration', icon: 'Settings' },
+    { id: 'favorites', label: 'Favorites', icon: 'Star' },
+    { id: 'recent', label: 'Recent', icon: 'Clock' }
+  ];
+
+  const mainModules = [
+    { name: 'Agent Dashboard', icon: 'LayoutDashboard', path: '/agent-dashboard', color: 'text-blue-600' },
+    { name: 'Supervisor Dashboard', icon: 'Users', path: '/supervisor-dashboard', color: 'text-purple-600' },
+    { name: 'Ticket Management', icon: 'Ticket', path: '/ticket-management', color: 'text-green-600' },
+    { name: 'Customer 360', icon: 'User', path: '/customer-360-profile', color: 'text-orange-600' },
+    { name: 'Analytics', icon: 'BarChart3', path: '/analytics-and-reporting', color: 'text-red-600' },
+    { name: 'Knowledge Base', icon: 'BookOpen', path: '/knowledge-base-portal', color: 'text-indigo-600' },
+    { name: 'Directory', icon: 'Users', path: '/directory-search-and-browsing', color: 'text-teal-600' },
+    { name: 'Self-Service', icon: 'Globe', path: '/citizen-self-service-portal', color: 'text-pink-600' }
+  ];
+
+  const adminModules = [
+    { name: 'RBAC Management', icon: 'Shield', path: '/system-administration/rbac', color: 'text-red-600' },
+    { name: 'SLA Configuration', icon: 'Clock', path: '/system-administration/sla-configuration', color: 'text-orange-600' },
+    { name: 'System Settings', icon: 'Settings', path: '/system-administration/settings', color: 'text-gray-600' },
+    { name: 'User Management', icon: 'UserCog', path: '/system-administration/users', color: 'text-blue-600' }
+  ];
+
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case 'main':
+        return (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {mainModules.map((module, index) => (
+              <button
+                key={index}
+                onClick={() => navigate(module.path)}
+                className="bg-card rounded-lg border border-border p-6 hover:shadow-lg cursor-pointer transition-all text-left group"
+              >
+                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
+                  <Icon name={module.icon} size={24} className={module.color} />
+                </div>
+                <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors">
+                  {module.name}
+                </h3>
+              </button>
+            ))}
+          </div>
+        );
+      
+      case 'admin':
+        return (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {adminModules.map((module, index) => (
+              <button
+                key={index}
+                onClick={() => navigate(module.path)}
+                className="bg-card rounded-lg border border-border p-6 hover:shadow-lg cursor-pointer transition-all text-left group"
+              >
+                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
+                  <Icon name={module.icon} size={24} className={module.color} />
+                </div>
+                <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors">
+                  {module.name}
+                </h3>
+              </button>
+            ))}
+          </div>
+        );
+      
+      case 'favorites':
+        return (
+          <div className="bg-card rounded-lg border border-border p-12 text-center">
+            <Icon name="Star" size={48} className="mx-auto mb-4 text-muted-foreground" />
+            <h3 className="text-lg font-semibold text-foreground mb-2">Favorite Modules</h3>
+            <p className="text-muted-foreground mb-6">
+              Pin your frequently used modules for quick access.
+            </p>
+          </div>
+        );
+      
+      case 'recent':
+        return (
+          <div className="bg-card rounded-lg border border-border p-12 text-center">
+            <Icon name="Clock" size={48} className="mx-auto mb-4 text-muted-foreground" />
+            <h3 className="text-lg font-semibold text-foreground mb-2">Recently Accessed</h3>
+            <p className="text-muted-foreground mb-6">
+              View modules you've recently accessed.
+            </p>
+          </div>
+        );
+      
+      default:
+        return null;
+    }
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Global Header with Navigation */}
-      <GlobalHeader 
-        user={currentUser}
-        currentPath={location?.pathname}
-        onNavigate={handleNavigation}
-        onShowCommandPalette={() => setShowCommandPalette(true)}
-        onShowKeyboardShortcuts={() => setShowKeyboardShortcuts(true)}
-      />
-      {/* Main Content Area */}
-      <main className="container mx-auto px-6 py-8">
-        {/* Navigation Breadcrumbs */}
-        <NavigationBreadcrumbs currentPath={location?.pathname} />
-        
-        {/* Page Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground mb-4">
-            Global Navigation System
-          </h1>
-          <p className="text-muted-foreground max-w-2xl">
-            Comprehensive navigation system providing persistent header navigation across all JKDM CRM modules. 
-            Features include role-based navigation, global search, keyboard shortcuts, and seamless module switching 
-            with consistent user experience and government accessibility standards.
-          </p>
-        </div>
+    <>
+      <Helmet>
+        <title>Navigation - JKDM CRM</title>
+        <meta name="description" content="Navigate between CRM modules and features" />
+      </Helmet>
 
-        {/* Navigation Features Demo */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Navigation Overview */}
-          <div className="bg-card border border-border rounded-lg p-6">
-            <h2 className="text-xl font-semibold text-foreground mb-4">Navigation Features</h2>
-            <div className="space-y-4">
-              <div className="flex items-start space-x-3">
-                <div className="w-2 h-2 bg-primary rounded-full mt-2 flex-shrink-0"></div>
-                <div>
-                  <h3 className="font-medium text-foreground">Persistent Header</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Always visible navigation across all modules with "JKDM CRM Portal" logo that returns to dashboard
-                  </p>
-                </div>
+      <div className="min-h-screen bg-background">
+        <main className="container mx-auto px-6 py-8 max-w-7xl">
+          {/* Header */}
+          <div className="mb-8">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+              <div>
+                <h1 className="text-3xl font-bold text-foreground flex items-center">
+                  <Icon name="Grid" size={32} className="mr-3 text-primary" />
+                  Global Navigation System
+                </h1>
+                <p className="text-muted-foreground mt-2">
+                  Navigate between CRM modules and features
+                </p>
               </div>
               
-              <div className="flex items-start space-x-3">
-                <div className="w-2 h-2 bg-primary rounded-full mt-2 flex-shrink-0"></div>
-                <div>
-                  <h3 className="font-medium text-foreground">Role-Based Navigation</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Primary tabs (Dashboard, Tickets, Knowledge Base, Reports) with role-based visibility controls
-                  </p>
-                </div>
-              </div>
-              
-              <div className="flex items-start space-x-3">
-                <div className="w-2 h-2 bg-primary rounded-full mt-2 flex-shrink-0"></div>
-                <div>
-                  <h3 className="font-medium text-foreground">Global Search</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Smart suggestions across tickets, customers, and knowledge articles with Ctrl+/ shortcut
-                  </p>
-                </div>
-              </div>
-              
-              <div className="flex items-start space-x-3">
-                <div className="w-2 h-2 bg-primary rounded-full mt-2 flex-shrink-0"></div>
-                <div>
-                  <h3 className="font-medium text-foreground">Breadcrumb Navigation</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Clickable breadcrumbs showing current location hierarchy for easy navigation
-                  </p>
-                </div>
+              <div className="flex items-center space-x-3">
+                <Button variant="outline" iconName="Search" iconPosition="left">
+                  Search
+                </Button>
               </div>
             </div>
           </div>
 
-          {/* Keyboard Shortcuts */}
-          <div className="bg-card border border-border rounded-lg p-6">
-            <h2 className="text-xl font-semibold text-foreground mb-4">Keyboard Shortcuts</h2>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-foreground">Go to Dashboard</span>
-                <kbd className="px-2 py-1 bg-muted border border-border rounded text-xs font-mono">
-                  Ctrl + H
-                </kbd>
+          {/* Stats Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            {stats.map((stat, index) => (
+              <div key={index} className="bg-card rounded-lg border border-border p-6">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">{stat.label}</p>
+                    <p className="text-2xl font-bold text-foreground">{stat.value}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{stat.subtext}</p>
+                  </div>
+                  <div className={`w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center ${stat.color}`}>
+                    <Icon name={stat.icon} size={20} />
+                  </div>
+                </div>
               </div>
-              
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-foreground">Open Command Palette</span>
-                <kbd className="px-2 py-1 bg-muted border border-border rounded text-xs font-mono">
-                  Ctrl + /
-                </kbd>
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-foreground">Show Shortcuts</span>
-                <kbd className="px-2 py-1 bg-muted border border-border rounded text-xs font-mono">
-                  F1
-                </kbd>
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-foreground">Close Overlays</span>
-                <kbd className="px-2 py-1 bg-muted border border-border rounded text-xs font-mono">
-                  Esc
-                </kbd>
-              </div>
-            </div>
+            ))}
           </div>
-        </div>
 
-        {/* Navigation State Demo */}
-        <div className="mt-8 bg-card border border-border rounded-lg p-6">
-          <h2 className="text-xl font-semibold text-foreground mb-4">Navigation State</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="p-4 bg-muted rounded-lg">
-              <h3 className="font-medium text-foreground mb-2">Current Location</h3>
-              <p className="text-sm text-muted-foreground">{location?.pathname}</p>
-            </div>
-            
-            <div className="p-4 bg-muted rounded-lg">
-              <h3 className="font-medium text-foreground mb-2">User Role</h3>
-              <p className="text-sm text-muted-foreground capitalize">{currentUser?.role}</p>
-            </div>
-            
-            <div className="p-4 bg-muted rounded-lg">
-              <h3 className="font-medium text-foreground mb-2">Department</h3>
-              <p className="text-sm text-muted-foreground">{currentUser?.department}</p>
+          {/* Tabs */}
+          <div className="mb-8">
+            <div className="border-b border-border">
+              <nav className="flex space-x-8 overflow-x-auto">
+                {tabs.map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap transition-colors duration-200 ${
+                      activeTab === tab.id
+                        ? 'border-primary text-primary'
+                        : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted'
+                    }`}
+                  >
+                    <Icon name={tab.icon} size={16} />
+                    <span>{tab.label}</span>
+                  </button>
+                ))}
+              </nav>
             </div>
           </div>
-        </div>
-      </main>
-      {/* Command Palette Modal */}
-      {showCommandPalette && (
-        <SearchCommandPalette
-          isOpen={showCommandPalette}
-          onClose={() => setShowCommandPalette(false)}
-          onCommandSelect={handleCommandSelect}
-          onSearch={handleGlobalSearch}
-        />
-      )}
-      {/* Keyboard Shortcuts Overlay */}
-      {showKeyboardShortcuts && (
-        <KeyboardShortcutsOverlay
-          isOpen={showKeyboardShortcuts}
-          onClose={() => setShowKeyboardShortcuts(false)}
-        />
-      )}
-    </div>
+
+          {/* Tab Description */}
+          <div className="bg-muted/30 rounded-lg p-4 mb-6 border border-border">
+            <p className="text-sm text-muted-foreground">
+              {activeTab === 'main' && 'Access all main CRM modules including dashboards, ticket management, and customer profiles.'}
+              {activeTab === 'admin' && 'Administrative modules for system configuration, user management, and security settings.'}
+              {activeTab === 'favorites' && 'Quick access to your pinned and frequently used modules.'}
+              {activeTab === 'recent' && 'Modules you have recently accessed for quick navigation.'}
+            </p>
+          </div>
+
+          {/* Tab Content */}
+          <div className="mb-8">
+            {renderTabContent()}
+          </div>
+
+          {/* Quick Actions Panel */}
+          <div className="bg-card rounded-lg border border-border p-6">
+            <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center">
+              <Icon name="Zap" size={20} className="mr-2 text-primary" />
+              Quick Navigation
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <Button 
+                variant="outline" 
+                className="justify-start" 
+                iconName="LayoutDashboard" 
+                iconPosition="left"
+                onClick={() => navigate('/agent-dashboard')}
+              >
+                My Dashboard
+              </Button>
+              <Button 
+                variant="outline" 
+                className="justify-start" 
+                iconName="Ticket" 
+                iconPosition="left"
+                onClick={() => navigate('/ticket-management')}
+              >
+                Tickets
+              </Button>
+              <Button 
+                variant="outline" 
+                className="justify-start" 
+                iconName="User" 
+                iconPosition="left"
+                onClick={() => navigate('/customer-360-profile')}
+              >
+                Customers
+              </Button>
+              <Button 
+                variant="outline" 
+                className="justify-start" 
+                iconName="BookOpen" 
+                iconPosition="left"
+                onClick={() => navigate('/knowledge-base-portal')}
+              >
+                Knowledge Base
+              </Button>
+            </div>
+          </div>
+        </main>
+      </div>
+    </>
   );
 };
 

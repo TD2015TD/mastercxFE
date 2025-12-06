@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Icon from '../AppIcon';
+import { menuService } from '../../services/menuService';
 
 const NavigationSidebar = ({ isCollapsed = false, onToggleCollapse, userRole = 'agent' }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const [isMobile, setIsMobile] = useState(false);
+  const [navigationItems, setNavigationItems] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const checkMobile = () => {
@@ -17,61 +20,74 @@ const NavigationSidebar = ({ isCollapsed = false, onToggleCollapse, userRole = '
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  const navigationItems = [
+  // Fetch menu items from API
+  useEffect(() => {
+    const fetchMenuItems = async () => {
+      setIsLoading(true);
+      try {
+        const items = await menuService.getMenuItems();
+        setNavigationItems(items);
+      } catch (error) {
+        console.error('Failed to load menu items:', error);
+        // Fallback to default menu items if API fails
+        setNavigationItems(getDefaultMenuItems());
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchMenuItems();
+  }, [userRole]);
+
+  // Default menu items as fallback
+  const getDefaultMenuItems = () => [
     {
       label: 'Dashboard',
-      path: userRole === 'supervisor' ? '/supervisor-dashboard' : '/agent-dashboard',
+      path: userRole === 'supervisor' 
+        ? '/supervisor-dashboard' 
+        : (userRole === 'admin' || userRole === 'super admin')
+          ? '/system-administration'
+          : '/agent-dashboard',
       icon: 'LayoutDashboard',
-      roles: ['agent', 'supervisor'],
       tooltip: 'View your daily workspace and active assignments'
     },
     {
       label: 'Tickets',
       path: '/ticket-management',
       icon: 'Ticket',
-      roles: ['agent', 'supervisor'],
       tooltip: 'Manage customer tickets and cases'
     },
     {
       label: 'Customer 360',
       path: '/customer-360-profile',
       icon: 'Users',
-      roles: ['agent', 'supervisor'],
       tooltip: 'Complete customer profile and interaction history'
     },
     {
       label: 'Knowledge Base',
       path: '/knowledge-base-portal',
       icon: 'BookOpen',
-      roles: ['agent', 'supervisor', 'admin'],
       tooltip: 'Access articles and documentation'
     },
     {
       label: 'Analytics',
       path: '/analytics-and-reporting',
       icon: 'BarChart3',
-      roles: ['supervisor', 'admin'],
       tooltip: 'Performance monitoring and reports'
     },
     {
       label: 'Administration',
       path: '/system-administration',
       icon: 'Settings',
-      roles: ['admin'],
       tooltip: 'System configuration and user management'
     },
     {
       label: 'Citizen Portal',
       path: '/citizen-self-service-portal',
       icon: 'Globe',
-      roles: ['agent', 'supervisor', 'admin'],
       tooltip: 'Public self-service interface'
     }
   ];
-
-  const filteredItems = navigationItems?.filter(item => 
-    item?.roles?.includes(userRole)
-  );
 
   const handleNavigation = (path) => {
     navigate(path);
@@ -81,11 +97,24 @@ const NavigationSidebar = ({ isCollapsed = false, onToggleCollapse, userRole = '
     return location?.pathname === path;
   };
 
+  // Show loading state
+  if (isLoading) {
+    return (
+      <nav className={`fixed top-0 left-0 h-full bg-card border-r border-border z-[1000] transition-all duration-300 ease-in-out ${
+        isCollapsed ? 'w-16' : 'w-60'
+      }`}>
+        <div className="flex items-center justify-center h-full">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      </nav>
+    );
+  }
+
   if (isMobile) {
     return (
       <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border z-[1000] safe-area-inset-bottom">
         <div className="flex justify-around items-center px-2 py-2">
-          {filteredItems?.slice(0, 4)?.map((item) => (
+          {navigationItems?.slice(0, 4)?.map((item) => (
             <button
               key={item?.path}
               onClick={() => handleNavigation(item?.path)}
@@ -145,7 +174,7 @@ const NavigationSidebar = ({ isCollapsed = false, onToggleCollapse, userRole = '
         {/* Navigation Items */}
         <div className="flex-1 overflow-y-auto py-4">
           <div className="space-y-1 px-3">
-            {filteredItems?.map((item) => (
+            {navigationItems?.map((item) => (
               <button
                 key={item?.path}
                 onClick={() => handleNavigation(item?.path)}

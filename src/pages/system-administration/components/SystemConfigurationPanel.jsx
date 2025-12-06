@@ -1,381 +1,360 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
-
-
 import { Checkbox } from '../../../components/ui/Checkbox';
+import api from '../../../services/api';
+import CategoryModal from './CategoryModal';
+import LookupModal from './LookupModal';
 
 const SystemConfigurationPanel = () => {
-  const [activeTab, setActiveTab] = useState('sla');
-
-  const departments = [
-    { value: 'customer-service', label: 'Customer Service' },
-    { value: 'customs-operations', label: 'Customs Operations' },
-    { value: 'trade-compliance', label: 'Trade Compliance' },
-    { value: 'it-operations', label: 'IT Operations' }
-  ];
-
-  const priorityLevels = [
-    { value: 'p1', label: 'P1 - Critical' },
-    { value: 'p2', label: 'P2 - High' },
-    { value: 'p3', label: 'P3 - Medium' },
-    { value: 'p4', label: 'P4 - Low' },
-    { value: 'p5', label: 'P5 - Planning' }
-  ];
-
-  const slaConfigurations = [
-    {
-      id: 1,
-      department: "Customer Service",
-      priority: "P1 - Critical",
-      responseTime: "15 minutes",
-      resolutionTime: "4 hours",
-      escalationEnabled: true,
-      escalationTime: "30 minutes"
-    },
-    {
-      id: 2,
-      department: "Customer Service",
-      priority: "P2 - High",
-      responseTime: "1 hour",
-      resolutionTime: "8 hours",
-      escalationEnabled: true,
-      escalationTime: "2 hours"
-    },
-    {
-      id: 3,
-      department: "Customs Operations",
-      priority: "P1 - Critical",
-      responseTime: "30 minutes",
-      resolutionTime: "6 hours",
-      escalationEnabled: true,
-      escalationTime: "1 hour"
-    }
-  ];
-
-  const emailTemplates = [
-    {
-      id: 1,
-      name: "SLA Breach Warning",
-      type: "System Alert",
-      subject: "SLA Breach Alert - Ticket #{ticketId}",
-      lastModified: "2024-10-25",
-      status: "Active"
-    },
-    {
-      id: 2,
-      name: "Ticket Assignment",
-      type: "User Notification",
-      subject: "New Ticket Assigned - #{ticketId}",
-      lastModified: "2024-10-20",
-      status: "Active"
-    },
-    {
-      id: 3,
-      name: "Customer Response",
-      type: "Customer Communication",
-      subject: "Your Request Update - #{ticketId}",
-      lastModified: "2024-10-18",
-      status: "Draft"
-    }
-  ];
-
-  const integrationSettings = [
-    {
-      id: 1,
-      name: "Active Directory",
-      type: "Authentication",
-      status: "Connected",
-      lastSync: "2024-10-28 09:30:00",
-      health: "Healthy"
-    },
-    {
-      id: 2,
-      name: "OKTA SSO",
-      type: "Authentication",
-      status: "Connected",
-      lastSync: "2024-10-28 09:15:00",
-      health: "Healthy"
-    },
-    {
-      id: 3,
-      name: "Email Gateway",
-      type: "Communication",
-      status: "Connected",
-      lastSync: "2024-10-28 10:00:00",
-      health: "Warning"
-    },
-    {
-      id: 4,
-      name: "SMS Provider",
-      type: "Communication",
-      status: "Disconnected",
-      lastSync: "2024-10-27 15:45:00",
-      health: "Error"
-    }
-  ];
+  const [activeTab, setActiveTab] = useState('categories');
+  const [categories, setCategories] = useState([]);
+  const [lookups, setLookups] = useState({});
+  const [loading, setLoading] = useState(false);
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [showLookupModal, setShowLookupModal] = useState(false);
+  const [editingItem, setEditingItem] = useState(null);
+  const [selectedDepartment, setSelectedDepartment] = useState('all');
+  const [selectedParent, setSelectedParent] = useState('all');
+  const [selectedLookupType, setSelectedLookupType] = useState('all');
+  const [lookupTypes, setLookupTypes] = useState([{ value: 'all', label: 'All Types' }]);
+  const [departments, setDepartments] = useState([{ value: 'all', label: 'All Departments' }]);
+  const [parentCategories, setParentCategories] = useState([{ value: 'all', label: 'All Categories' }]);
 
   const tabs = [
-    { id: 'sla', label: 'SLA Configuration', icon: 'Clock' },
-    { id: 'email', label: 'Email Templates', icon: 'Mail' },
-    { id: 'integration', label: 'Integrations', icon: 'Plug' },
-    { id: 'backup', label: 'Backup & Recovery', icon: 'Database' }
+    { id: 'categories', label: 'Categories & Sub-categories', icon: 'FolderTree' },
+    { id: 'lookups', label: 'Lookup Configuration', icon: 'List' }
   ];
+
+  // Load lookup types on mount
+  useEffect(() => {
+    loadLookupTypes();
+    loadAllCategories(); // Load all categories to get distinct departments
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === 'categories') {
+      loadCategories();
+    } else if (activeTab === 'lookups') {
+      loadLookups();
+    }
+  }, [activeTab, selectedDepartment, selectedParent, selectedLookupType]);
+
+  const loadAllCategories = async () => {
+    try {
+      const response = await api.get('/categories');
+      const allCategories = response.data.data || [];
+      
+      // Filter only parent categories (parent_id is null)
+      const parentCategories = allCategories.filter(cat => cat.parent_id === null);
+      
+      // Get distinct departments (case-insensitive) from parent categories only
+      const deptMap = new Map();
+      parentCategories.forEach(cat => {
+        if (cat.department) {
+          const lowerDept = cat.department.toLowerCase();
+          if (!deptMap.has(lowerDept)) {
+            deptMap.set(lowerDept, cat.department); // Store original case
+          }
+        }
+      });
+      
+      const distinctDepts = Array.from(deptMap.values()).map(dept => ({
+        value: dept,
+        label: dept
+      }));
+      
+      setDepartments([{ value: 'all', label: 'All Departments' }, ...distinctDepts]);
+      
+      // Get parent categories (only categories with parent_id = null)
+      const distinctParents = parentCategories.map(parent => ({
+        value: parent.id,
+        label: parent.name
+      }));
+      
+      setParentCategories([{ value: 'all', label: 'All Categories' }, ...distinctParents]);
+    } catch (error) {
+      console.error('Error loading departments:', error);
+    }
+  };
+
+  const loadLookupTypes = async () => {
+    try {
+      const response = await api.get('/lookups/types');
+      if (response.data.success) {
+        const types = response.data.data.map(type => ({
+          value: type,
+          label: type.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
+        }));
+        setLookupTypes([{ value: 'all', label: 'All Types' }, ...types]);
+      }
+    } catch (error) {
+      console.error('Error loading lookup types:', error);
+    }
+  };
+
+  const loadCategories = async () => {
+    try {
+      setLoading(true);
+      const response = await api.get('/categories');
+      let filteredCategories = response.data.data || [];
+      
+      // Apply case-insensitive department filter on frontend
+      if (selectedDepartment !== 'all') {
+        const selectedDeptLower = selectedDepartment.toLowerCase();
+        filteredCategories = filteredCategories.filter(cat => 
+          cat.department && cat.department.toLowerCase() === selectedDeptLower
+        );
+      }
+      
+      // Apply parent category filter
+      if (selectedParent !== 'all') {
+        filteredCategories = filteredCategories.filter(cat => 
+          cat.parent_id && cat.parent_id.toString() === selectedParent.toString()
+        );
+      }
+      
+      setCategories(filteredCategories);
+    } catch (error) {
+      console.error('Error loading categories:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadLookups = async () => {
+    try {
+      setLoading(true);
+      const params = {};
+      if (selectedLookupType !== 'all') {
+        params.type = selectedLookupType;
+      }
+      const response = await api.get('/lookups', { params });
+      if (selectedLookupType !== 'all') {
+        setLookups({ [selectedLookupType]: response.data.data || [] });
+      } else {
+        setLookups(response.data.data || {});
+      }
+    } catch (error) {
+      console.error('Error loading lookups:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
+
+  const handleDeleteCategory = async (id) => {
+    if (!confirm('Are you sure you want to delete this category?')) return;
+    try {
+      await api.delete(`/categories/${id}`);
+      loadCategories();
+    } catch (error) {
+      alert(error.response?.data?.message || 'Failed to delete category');
+    }
+  };
+
+  const handleDeleteLookup = async (id) => {
+    if (!confirm('Are you sure you want to delete this lookup?')) return;
+    try {
+      await api.delete(`/lookups/${id}`);
+      loadLookups();
+    } catch (error) {
+      alert(error.response?.data?.message || 'Failed to delete lookup');
+    }
+  };
+
+
 
   const getStatusBadge = (status) => {
     const statusConfig = {
       'Active': 'bg-success/10 text-success',
-      'Draft': 'bg-warning/10 text-warning',
-      'Connected': 'bg-success/10 text-success',
-      'Disconnected': 'bg-error/10 text-error',
-      'Healthy': 'bg-success/10 text-success',
-      'Warning': 'bg-warning/10 text-warning',
-      'Error': 'bg-error/10 text-error'
+      'Inactive': 'bg-error/10 text-error',
+      true: 'bg-success/10 text-success',
+      false: 'bg-error/10 text-error'
     };
     
+    const label = typeof status === 'boolean' ? (status ? 'Active' : 'Inactive') : status;
+    
     return (
-      <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusConfig?.[status]}`}>
-        {status}
+      <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusConfig[status]}`}>
+        {label}
       </span>
     );
   };
 
-  const renderSLAConfiguration = () => (
+  const getLevelBadge = (level) => {
+    const colors = ['bg-blue-100 text-blue-700', 'bg-green-100 text-green-700', 'bg-yellow-100 text-yellow-700', 'bg-purple-100 text-purple-700'];
+    return (
+      <span className={`px-2 py-1 rounded-full text-xs font-medium ${colors[level - 1] || 'bg-gray-100 text-gray-700'}`}>
+        Level {level}
+      </span>
+    );
+  };
+
+  const renderCategories = () => (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h4 className="text-md font-medium text-foreground">SLA Parameters</h4>
-          <p className="text-sm text-muted-foreground">Configure response and resolution times by department and priority</p>
+          <h4 className="text-md font-medium text-foreground">Category Management</h4>
+          <p className="text-sm text-muted-foreground">Manage ticket categories and sub-categories hierarchy</p>
         </div>
-        <Button variant="default" iconName="Plus" iconPosition="left">
-          Add SLA Rule
-        </Button>
-      </div>
-
-      <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-border">
-              <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Department</th>
-              <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Priority</th>
-              <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Response Time</th>
-              <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Resolution Time</th>
-              <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Auto-Escalation</th>
-              <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {slaConfigurations?.map((config) => (
-              <tr key={config?.id} className="border-b border-border hover:bg-muted/50">
-                <td className="py-3 px-4 text-sm text-foreground">{config?.department}</td>
-                <td className="py-3 px-4 text-sm text-foreground">{config?.priority}</td>
-                <td className="py-3 px-4 text-sm text-foreground">{config?.responseTime}</td>
-                <td className="py-3 px-4 text-sm text-foreground">{config?.resolutionTime}</td>
-                <td className="py-3 px-4">
-                  <div className="flex items-center space-x-2">
-                    <Checkbox checked={config?.escalationEnabled} />
-                    <span className="text-sm text-muted-foreground">{config?.escalationTime}</span>
-                  </div>
-                </td>
-                <td className="py-3 px-4">
-                  <div className="flex items-center space-x-2">
-                    <Button variant="ghost" size="sm" iconName="Edit">
-                      Edit
-                    </Button>
-                    <Button variant="ghost" size="sm" iconName="Trash2">
-                      Delete
-                    </Button>
-                  </div>
-                </td>
-              </tr>
+        <div className="flex gap-3">
+          <select
+            value={selectedDepartment}
+            onChange={(e) => setSelectedDepartment(e.target.value)}
+            className="px-3 py-2 border border-border rounded-md bg-background text-foreground text-sm"
+          >
+            {departments.map(dept => (
+              <option key={dept.value} value={dept.value}>{dept.label}</option>
             ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-
-  const renderEmailTemplates = () => (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h4 className="text-md font-medium text-foreground">Email Templates</h4>
-          <p className="text-sm text-muted-foreground">Manage notification templates with government branding</p>
-        </div>
-        <Button variant="default" iconName="Plus" iconPosition="left">
-          Create Template
-        </Button>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
-        {emailTemplates?.map((template) => (
-          <div key={template?.id} className="border border-border rounded-lg p-4 hover:shadow-sm transition-shadow">
-            <div className="flex items-start justify-between mb-3">
-              <div className="flex-1">
-                <h5 className="text-sm font-medium text-foreground">{template?.name}</h5>
-                <p className="text-xs text-muted-foreground">{template?.type}</p>
-              </div>
-              {getStatusBadge(template?.status)}
-            </div>
-            
-            <div className="mb-3">
-              <p className="text-xs text-muted-foreground mb-1">Subject:</p>
-              <p className="text-sm text-foreground font-mono bg-muted p-2 rounded text-xs">
-                {template?.subject}
-              </p>
-            </div>
-            
-            <div className="flex items-center justify-between text-xs text-muted-foreground mb-3">
-              <span>Modified: {template?.lastModified}</span>
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <Button variant="outline" size="sm" iconName="Edit" fullWidth>
-                Edit
-              </Button>
-              <Button variant="ghost" size="sm" iconName="Copy">
-                Clone
-              </Button>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-
-  const renderIntegrations = () => (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h4 className="text-md font-medium text-foreground">System Integrations</h4>
-          <p className="text-sm text-muted-foreground">Manage external system connections and API configurations</p>
-        </div>
-        <Button variant="default" iconName="Plus" iconPosition="left">
-          Add Integration
-        </Button>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {integrationSettings?.map((integration) => (
-          <div key={integration?.id} className="border border-border rounded-lg p-4">
-            <div className="flex items-start justify-between mb-3">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                  <Icon name="Plug" size={20} className="text-primary" />
-                </div>
-                <div>
-                  <h5 className="text-sm font-medium text-foreground">{integration?.name}</h5>
-                  <p className="text-xs text-muted-foreground">{integration?.type}</p>
-                </div>
-              </div>
-              {getStatusBadge(integration?.status)}
-            </div>
-            
-            <div className="space-y-2 mb-4">
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-muted-foreground">Health Status:</span>
-                {getStatusBadge(integration?.health)}
-              </div>
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-muted-foreground">Last Sync:</span>
-                <span className="text-foreground">{new Date(integration.lastSync)?.toLocaleString('en-MY')}</span>
-              </div>
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <Button variant="outline" size="sm" iconName="Settings" fullWidth>
-                Configure
-              </Button>
-              <Button variant="ghost" size="sm" iconName="RefreshCw">
-                Sync
-              </Button>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-
-  const renderBackupRecovery = () => (
-    <div className="space-y-6">
-      <div>
-        <h4 className="text-md font-medium text-foreground">Backup & Recovery</h4>
-        <p className="text-sm text-muted-foreground">Configure automated backups and recovery procedures</p>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="space-y-4">
-          <h5 className="text-sm font-medium text-foreground">Backup Schedule</h5>
-          
-          <div className="space-y-4">
-            <div className="flex items-center justify-between p-3 border border-border rounded-lg">
-              <div>
-                <p className="text-sm font-medium text-foreground">Daily Database Backup</p>
-                <p className="text-xs text-muted-foreground">Every day at 2:00 AM</p>
-              </div>
-              <Checkbox checked />
-            </div>
-            
-            <div className="flex items-center justify-between p-3 border border-border rounded-lg">
-              <div>
-                <p className="text-sm font-medium text-foreground">Weekly Full System Backup</p>
-                <p className="text-xs text-muted-foreground">Every Sunday at 1:00 AM</p>
-              </div>
-              <Checkbox checked />
-            </div>
-            
-            <div className="flex items-center justify-between p-3 border border-border rounded-lg">
-              <div>
-                <p className="text-sm font-medium text-foreground">Configuration Backup</p>
-                <p className="text-xs text-muted-foreground">After each system change</p>
-              </div>
-              <Checkbox />
-            </div>
-          </div>
-          
-          <Button variant="outline" iconName="Settings" fullWidth>
-            Configure Schedule
-          </Button>
-        </div>
-
-        <div className="space-y-4">
-          <h5 className="text-sm font-medium text-foreground">Recent Backups</h5>
-          
-          <div className="space-y-2">
-            <div className="flex items-center justify-between p-3 border border-border rounded-lg">
-              <div>
-                <p className="text-sm font-medium text-foreground">Database Backup</p>
-                <p className="text-xs text-muted-foreground">28 Oct 2024, 02:00 AM</p>
-              </div>
-              <div className="flex items-center space-x-2">
-                {getStatusBadge('Active')}
-                <Button variant="ghost" size="sm" iconName="Download">
-                  Download
-                </Button>
-              </div>
-            </div>
-            
-            <div className="flex items-center justify-between p-3 border border-border rounded-lg">
-              <div>
-                <p className="text-sm font-medium text-foreground">Full System Backup</p>
-                <p className="text-xs text-muted-foreground">27 Oct 2024, 01:00 AM</p>
-              </div>
-              <div className="flex items-center space-x-2">
-                {getStatusBadge('Active')}
-                <Button variant="ghost" size="sm" iconName="Download">
-                  Download
-                </Button>
-              </div>
-            </div>
-          </div>
-          
-          <Button variant="default" iconName="Database" fullWidth>
-            Create Manual Backup
+          </select>
+          <select
+            value={selectedParent}
+            onChange={(e) => setSelectedParent(e.target.value)}
+            className="px-3 py-2 border border-border rounded-md bg-background text-foreground text-sm"
+          >
+            {parentCategories.map(parent => (
+              <option key={parent.value} value={parent.value}>{parent.label}</option>
+            ))}
+          </select>
+          <Button variant="default" iconName="Plus" iconPosition="left" onClick={() => setShowCategoryModal(true)}>
+            Add Category
           </Button>
         </div>
       </div>
+
+      {loading ? (
+        <div className="text-center py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading categories...</p>
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-border">
+                <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Code</th>
+                <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Name (EN)</th>
+                <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Name (MS)</th>
+                <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Department</th>
+                <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Level</th>
+                <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Parent</th>
+                <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Status</th>
+                <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {categories.map((category) => (
+                <tr key={category.id} className="border-b border-border hover:bg-muted/50">
+                  <td className="py-3 px-4 text-sm text-foreground font-mono">{category.code}</td>
+                  <td className="py-3 px-4 text-sm text-foreground">{category.name}</td>
+                  <td className="py-3 px-4 text-sm text-foreground">{category.name_ms || '-'}</td>
+                  <td className="py-3 px-4 text-sm text-foreground">{category.department}</td>
+                  <td className="py-3 px-4">{getLevelBadge(category.level)}</td>
+                  <td className="py-3 px-4 text-sm text-muted-foreground">{category.parent?.name || '-'}</td>
+                  <td className="py-3 px-4">{getStatusBadge(category.is_active)}</td>
+                  <td className="py-3 px-4">
+                    <div className="flex items-center space-x-2">
+                      <Button variant="ghost" size="sm" iconName="Edit" onClick={() => {
+                        setEditingItem(category);
+                        setShowCategoryModal(true);
+                      }}>
+                        Edit
+                      </Button>
+                      <Button variant="ghost" size="sm" iconName="Trash2" onClick={() => handleDeleteCategory(category.id)}>
+                        Delete
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
+
+  const renderLookups = () => {
+    const lookupEntries = selectedLookupType === 'all' ? Object.entries(lookups) : [[selectedLookupType, lookups[selectedLookupType] || []]];
+    
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h4 className="text-md font-medium text-foreground">Lookup Configuration</h4>
+            <p className="text-sm text-muted-foreground">Manage system lookup values and dropdown options</p>
+          </div>
+          <div className="flex gap-3">
+            <select
+              value={selectedLookupType}
+              onChange={(e) => setSelectedLookupType(e.target.value)}
+              className="px-3 py-2 border border-border rounded-md bg-background text-foreground text-sm"
+            >
+              {lookupTypes.map(type => (
+                <option key={type.value} value={type.value}>{type.label}</option>
+              ))}
+            </select>
+            <Button variant="default" iconName="Plus" iconPosition="left" onClick={() => setShowLookupModal(true)}>
+              Add Lookup
+            </Button>
+          </div>
+        </div>
+
+        {loading ? (
+          <div className="text-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Loading lookups...</p>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {lookupEntries.map(([type, items]) => (
+              <div key={type} className="border border-border rounded-lg p-4">
+                <h5 className="text-sm font-medium text-foreground mb-4 flex items-center gap-2">
+                  <Icon name="List" size={16} />
+                  {lookupTypes.find(t => t.value === type)?.label || type}
+                  <span className="text-xs text-muted-foreground">({items?.length || 0} items)</span>
+                </h5>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {(items || []).map((lookup) => (
+                    <div key={lookup.id} className="border border-border rounded-lg p-3 hover:shadow-sm transition-shadow">
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            {lookup.color && (
+                              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: lookup.color }}></div>
+                            )}
+                            <span className="text-sm font-medium text-foreground">{lookup.name}</span>
+                          </div>
+                          <p className="text-xs text-muted-foreground font-mono">{lookup.code}</p>
+                        </div>
+                        {getStatusBadge(lookup.is_active)}
+                      </div>
+                      {lookup.description && (
+                        <p className="text-xs text-muted-foreground mb-2">{lookup.description}</p>
+                      )}
+                      <div className="flex items-center space-x-1 mt-2">
+                        <Button variant="outline" size="sm" iconName="Edit" onClick={() => {
+                          setEditingItem(lookup);
+                          setShowLookupModal(true);
+                        }}>
+                          Edit
+                        </Button>
+                        <Button variant="ghost" size="sm" iconName="Trash2" onClick={() => handleDeleteLookup(lookup.id)}>
+                          Delete
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="bg-card rounded-lg border border-border">
@@ -383,34 +362,66 @@ const SystemConfigurationPanel = () => {
         <div className="flex items-center justify-between mb-4">
           <div>
             <h3 className="text-lg font-semibold text-foreground">System Configuration</h3>
-            <p className="text-sm text-muted-foreground">Configure system parameters and integrations</p>
+            <p className="text-sm text-muted-foreground">Manage categories and lookups configuration</p>
           </div>
         </div>
 
         {/* Tabs */}
         <div className="flex space-x-1 bg-muted p-1 rounded-lg">
-          {tabs?.map((tab) => (
+          {tabs.map((tab) => (
             <button
-              key={tab?.id}
-              onClick={() => setActiveTab(tab?.id)}
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
               className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                activeTab === tab?.id
+                activeTab === tab.id
                   ? 'bg-background text-foreground shadow-sm'
                   : 'text-muted-foreground hover:text-foreground'
               }`}
             >
-              <Icon name={tab?.icon} size={16} />
-              <span>{tab?.label}</span>
+              <Icon name={tab.icon} size={16} />
+              <span>{tab.label}</span>
             </button>
           ))}
         </div>
       </div>
       <div className="p-6">
-        {activeTab === 'sla' && renderSLAConfiguration()}
-        {activeTab === 'email' && renderEmailTemplates()}
-        {activeTab === 'integration' && renderIntegrations()}
-        {activeTab === 'backup' && renderBackupRecovery()}
+        {activeTab === 'categories' && renderCategories()}
+        {activeTab === 'lookups' && renderLookups()}
       </div>
+
+      {/* Category Modal */}
+      {showCategoryModal && (
+        <CategoryModal
+          category={editingItem}
+          categories={categories}
+          onClose={() => {
+            setShowCategoryModal(false);
+            setEditingItem(null);
+          }}
+          onSave={() => {
+            setShowCategoryModal(false);
+            setEditingItem(null);
+            loadCategories();
+          }}
+        />
+      )}
+
+      {/* Lookup Modal */}
+      {showLookupModal && (
+        <LookupModal
+          lookup={editingItem}
+          lookupTypes={lookupTypes}
+          onClose={() => {
+            setShowLookupModal(false);
+            setEditingItem(null);
+          }}
+          onSave={() => {
+            setShowLookupModal(false);
+            setEditingItem(null);
+            loadLookups();
+          }}
+        />
+      )}
     </div>
   );
 };

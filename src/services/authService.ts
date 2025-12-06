@@ -55,6 +55,7 @@ export const authService = {
       await api.post('/auth/logout');
     } finally {
       localStorage.removeItem('jwt_token');
+      localStorage.removeItem('user-session');
     }
   },
 
@@ -76,5 +77,33 @@ export const authService = {
   // Check if user is authenticated
   isAuthenticated: (): boolean => {
     return !!localStorage.getItem('jwt_token');
+  },
+
+  // Get current user from localStorage
+  getCurrentUser: (): AuthResponse['user'] | null => {
+    try {
+      const userData = localStorage.getItem('user-session');
+      if (userData) {
+        const user = JSON.parse(userData);
+        // Map role_id to role name if needed
+        if (user.role_id && !user.role) {
+          user.role = getRoleFromRoleId(user.role_id);
+        }
+        return user;
+      }
+      return null;
+    } catch (err) {
+      console.error('Error parsing user data from localStorage:', err);
+      return null;
+    }
+  },
+
+  // Set current user to localStorage
+  setCurrentUser: (user: AuthResponse['user']) => {
+    try {
+      localStorage.setItem('user-session', JSON.stringify(user));
+    } catch (err) {
+      console.error('Error storing user data to localStorage:', err);
+    }
   },
 };

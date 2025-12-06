@@ -1,56 +1,38 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Icon from '../AppIcon';
+import notificationService from '../../services/notificationService';
 
 const NotificationCenter = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
   const dropdownRef = useRef(null);
+  const navigate = useNavigate();
 
-  const mockNotifications = [
-    {
-      id: 1,
-      type: 'sla_warning',
-      title: 'SLA Breach Warning',
-      message: 'Ticket #TK-2024-1028 will breach SLA in 15 minutes',
-      timestamp: new Date(Date.now() - 5 * 60 * 1000),
-      isRead: false,
-      priority: 'high',
-      actionUrl: '/ticket-management?id=TK-2024-1028'
-    },
-    {
-      id: 2,
-      type: 'assignment',
-      title: 'New Ticket Assigned',
-      message: 'Ticket #TK-2024-1029 has been assigned to you',
-      timestamp: new Date(Date.now() - 15 * 60 * 1000),
-      isRead: false,
-      priority: 'medium',
-      actionUrl: '/ticket-management?id=TK-2024-1029'
-    },
-    {
-      id: 3,
-      type: 'system',
-      title: 'System Maintenance',
-      message: 'Scheduled maintenance window: Tonight 11 PM - 2 AM',
-      timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000),
-      isRead: true,
-      priority: 'low',
-      actionUrl: null
-    },
-    {
-      id: 4,
-      type: 'approval',
-      title: 'Escalation Approved',
-      message: 'Your escalation request for TK-2024-1025 has been approved',
-      timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000),
-      isRead: true,
-      priority: 'medium',
-      actionUrl: '/ticket-management?id=TK-2024-1025'
+  // Fetch notifications from API
+  const fetchNotifications = async () => {
+    try {
+      setIsLoading(true);
+      const response = await notificationService.getNotifications({ limit: 50 });
+      if (response?.success) {
+        setNotifications(response?.data || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch notifications:', error);
+    } finally {
+      setIsLoading(false);
     }
-  ];
+  };
 
+  // Initial fetch and polling
   useEffect(() => {
-    setNotifications(mockNotifications);
+    fetchNotifications();
+    
+    // Poll for new notifications every 30 seconds
+    const pollInterval = setInterval(fetchNotifications, 30000);
+    
+    return () => clearInterval(pollInterval);
   }, []);
 
   useEffect(() => {
@@ -64,24 +46,25 @@ const NotificationCenter = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const unreadCount = notifications?.filter(n => !n?.isRead)?.length;
+  const unreadCount = notifications?.filter(n => !n?.read)?.length;
 
   const getNotificationIcon = (type) => {
     const iconMap = {
-      'sla_warning': 'AlertTriangle',
-      'assignment': 'UserPlus',
-      'system': 'Settings',
-      'approval': 'CheckCircle',
-      'message': 'MessageSquare'
+      'sla_alert': 'AlertTriangle',
+      'agent_assistance': 'UserPlus',
+      'system_alert': 'Settings',
+      'ticket_assigned': 'UserPlus',
+      'ticket_escalated': 'AlertCircle',
+      'workload_warning': 'AlertTriangle'
     };
     return iconMap?.[type] || 'Bell';
   };
 
-  const getNotificationColor = (type, priority) => {
-    if (type === 'sla_warning' || priority === 'high') {
+  const getNotificationColor = (level) => {
+    if (level === 'critical') {
       return 'text-error';
     }
-    if (priority === 'medium') {
+    if (level === 'warning') {
       return 'text-warning';
     }
     return 'text-muted-foreground';
@@ -89,7 +72,8 @@ const NotificationCenter = () => {
 
   const formatTimestamp = (timestamp) => {
     const now = new Date();
-    const diff = now - timestamp;
+    const notificationDate = new Date(timestamp);
+    const diff = now - notificationDate;
     const minutes = Math.floor(diff / (1000 * 60));
     const hours = Math.floor(diff / (1000 * 60 * 60));
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
@@ -100,34 +84,56 @@ const NotificationCenter = () => {
     return `${days}d ago`;
   };
 
-  const handleNotificationClick = (notification) => {
-    if (notification?.actionUrl) {
-      window.location.href = notification?.actionUrl;
+  const handleNotificationClick = async (notification) => {
+    // Navigate if URL is provided
+    if (notification?.url) {
+      navigate(notification?.url);
+    } else if (notification?.ticket_id) {
+      // Navigate to ticket if ticket_id is present
+      navigate(`/ticket-management?id=${notification?.ticket_number || notification?.ticket_id}`);
     }
     
-    if (!notification?.isRead) {
-      markAsRead(notification?.id);
+    // Mark as read if unread
+    if (!notification?.read) {
+      await markAsRead(notification?.id);
     }
     setIsOpen(false);
   };
 
-  const markAsRead = (notificationId) => {
-    setNotifications(prev => 
-      prev?.map(n => 
-        n?.id === notificationId ? { ...n, isRead: true } : n
-      )
-    );
+  const markAsRead = async (notificationId) => {
+    try {
+      await notificationService.markAsRead(notificationId);
+      // Update local state
+      setNotifications(prev => 
+        prev?.map(n => 
+          n?.id === notificationId ? { ...n, read: true } : n
+        )
+      );
+    } catch (error) {
+      console.error('Failed to mark notification as read:', error);
+    }
   };
 
-  const markAllAsRead = () => {
-    setNotifications(prev => 
-      prev?.map(n => ({ ...n, isRead: true }))
-    );
+  const markAllAsRead = async () => {
+    try {
+      await notificationService.markAllAsRead();
+      // Update local state
+      setNotifications(prev => 
+        prev?.map(n => ({ ...n, read: true }))
+      );
+    } catch (error) {
+      console.error('Failed to mark all as read:', error);
+    }
   };
 
-  const clearAll = () => {
-    setNotifications([]);
-    setIsOpen(false);
+  const clearAll = async () => {
+    try {
+      await notificationService.clearAll();
+      setNotifications([]);
+      setIsOpen(false);
+    } catch (error) {
+      console.error('Failed to clear notifications:', error);
+    }
   };
 
   return (
@@ -136,8 +142,12 @@ const NotificationCenter = () => {
         onClick={() => setIsOpen(!isOpen)}
         className="relative p-2 rounded-lg hover:bg-muted transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-ring"
       >
-        <Icon name="Bell" size={20} className="text-muted-foreground" />
-        {unreadCount > 0 && (
+        {isLoading ? (
+          <div className="animate-spin w-5 h-5 border-2 border-muted-foreground border-t-transparent rounded-full"></div>
+        ) : (
+          <Icon name="Bell" size={20} className="text-muted-foreground" />
+        )}
+        {unreadCount > 0 && !isLoading && (
           <span className="absolute -top-1 -right-1 w-5 h-5 bg-error text-error-foreground text-xs font-medium rounded-full flex items-center justify-center">
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
@@ -178,7 +188,12 @@ const NotificationCenter = () => {
 
           {/* Notification List */}
           <div className="max-h-96 overflow-y-auto">
-            {notifications?.length === 0 ? (
+            {isLoading && notifications?.length === 0 ? (
+              <div className="px-4 py-8 text-center">
+                <div className="animate-spin mx-auto mb-2 w-8 h-8 border-2 border-primary border-t-transparent rounded-full"></div>
+                <p className="text-sm text-muted-foreground">Loading notifications...</p>
+              </div>
+            ) : notifications?.length === 0 ? (
               <div className="px-4 py-8 text-center">
                 <Icon name="Bell" size={32} className="text-muted-foreground mx-auto mb-2" />
                 <p className="text-sm text-muted-foreground">No notifications</p>
@@ -190,29 +205,34 @@ const NotificationCenter = () => {
                     key={notification?.id}
                     onClick={() => handleNotificationClick(notification)}
                     className={`w-full flex items-start space-x-3 px-4 py-3 hover:bg-muted transition-colors duration-200 text-left ${
-                      !notification?.isRead ? 'bg-primary/5' : ''
+                      !notification?.read ? 'bg-primary/5' : ''
                     }`}
                   >
-                    <div className={`flex-shrink-0 mt-0.5 ${getNotificationColor(notification?.type, notification?.priority)}`}>
+                    <div className={`flex-shrink-0 mt-0.5 ${getNotificationColor(notification?.level)}`}>
                       <Icon name={getNotificationIcon(notification?.type)} size={16} />
                     </div>
                     
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between">
                         <p className={`text-sm font-medium ${
-                          !notification?.isRead ? 'text-popover-foreground' : 'text-muted-foreground'
+                          !notification?.read ? 'text-popover-foreground' : 'text-muted-foreground'
                         }`}>
                           {notification?.title}
                         </p>
-                        {!notification?.isRead && (
+                        {!notification?.read && (
                           <div className="w-2 h-2 bg-primary rounded-full flex-shrink-0 ml-2 mt-1"></div>
                         )}
                       </div>
                       <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
                         {notification?.message}
                       </p>
+                      {notification?.ticket_number && (
+                        <p className="text-xs text-primary mt-1">
+                          Ticket: {notification?.ticket_number}
+                        </p>
+                      )}
                       <p className="text-xs text-muted-foreground mt-1">
-                        {formatTimestamp(notification?.timestamp)}
+                        {formatTimestamp(notification?.created_at || notification?.timestamp)}
                       </p>
                     </div>
                   </button>

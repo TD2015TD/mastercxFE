@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Icon from '../AppIcon';
+import languageService from '../../services/languageService';
 
 const UserProfileDropdown = ({ user = null }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -33,9 +34,15 @@ const UserProfileDropdown = ({ user = null }) => {
   }, []);
 
   const handleLanguageChange = (language) => {
+    // Clear language cache to force fresh translations
+    languageService.clearCache();
+    
     setCurrentLanguage(language);
     localStorage.setItem('preferred-language', language);
     setIsOpen(false);
+    
+    // Reload page to apply new language across all components
+    window.location.reload();
   };
 
   const handleLogout = () => {

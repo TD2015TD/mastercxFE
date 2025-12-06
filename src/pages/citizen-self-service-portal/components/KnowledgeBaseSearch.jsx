@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
 
@@ -8,6 +9,9 @@ const KnowledgeBaseSearch = ({ language }) => {
   const [isSearching, setIsSearching] = useState(false);
   const [selectedArticle, setSelectedArticle] = useState(null);
   const [popularArticles, setPopularArticles] = useState([]);
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [categories, setCategories] = useState([]);
+  const [error, setError] = useState(null);
 
   const content = {
     en: {
@@ -54,8 +58,74 @@ const KnowledgeBaseSearch = ({ language }) => {
 
   const t = content?.[language];
 
-  // Mock knowledge base articles
-  const mockArticles = [
+  // Load popular articles and categories on mount
+  useEffect(() => {
+    const fetchInitialData = async () => {
+      try {
+        // Fetch popular articles
+        const popularResponse = await axios.get('/api/v1/public/knowledge-base/popular', {
+          params: { limit: 5 }
+        });
+        setPopularArticles(popularResponse.data.data);
+
+        // Fetch categories
+        const categoriesResponse = await axios.get('/api/v1/public/knowledge-base/categories');
+        setCategories([{ name: 'All', count: 0 }, ...categoriesResponse.data.data]);
+      } catch (err) {
+        console.error('Failed to load KB data:', err);
+        setError('Failed to load knowledge base');
+      }
+    };
+    fetchInitialData();
+  }, []);
+
+  const handleSearch = async () => {
+    if (!searchQuery?.trim() && selectedCategory === 'all') return;
+
+    setIsSearching(true);
+    setError(null);
+
+    try {
+      const response = await axios.get('/api/v1/public/knowledge-base/search', {
+        params: {
+          q: searchQuery,
+          category: selectedCategory !== 'all' ? selectedCategory : undefined,
+          limit: 20
+        }
+      });
+      setSearchResults(response.data.data);
+    } catch (err) {
+      console.error('Search failed:', err);
+      setError('Search failed. Please try again.');
+      setSearchResults([]);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const viewArticle = async (articleId) => {
+    try {
+      const response = await axios.get(`/api/v1/public/knowledge-base/articles/${articleId}`);
+      setSelectedArticle(response.data.data);
+    } catch (err) {
+      console.error('Failed to load article:', err);
+      setError('Failed to load article');
+    }
+  };
+
+  const submitFeedback = async (articleId, helpful) => {
+    try {
+      await axios.post(`/api/v1/public/knowledge-base/articles/${articleId}/feedback`, {
+        helpful: helpful
+      });
+      // Show success notification (optional)
+    } catch (err) {
+      console.error('Failed to submit feedback:', err);
+    }
+  };
+
+  // Remove old mock articles definition
+  const mockArticles_REMOVED = [
     {
       id: 'kb-001',
       title: language === 'en' ? 'How to Calculate Import Duties' : 'Cara Mengira Duti Import',
@@ -89,28 +159,7 @@ const KnowledgeBaseSearch = ({ language }) => {
       lastUpdated: new Date('2024-10-18'),
       helpful: 85
     }
-  ];
-
-  useEffect(() => {
-    // Set popular articles on component mount
-    setPopularArticles(mockArticles?.sort((a, b) => b?.views - a?.views)?.slice(0, 5));
-  }, [language]);
-
-  const handleSearch = () => {
-    if (!searchQuery?.trim()) return;
-
-    setIsSearching(true);
-    
-    // Simulate search delay
-    setTimeout(() => {
-      const results = mockArticles?.filter(article =>
-        article?.title?.toLowerCase()?.includes(searchQuery?.toLowerCase()) ||
-        article?.content?.toLowerCase()?.includes(searchQuery?.toLowerCase())
-      );
-      setSearchResults(results);
-      setIsSearching(false);
-    }, 800);
-  };
+  ]; // END OF MOCK DATA - REMOVED
 
   const handleKeyPress = (e) => {
     if (e?.key === 'Enter') {
@@ -127,7 +176,8 @@ const KnowledgeBaseSearch = ({ language }) => {
   };
 
   const handleFeedback = (articleId, isHelpful) => {
-    // Mock feedback handling
+    submitFeedback(articleId, isHelpful);
+    // Show success notification
     console.log(`Article ${articleId} marked as ${isHelpful ? 'helpful' : 'not helpful'}`);
   };
 
@@ -243,20 +293,20 @@ const KnowledgeBaseSearch = ({ language }) => {
               <div
                 key={article?.id}
                 className="border border-border rounded-lg p-4 hover:bg-muted/50 transition-colors duration-200 cursor-pointer"
-                onClick={() => setSelectedArticle(article)}
+                onClick={() => viewArticle(article?.id)}
               >
                 <div className="flex items-start justify-between mb-2">
                   <h4 className="font-medium text-foreground">{article?.title}</h4>
                   <span className="px-2 py-1 bg-primary/10 text-primary text-xs font-medium rounded">
-                    {t?.categories?.[article?.category]}
+                    {article?.category}
                   </span>
                 </div>
                 <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
-                  {article?.content?.substring(0, 150)}...
+                  {article?.excerpt || article?.content?.substring(0, 150)}...
                 </p>
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
                   <span>{article?.views} {language === 'en' ? 'views' : 'tontonan'}</span>
-                  <span>{formatDate(article?.lastUpdated)}</span>
+                  <span>{article?.helpful_count} {language === 'en' ? 'helpful' : 'berguna'}</span>
                 </div>
               </div>
             ))}
@@ -274,12 +324,19 @@ const KnowledgeBaseSearch = ({ language }) => {
       {/* Popular Articles */}
       <div>
         <h3 className="text-lg font-medium text-foreground mb-4">{t?.popularTitle}</h3>
+        
+        {error && (
+          <div className="p-4 bg-destructive/10 border border-destructive rounded-lg mb-4">
+            <p className="text-sm text-destructive">{error}</p>
+          </div>
+        )}
+        
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {popularArticles?.map((article) => (
             <div
               key={article?.id}
               className="border border-border rounded-lg p-4 hover:bg-muted/50 transition-colors duration-200 cursor-pointer"
-              onClick={() => setSelectedArticle(article)}
+              onClick={() => viewArticle(article?.id)}
             >
               <div className="flex items-start justify-between mb-2">
                 <h4 className="font-medium text-foreground text-sm">{article?.title}</h4>
@@ -287,7 +344,7 @@ const KnowledgeBaseSearch = ({ language }) => {
               </div>
               <div className="flex items-center justify-between text-xs text-muted-foreground">
                 <span className="px-2 py-1 bg-muted rounded text-xs">
-                  {t?.categories?.[article?.category]}
+                  {article?.category}
                 </span>
                 <span>{article?.views} {language === 'en' ? 'views' : 'tontonan'}</span>
               </div>

@@ -1,11 +1,17 @@
 import React, { useState } from 'react';
-
+import { ticketService } from '../../../services/ticketService';
+import lookupService from '../../../services/lookupService';
 import Button from '../../../components/ui/Button';
 import Input from '../../../components/ui/Input';
 import Select from '../../../components/ui/Select';
 
 const TicketDetails = ({ ticket, onUpdate }) => {
   const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [departments, setDepartments] = useState([]);
+  const [priorities, setPriorities] = useState([]);
+  const [categories, setCategories] = useState([]);
+  
   const [editData, setEditData] = useState({
     priority: ticket?.priority,
     department: ticket?.department,
@@ -13,34 +19,54 @@ const TicketDetails = ({ ticket, onUpdate }) => {
     category: ticket?.category
   });
 
-  const priorityOptions = [
-    { value: 'P1', label: 'P1 - Critical' },
-    { value: 'P2', label: 'P2 - High' },
-    { value: 'P3', label: 'P3 - Medium' },
-    { value: 'P4', label: 'P4 - Low' },
-    { value: 'P5', label: 'P5 - Very Low' }
-  ];
+  // Load lookups when entering edit mode
+  React.useEffect(() => {
+    if (isEditing && departments.length === 0) {
+      loadLookups();
+    }
+  }, [isEditing]);
 
-  const departmentOptions = [
-    { value: 'Customs Operations', label: 'Customs Operations' },
-    { value: 'Trade Facilitation', label: 'Trade Facilitation' },
-    { value: 'Enforcement', label: 'Enforcement' },
-    { value: 'Revenue Collection', label: 'Revenue Collection' },
-    { value: 'IT Support', label: 'IT Support' }
-  ];
+  const loadLookups = async () => {
+    try {
+      const [deptData, prioData] = await Promise.all([
+        lookupService.getDepartments(),
+        lookupService.getPriorities()
+      ]);
 
-  const categoryOptions = [
-    { value: 'Import Declaration', label: 'Import Declaration' },
-    { value: 'Export Declaration', label: 'Export Declaration' },
-    { value: 'Duty Payment', label: 'Duty Payment' },
-    { value: 'Permit Application', label: 'Permit Application' },
-    { value: 'System Issue', label: 'System Issue' },
-    { value: 'General Inquiry', label: 'General Inquiry' }
-  ];
+      setDepartments(deptData.map(d => ({ value: d.name, label: d.name })));
+      setPriorities(prioData.map(p => ({ value: p.code, label: `${p.code} - ${p.name}` })));
+    } catch (err) {
+      console.error('Error loading lookups:', err);
+    }
+  };
 
-  const handleSave = () => {
-    onUpdate(editData);
-    setIsEditing(false);
+  const handleSave = async () => {
+    setIsSaving(true);
+    
+    try {
+      // Call API to update ticket
+      const response = await ticketService.updateTicket(ticket.id, {
+        priority: editData.priority,
+        department: editData.department,
+        category: editData.category,
+        assigned_to: editData.assignedTo
+      });
+
+      if (response.success) {
+        // Update parent component
+        if (onUpdate) {
+          onUpdate(editData);
+        }
+        setIsEditing(false);
+      } else {
+        alert('Failed to update ticket: ' + (response.message || 'Unknown error'));
+      }
+    } catch (error) {
+      console.error('Error updating ticket:', error);
+      alert('Failed to update ticket. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleCancel = () => {
@@ -99,8 +125,9 @@ const TicketDetails = ({ ticket, onUpdate }) => {
               variant="default"
               size="sm"
               onClick={handleSave}
+              disabled={isSaving}
             >
-              Save
+              {isSaving ? 'Saving...' : 'Save'}
             </Button>
           </div>
         )}
@@ -142,23 +169,31 @@ const TicketDetails = ({ ticket, onUpdate }) => {
               <>
                 <Select
                   label="Priority"
-                  options={priorityOptions}
+                  options={priorities.length > 0 ? priorities : [
+                    { value: 'P1', label: 'P1 - Critical' },
+                    { value: 'P2', label: 'P2 - High' },
+                    { value: 'P3', label: 'P3 - Medium' },
+                    { value: 'P4', label: 'P4 - Low' }
+                  ]}
                   value={editData?.priority}
                   onChange={(value) => setEditData({...editData, priority: value})}
                 />
                 
                 <Select
                   label="Department"
-                  options={departmentOptions}
+                  options={departments.length > 0 ? departments : [
+                    { value: 'Customs Operations', label: 'Customs Operations' },
+                    { value: 'Trade Facilitation', label: 'Trade Facilitation' }
+                  ]}
                   value={editData?.department}
                   onChange={(value) => setEditData({...editData, department: value})}
                 />
                 
-                <Select
+                <Input
                   label="Category"
-                  options={categoryOptions}
+                  type="text"
                   value={editData?.category}
-                  onChange={(value) => setEditData({...editData, category: value})}
+                  onChange={(e) => setEditData({...editData, category: e?.target?.value})}
                 />
                 
                 <Input

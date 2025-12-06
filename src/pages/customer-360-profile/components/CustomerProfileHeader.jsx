@@ -35,13 +35,19 @@ const CustomerProfileHeader = ({ customer, onEdit, onCreateTicket, onScheduleCal
           {/* Avatar */}
           <div className="flex-shrink-0">
             <div className="relative">
-              <Image
-                src={customer?.avatar}
-                alt={customer?.avatarAlt}
-                className="w-24 h-24 rounded-full object-cover border-4 border-border"
-              />
+              {customer?.avatar ? (
+                <Image
+                  src={customer.avatar}
+                  alt={customer?.avatarAlt || customer?.name}
+                  className="w-24 h-24 rounded-full object-cover border-4 border-border"
+                />
+              ) : (
+                <div className="w-24 h-24 rounded-full bg-primary/10 border-4 border-border flex items-center justify-center">
+                  <Icon name="User" size={40} className="text-primary" />
+                </div>
+              )}
               <div className={`absolute -bottom-1 -right-1 w-6 h-6 rounded-full border-2 border-card flex items-center justify-center ${getStatusColor(customer?.status)}`}>
-                <Icon name="User" size={12} />
+                <Icon name="Circle" size={12} />
               </div>
             </div>
           </div>

@@ -167,4 +167,63 @@ export const ticketService = {
     const response = await api.get('/tickets/statistics/summary', { params });
     return response.data;
   },
+
+  // Get ticket history
+  getTicketHistory: async (id: number) => {
+    const response = await api.get(`/tickets/${id}/history`);
+    return response.data;
+  },
+
+  // Add comment/note to ticket (creates history entry)
+  addComment: async (id: number, comment: string, isInternal: boolean = false) => {
+    const response = await api.post(`/tickets/${id}/comments`, { 
+      comment, 
+      is_internal: isInternal 
+    });
+    return response.data;
+  },
+
+  // Upload attachment to ticket
+  uploadAttachment: async (id: number, file: File, description?: string) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (description) {
+      formData.append('description', description);
+    }
+    const response = await api.post(`/tickets/${id}/attachments`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
+
+  // Get ticket attachments
+  getAttachments: async (id: number) => {
+    const response = await api.get(`/tickets/${id}/attachments`);
+    return response.data;
+  },
+
+  // Download attachment
+  downloadAttachment: async (ticketId: number, attachmentId: number, fileName: string) => {
+    const response = await api.get(`/tickets/${ticketId}/attachments/${attachmentId}/download`, {
+      responseType: 'blob',
+    });
+    
+    // Create a download link
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', fileName);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  },
+
+  // Delete attachment
+  deleteAttachment: async (id: number, attachmentId: number) => {
+    const response = await api.delete(`/tickets/${id}/attachments/${attachmentId}`);
+    return response.data;
+  },
 };

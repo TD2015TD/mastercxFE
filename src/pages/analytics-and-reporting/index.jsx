@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Helmet } from 'react-helmet-async';
+import BreadcrumbNavigation from '../../components/ui/BreadcrumbNavigation';
 import Icon from '../../components/AppIcon';
 import Button from '../../components/ui/Button';
 import Select from '../../components/ui/Select';
-import BreadcrumbNavigation from '../../components/ui/BreadcrumbNavigation';
+import TelephonyBar from '../../components/TelephonyBar';
 import MetricsOverview from './components/MetricsOverview';
 import TicketVolumeChart from './components/TicketVolumeChart';
 import SLAPerformanceChart from './components/SLAPerformanceChart';
@@ -12,262 +13,227 @@ import AgentPerformanceTable from './components/AgentPerformanceTable';
 import DashboardPersonalization from './components/DashboardPersonalization';
 
 const AnalyticsAndReporting = () => {
-  const navigate = useNavigate();
-  const [currentLanguage, setCurrentLanguage] = useState('en');
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState('dashboard');
   const [dateRange, setDateRange] = useState('last_7_days');
-  const [selectedDepartment, setSelectedDepartment] = useState('all');
-  const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    const savedLanguage = localStorage.getItem('preferred-language') || 'en';
-    setCurrentLanguage(savedLanguage);
-  }, []);
-
-  const content = {
-    en: {
-      title: 'Analytics & Reporting',
-      subtitle: 'Comprehensive performance insights and custom report generation',
-      tabs: {
-        overview: 'Dashboard Overview',
-        reports: 'Custom Reports',
-        performance: 'Agent Performance',
-        personalization: 'Personalization'
-      },
-      filters: {
-        dateRange: 'Date Range',
-        department: 'Department',
-        export: 'Export Data',
-        refresh: 'Refresh Data'
-      },
-      dateRangeOptions: [
-        { value: 'today', label: 'Today' },
-        { value: 'yesterday', label: 'Yesterday' },
-        { value: 'last_7_days', label: 'Last 7 Days' },
-        { value: 'last_30_days', label: 'Last 30 Days' },
-        { value: 'this_month', label: 'This Month' },
-        { value: 'last_month', label: 'Last Month' },
-        { value: 'this_quarter', label: 'This Quarter' },
-        { value: 'last_quarter', label: 'Last Quarter' },
-        { value: 'this_year', label: 'This Year' }
-      ],
-      departmentOptions: [
-        { value: 'all', label: 'All Departments' },
-        { value: 'customs_declaration', label: 'Customs Declaration' },
-        { value: 'tax_duties', label: 'Tax & Duties' },
-        { value: 'import_export', label: 'Import/Export' },
-        { value: 'general_inquiry', label: 'General Inquiry' },
-        { value: 'technical_support', label: 'Technical Support' }
-      ]
+  const stats = [
+    {
+      label: 'Reports Generated',
+      value: '142',
+      subtext: '+18 this week',
+      icon: 'FileText',
+      color: 'text-blue-600'
     },
-    ms: {
-      title: 'Analitik & Pelaporan',
-      subtitle: 'Wawasan prestasi menyeluruh dan penjanaan laporan tersuai',
-      tabs: {
-        overview: 'Gambaran Keseluruhan',
-        reports: 'Laporan Tersuai',
-        performance: 'Prestasi Ejen',
-        personalization: 'Personalisasi'
-      },
-      filters: {
-        dateRange: 'Julat Tarikh',
-        department: 'Jabatan',
-        export: 'Eksport Data',
-        refresh: 'Muat Semula Data'
-      },
-      dateRangeOptions: [
-        { value: 'today', label: 'Hari Ini' },
-        { value: 'yesterday', label: 'Semalam' },
-        { value: 'last_7_days', label: '7 Hari Lepas' },
-        { value: 'last_30_days', label: '30 Hari Lepas' },
-        { value: 'this_month', label: 'Bulan Ini' },
-        { value: 'last_month', label: 'Bulan Lepas' },
-        { value: 'this_quarter', label: 'Suku Tahun Ini' },
-        { value: 'last_quarter', label: 'Suku Tahun Lepas' },
-        { value: 'this_year', label: 'Tahun Ini' }
-      ],
-      departmentOptions: [
-        { value: 'all', label: 'Semua Jabatan' },
-        { value: 'customs_declaration', label: 'Pengisytiharan Kastam' },
-        { value: 'tax_duties', label: 'Cukai & Duti' },
-        { value: 'import_export', label: 'Import/Eksport' },
-        { value: 'general_inquiry', label: 'Pertanyaan Am' },
-        { value: 'technical_support', label: 'Sokongan Teknikal' }
-      ]
+    {
+      label: 'Scheduled Reports',
+      value: '24',
+      subtext: '8 active',
+      icon: 'Calendar',
+      color: 'text-green-600'
+    },
+    {
+      label: 'Data Freshness',
+      value: '2m',
+      subtext: 'Last updated',
+      icon: 'RefreshCw',
+      color: 'text-purple-600'
+    },
+    {
+      label: 'Export Count',
+      value: '89',
+      subtext: 'This month',
+      icon: 'Download',
+      color: 'text-orange-600'
     }
-  };
-
-  const t = content?.[currentLanguage];
+  ];
 
   const tabs = [
-    { id: 'overview', label: t?.tabs?.overview, icon: 'BarChart3' },
-    { id: 'reports', label: t?.tabs?.reports, icon: 'FileText' },
-    { id: 'performance', label: t?.tabs?.performance, icon: 'Users' },
-    { id: 'personalization', label: t?.tabs?.personalization, icon: 'Settings' }
+    { id: 'dashboard', label: 'Dashboard', icon: 'BarChart3' },
+    { id: 'reports', label: 'Reports', icon: 'FileText' },
+    { id: 'kpi', label: 'KPI Metrics', icon: 'TrendingUp' },
+    { id: 'export', label: 'Export Center', icon: 'Download' },
+    { id: 'scheduled', label: 'Scheduled Reports', icon: 'Calendar' }
   ];
 
-  const handleRefreshData = async () => {
-    setIsLoading(true);
-    // Simulate data refresh
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    setIsLoading(false);
-  };
-
-  const handleExportData = () => {
-    // Simulate export functionality
-    const exportData = {
-      dateRange,
-      department: selectedDepartment,
-      timestamp: new Date()?.toISOString(),
-      format: 'excel'
-    };
-    
-    console.log('Exporting data:', exportData);
-    alert('Export started! You will receive a download link shortly.');
-  };
-
-  const breadcrumbs = [
-    { label: 'Dashboard', path: '/supervisor-dashboard' },
-    { label: t?.title, path: '/analytics-and-reporting', isActive: true }
-  ];
-
-  return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="bg-card border-b border-border">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="py-6">
-            <BreadcrumbNavigation customBreadcrumbs={breadcrumbs} />
-            
-            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
-              <div className="flex-1">
-                <h1 className="text-2xl font-bold text-foreground">{t?.title}</h1>
-                <p className="mt-2 text-muted-foreground">{t?.subtitle}</p>
-              </div>
-              
-              <div className="mt-6 lg:mt-0 flex flex-col sm:flex-row items-start sm:items-center space-y-3 sm:space-y-0 sm:space-x-4">
-                <div className="flex items-center space-x-3">
-                  <Select
-                    options={t?.dateRangeOptions}
-                    value={dateRange}
-                    onChange={setDateRange}
-                    className="w-40"
-                  />
-                  
-                  <Select
-                    options={t?.departmentOptions}
-                    value={selectedDepartment}
-                    onChange={setSelectedDepartment}
-                    className="w-48"
-                  />
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <Button
-                    variant="outline"
-                    iconName="RefreshCw"
-                    iconPosition="left"
-                    loading={isLoading}
-                    onClick={handleRefreshData}
-                    size="sm"
-                  >
-                    {t?.filters?.refresh}
-                  </Button>
-                  
-                  <Button
-                    variant="outline"
-                    iconName="Download"
-                    iconPosition="left"
-                    onClick={handleExportData}
-                    size="sm"
-                  >
-                    {t?.filters?.export}
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      {/* Navigation Tabs */}
-      <div className="bg-card border-b border-border">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <nav className="flex space-x-8 overflow-x-auto">
-            {tabs?.map((tab) => (
-              <button
-                key={tab?.id}
-                onClick={() => setActiveTab(tab?.id)}
-                className={`flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap transition-colors duration-200 ${
-                  activeTab === tab?.id
-                    ? 'border-primary text-primary' :'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
-                }`}
-              >
-                <Icon name={tab?.icon} size={18} />
-                <span>{tab?.label}</span>
-              </button>
-            ))}
-          </nav>
-        </div>
-      </div>
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {activeTab === 'overview' && (
-          <div className="space-y-8">
-            {/* Metrics Overview */}
-            <MetricsOverview dateRange={dateRange} />
-            
-            {/* Charts Grid */}
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case 'dashboard':
+        return (
+          <div className="space-y-6">
+            <MetricsOverview />
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
               <TicketVolumeChart />
               <SLAPerformanceChart />
             </div>
-          </div>
-        )}
-
-        {activeTab === 'reports' && (
-          <div className="space-y-8">
-            <ReportBuilder />
-          </div>
-        )}
-
-        {activeTab === 'performance' && (
-          <div className="space-y-8">
             <AgentPerformanceTable />
           </div>
-        )}
-
-        {activeTab === 'personalization' && (
-          <div className="space-y-8">
-            <DashboardPersonalization />
+        );
+      
+      case 'reports':
+        return <ReportBuilder />;
+      
+      case 'kpi':
+        return (
+          <div className="space-y-6">
+            <MetricsOverview />
+            <SLAPerformanceChart />
           </div>
-        )}
-      </div>
-      {/* Quick Actions Floating Button - Mobile */}
-      <div className="fixed bottom-6 right-6 lg:hidden">
-        <div className="relative">
-          <Button
-            variant="default"
-            iconName="Plus"
-            size="icon"
-            className="w-14 h-14 rounded-full shadow-lg"
-            onClick={() => setActiveTab('reports')}
-          />
-        </div>
-      </div>
-      {/* Loading Overlay */}
-      {isLoading && (
-        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center">
-          <div className="bg-card border border-border rounded-lg p-6 shadow-lg">
-            <div className="flex items-center space-x-3">
-              <div className="animate-spin">
-                <Icon name="RefreshCw" size={20} className="text-primary" />
-              </div>
-              <span className="text-foreground font-medium">Refreshing data...</span>
+        );
+      
+      case 'export':
+        return (
+          <div className="bg-card rounded-lg border border-border p-12 text-center">
+            <Icon name="Download" size={48} className="mx-auto mb-4 text-muted-foreground" />
+            <h3 className="text-lg font-semibold text-foreground mb-2">Export Center</h3>
+            <p className="text-muted-foreground mb-6">
+              Export reports and data in various formats (CSV, Excel, PDF).
+            </p>
+            <div className="flex justify-center gap-3">
+              <Button iconName="FileSpreadsheet" iconPosition="left">Export CSV</Button>
+              <Button variant="outline" iconName="FileText" iconPosition="left">Export PDF</Button>
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        );
+      
+      case 'scheduled':
+        return (
+          <div className="bg-card rounded-lg border border-border p-12 text-center">
+            <Icon name="Calendar" size={48} className="mx-auto mb-4 text-muted-foreground" />
+            <h3 className="text-lg font-semibold text-foreground mb-2">Scheduled Reports</h3>
+            <p className="text-muted-foreground mb-6">
+              Manage automated report generation and distribution schedules.
+            </p>
+            <Button iconName="Plus" iconPosition="left">Schedule New Report</Button>
+          </div>
+        );
+      
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <>
+      <Helmet>
+        <title>Analytics & Reporting - JKDM CRM</title>
+        <meta name="description" content="Comprehensive performance insights and custom report generation" />
+      </Helmet>
+
+      <div className="min-h-screen bg-background">
+        <TelephonyBar />
+        
+        <main className="container mx-auto px-6 py-8 max-w-7xl">
+          <BreadcrumbNavigation />
+
+          {/* Header */}
+          <div className="mb-8">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+              <div>
+                <h1 className="text-3xl font-bold text-foreground flex items-center">
+                  <Icon name="BarChart3" size={32} className="mr-3 text-primary" />
+                  Analytics & Reporting
+                </h1>
+                <p className="text-muted-foreground mt-2">
+                  Comprehensive performance insights and custom report generation
+                </p>
+              </div>
+              
+              <div className="flex items-center space-x-3">
+                <Select value={dateRange} onChange={(e) => setDateRange(e.target.value)} className="w-48">
+                  <option value="today">Today</option>
+                  <option value="yesterday">Yesterday</option>
+                  <option value="last_7_days">Last 7 Days</option>
+                  <option value="last_30_days">Last 30 Days</option>
+                  <option value="this_month">This Month</option>
+                  <option value="this_quarter">This Quarter</option>
+                </Select>
+                <Button variant="outline" iconName="RefreshCw" iconPosition="left">
+                  Refresh
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* Stats Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            {stats.map((stat, index) => (
+              <div key={index} className="bg-card rounded-lg border border-border p-6">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">{stat.label}</p>
+                    <p className="text-2xl font-bold text-foreground">{stat.value}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{stat.subtext}</p>
+                  </div>
+                  <div className={`w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center ${stat.color}`}>
+                    <Icon name={stat.icon} size={20} />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Tabs */}
+          <div className="mb-8">
+            <div className="border-b border-border">
+              <nav className="flex space-x-8 overflow-x-auto">
+                {tabs.map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap transition-colors duration-200 ${
+                      activeTab === tab.id
+                        ? 'border-primary text-primary'
+                        : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted'
+                    }`}
+                  >
+                    <Icon name={tab.icon} size={16} />
+                    <span>{tab.label}</span>
+                  </button>
+                ))}
+              </nav>
+            </div>
+          </div>
+
+          {/* Tab Description */}
+          <div className="bg-muted/30 rounded-lg p-4 mb-6 border border-border">
+            <p className="text-sm text-muted-foreground">
+              {activeTab === 'dashboard' && 'Real-time dashboard with key performance indicators, ticket volumes, and SLA compliance metrics.'}
+              {activeTab === 'reports' && 'Build and customize reports with flexible filters and data visualization options.'}
+              {activeTab === 'kpi' && 'Track key performance indicators and business metrics across all departments.'}
+              {activeTab === 'export' && 'Export data and reports in multiple formats for external analysis and sharing.'}
+              {activeTab === 'scheduled' && 'Automate report generation and distribution on recurring schedules.'}
+            </p>
+          </div>
+
+          {/* Tab Content */}
+          <div className="mb-8">
+            {renderTabContent()}
+          </div>
+
+          {/* Quick Actions Panel */}
+          <div className="bg-card rounded-lg border border-border p-6">
+            <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center">
+              <Icon name="Zap" size={20} className="mr-2 text-primary" />
+              Quick Actions
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <Button variant="outline" className="justify-start" iconName="FileText" iconPosition="left">
+                Generate Report
+              </Button>
+              <Button variant="outline" className="justify-start" iconName="Calendar" iconPosition="left">
+                Schedule Report
+              </Button>
+              <Button variant="outline" className="justify-start" iconName="Download" iconPosition="left">
+                Export Data
+              </Button>
+              <Button variant="outline" className="justify-start" iconName="TrendingUp" iconPosition="left">
+                View KPIs
+              </Button>
+            </div>
+          </div>
+        </main>
+      </div>
+    </>
   );
 };
 

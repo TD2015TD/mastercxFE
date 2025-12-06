@@ -4,7 +4,6 @@ import LoginForm from './components/LoginForm';
 import LanguageToggle from './components/LanguageToggle';
 import SecurityBadges from './components/SecurityBadges';
 import LoginHeader from './components/LoginHeader';
-import CredentialsHelper from './components/CredentialsHelper';
 
 const AgentLogin = () => {
   const navigate = useNavigate();
@@ -132,9 +131,6 @@ const AgentLogin = () => {
 
               {/* Login Form */}
               <LoginForm />
-
-              {/* Demo Credentials Helper */}
-              <CredentialsHelper />
 
               {/* Footer */}
               <div className="mt-8 pt-6 border-t border-border text-center">

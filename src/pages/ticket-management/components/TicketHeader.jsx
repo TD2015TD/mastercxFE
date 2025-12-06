@@ -2,7 +2,7 @@ import React from 'react';
 import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
 
-const TicketHeader = ({ ticket, onStatusChange, onTransfer, onClose }) => {
+const TicketHeader = ({ ticket, liveTimeRemaining, onStatusChange, onTransfer, onClose }) => {
   const getPriorityColor = (priority) => {
     const colors = {
       'P1': 'bg-red-100 text-red-800 border-red-200',
@@ -40,7 +40,7 @@ const TicketHeader = ({ ticket, onStatusChange, onTransfer, onClose }) => {
         {/* Left Section - Ticket Info */}
         <div className="flex-1">
           <div className="flex items-center gap-3 mb-2">
-            <h1 className="text-2xl font-semibold text-foreground">{ticket?.id}</h1>
+            <h1 className="text-2xl font-semibold text-foreground">{ticket?.ticket_number}</h1>
             <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getPriorityColor(ticket?.priority)}`}>
               {ticket?.priority}
             </span>
@@ -73,14 +73,18 @@ const TicketHeader = ({ ticket, onStatusChange, onTransfer, onClose }) => {
           <div className="bg-muted rounded-lg p-3 min-w-[200px]">
             <div className="flex items-center justify-between mb-1">
               <span className="text-sm font-medium text-foreground">SLA Status</span>
-              <span className={`text-sm font-semibold ${getSLAColor(ticket?.sla?.status)}`}>
-                {ticket?.sla?.status}
+              <span className={`text-sm font-semibold ${
+                ticket?.sla_breached || (liveTimeRemaining && liveTimeRemaining.isOverdue) ? 'text-red-600' : 'text-green-600'
+              }`}>
+                {ticket?.sla_breached || (liveTimeRemaining && liveTimeRemaining.isOverdue) ? 'Breached' : 'On Track'}
               </span>
             </div>
             <div className="flex items-center gap-2">
               <Icon name="Clock" size={14} className="text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">
-                {ticket?.sla?.timeRemaining}
+              <span className={`text-sm ${
+                liveTimeRemaining && liveTimeRemaining.isOverdue ? 'text-red-600' : 'text-muted-foreground'
+              }`}>
+                {liveTimeRemaining ? liveTimeRemaining.formatted : (ticket?.formatted_sla_remaining || 'N/A')}
               </span>
             </div>
           </div>

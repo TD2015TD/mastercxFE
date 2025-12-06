@@ -4,6 +4,7 @@ import Icon from '../AppIcon';
 import UserProfileDropdown from './UserProfileDropdown';
 import NotificationCenter from './NotificationCenter';
 import CommandPalette from './CommandPalette';
+import TelephonyBar from '../TelephonyBar';
 
 const Header = ({ user = null, onMenuToggle }) => {
   const location = useLocation();
@@ -14,23 +15,27 @@ const Header = ({ user = null, onMenuToggle }) => {
   const primaryNavItems = [
     {
       label: 'Dashboard',
-      path: user?.role === 'supervisor' ? '/supervisor-dashboard' : '/agent-dashboard',
-      roles: ['agent', 'supervisor']
+      path: user?.role === 'supervisor'
+        ? '/supervisor-dashboard'
+        : (user?.role === 'admin' || user?.role === 'super admin')
+          ? '/system-administration'
+          : '/agent-dashboard',
+      roles: ['agent', 'supervisor', 'admin', 'super admin']
     },
     {
       label: 'Tickets',
       path: '/ticket-management',
-      roles: ['agent', 'supervisor']
+      roles: ['agent', 'supervisor', 'admin', 'super admin']
     },
     {
       label: 'Knowledge Base',
       path: '/knowledge-base-portal',
-      roles: ['agent', 'supervisor', 'admin']
+      roles: ['agent', 'supervisor', 'admin', 'super admin']
     },
     {
       label: 'Reports',
       path: '/analytics-and-reporting',
-      roles: ['supervisor', 'admin']
+      roles: ['supervisor', 'admin', 'super admin']
     }
   ];
 
@@ -38,30 +43,30 @@ const Header = ({ user = null, onMenuToggle }) => {
     {
       label: 'Customer 360',
       path: '/customer-360-profile',
-      roles: ['agent', 'supervisor']
+      roles: ['agent', 'supervisor', 'admin', 'super admin']
     },
     {
       label: 'Directory Search',
       path: '/directory-search-and-browsing',
-      roles: ['agent', 'supervisor', 'admin']
+      roles: ['agent', 'supervisor', 'admin', 'super admin']
     },
     {
       label: 'Administration',
       path: '/system-administration',
-      roles: ['admin']
+      roles: ['admin', 'super admin']
     },
     {
       label: 'Citizen Portal',
       path: '/citizen-self-service-portal',
-      roles: ['agent', 'supervisor', 'admin']
+      roles: ['agent', 'supervisor', 'admin', 'super admin']
     }
   ];
 
   const userRole = user?.role || 'agent';
-  const filteredPrimaryItems = primaryNavItems?.filter(item => 
+  const filteredPrimaryItems = primaryNavItems?.filter(item =>
     item?.roles?.includes(userRole)
   );
-  const filteredSecondaryItems = secondaryNavItems?.filter(item => 
+  const filteredSecondaryItems = secondaryNavItems?.filter(item =>
     item?.roles?.includes(userRole)
   );
 
@@ -74,7 +79,7 @@ const Header = ({ user = null, onMenuToggle }) => {
         const dashboardPath = user?.role === 'supervisor' ? '/supervisor-dashboard' : '/agent-dashboard';
         navigate(dashboardPath);
       }
-      
+
       // Ctrl + / - Open Command Palette
       if (event?.ctrlKey && event?.key === '/') {
         event?.preventDefault();
@@ -118,6 +123,12 @@ const Header = ({ user = null, onMenuToggle }) => {
     }
   };
 
+  // Handle telephony events
+  const handleCallEvent = (eventType, eventData) => {
+    console.log('Telephony Event:', eventType, eventData);
+    // You can add additional handling here (e.g., create ticket, log interaction)
+  };
+
   return (
     <>
       <header className="bg-card border-b border-border sticky top-0 z-50">
@@ -125,7 +136,7 @@ const Header = ({ user = null, onMenuToggle }) => {
           {/* Left Section - Logo and Navigation */}
           <div className="flex items-center space-x-8">
             {/* Logo - Always returns to CRM Home */}
-            <button 
+            <button
               onClick={handleDashboardNavigation}
               className="flex items-center space-x-3 hover:opacity-80 transition-opacity duration-200"
               title="Go to CRM Dashboard"
@@ -144,16 +155,15 @@ const Header = ({ user = null, onMenuToggle }) => {
                 <button
                   key={item?.path}
                   onClick={() => handleNavigation(item?.path)}
-                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${
-                    isActive(item?.path)
+                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${isActive(item?.path)
                       ? 'bg-primary text-primary-foreground'
                       : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                  }`}
+                    }`}
                 >
                   {item?.label}
                 </button>
               ))}
-              
+
               {/* More Menu */}
               {filteredSecondaryItems?.length > 0 && (
                 <div className="relative group">
@@ -161,7 +171,7 @@ const Header = ({ user = null, onMenuToggle }) => {
                     <span>More</span>
                     <Icon name="ChevronDown" size={16} />
                   </button>
-                  
+
                   {/* Dropdown Menu */}
                   <div className="absolute top-full left-0 mt-1 w-48 bg-popover border border-border rounded-md shadow-modal opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
                     <div className="py-1">
@@ -169,11 +179,10 @@ const Header = ({ user = null, onMenuToggle }) => {
                         <button
                           key={item?.path}
                           onClick={() => handleNavigation(item?.path)}
-                          className={`w-full text-left px-4 py-2 text-sm transition-colors duration-200 ${
-                            isActive(item?.path)
+                          className={`w-full text-left px-4 py-2 text-sm transition-colors duration-200 ${isActive(item?.path)
                               ? 'bg-primary text-primary-foreground'
                               : 'text-popover-foreground hover:bg-muted'
-                          }`}
+                            }`}
                         >
                           {item?.label}
                         </button>
@@ -216,12 +225,12 @@ const Header = ({ user = null, onMenuToggle }) => {
                 <span>Back to CRM</span>
               </button>
             )}
-            
+
             <NotificationCenter />
             <UserProfileDropdown user={user} />
           </div>
         </div>
-        
+
         {/* Mobile Navigation Menu */}
         {isMobileMenuOpen && (
           <div className="lg:hidden border-t border-border bg-card">
@@ -234,22 +243,21 @@ const Header = ({ user = null, onMenuToggle }) => {
                 <Icon name="Home" size={16} />
                 <span>🏠 Back to CRM Home</span>
               </button>
-              
+
               <div className="text-sm font-medium text-muted-foreground mt-4 mb-3">Primary</div>
               {filteredPrimaryItems?.map((item) => (
                 <button
                   key={item?.path}
                   onClick={() => handleNavigation(item?.path)}
-                  className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${
-                    isActive(item?.path)
+                  className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${isActive(item?.path)
                       ? 'bg-primary text-primary-foreground'
                       : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                  }`}
+                    }`}
                 >
                   {item?.label}
                 </button>
               ))}
-              
+
               {filteredSecondaryItems?.length > 0 && (
                 <>
                   <div className="text-sm font-medium text-muted-foreground mt-4 mb-3">More</div>
@@ -257,11 +265,10 @@ const Header = ({ user = null, onMenuToggle }) => {
                     <button
                       key={item?.path}
                       onClick={() => handleNavigation(item?.path)}
-                      className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${
-                        isActive(item?.path)
+                      className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${isActive(item?.path)
                           ? 'bg-primary text-primary-foreground'
                           : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                      }`}
+                        }`}
                     >
                       {item?.label}
                     </button>
@@ -272,7 +279,8 @@ const Header = ({ user = null, onMenuToggle }) => {
           </div>
         )}
       </header>
-
+      {/* Telephony Bar - Directly below header */}
+      <TelephonyBar onCallEvent={handleCallEvent} />
       {/* Command Palette */}
       {isCommandPaletteOpen && (
         <CommandPalette

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
 
@@ -6,6 +7,8 @@ const CaseTrackingPanel = ({ language, citizenData }) => {
   const [complaints, setComplaints] = useState([]);
   const [selectedComplaint, setSelectedComplaint] = useState(null);
   const [trackingId, setTrackingId] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   const content = {
     en: {
@@ -141,12 +144,58 @@ const CaseTrackingPanel = ({ language, citizenData }) => {
     }
   ];
 
+  // Removed mock data loading - will use API instead
   useEffect(() => {
-    // Load complaints from localStorage or use mock data
-    const savedComplaints = JSON.parse(localStorage.getItem('citizen-complaints') || '[]');
-    const allComplaints = [...savedComplaints, ...mockComplaints];
-    setComplaints(allComplaints);
+    // No longer loading from localStorage
+    // Complaints will be loaded via tracking ID search
   }, []);
+
+  const trackComplaint = async (ticketNumber, email) => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const response = await axios.post('/api/v1/public/tickets/track', {
+        ticket_number: ticketNumber,
+        email: email || citizenData?.email
+      });
+
+      const ticketData = response.data.data;
+      
+      // Transform API response to match component structure
+      const formattedComplaint = {
+        id: ticketData.ticket_number,
+        ticket_id: ticketData.ticket_id,
+        subject: ticketData.subject,
+        category: ticketData.category,
+        priority: ticketData.priority?.toLowerCase(),
+        status: ticketData.status?.toLowerCase(),
+        submittedAt: new Date(ticketData.created_at),
+        lastUpdated: new Date(ticketData.updated_at),
+        estimatedResolution: ticketData.sla_breach_time ? 
+          `Target: ${new Date(ticketData.sla_breach_time).toLocaleDateString()}` : 
+          'Processing',
+        assignedDepartment: ticketData.department || 'Not assigned',
+        description: ticketData.description,
+        communications: ticketData.communications?.map(comm => ({
+          id: comm.id,
+          type: comm.type || 'system',
+          message: comm.message || comm.comment,
+          timestamp: new Date(comm.timestamp || comm.created_at),
+          author: comm.author || comm.created_by || 'System'
+        })) || []
+      };
+
+      setSelectedComplaint(formattedComplaint);
+      setComplaints([formattedComplaint]); // Store for potential future use
+      
+    } catch (err) {
+      console.error('Track complaint failed:', err);
+      setError(err.response?.data?.message || 'Failed to track complaint. Please check your tracking ID and email.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const getStatusColor = (status) => {
     const colors = {
@@ -181,10 +230,11 @@ const CaseTrackingPanel = ({ language, citizenData }) => {
   };
 
   const handleTrackById = () => {
-    const found = complaints?.find(c => c?.id === trackingId);
-    if (found) {
-      setSelectedComplaint(found);
+    if (!trackingId.trim()) {
+      setError('Please enter a tracking ID');
+      return;
     }
+    trackComplaint(trackingId, citizenData?.email);
   };
 
   if (selectedComplaint) {
@@ -298,15 +348,25 @@ const CaseTrackingPanel = ({ language, citizenData }) => {
           </div>
           <Button
             onClick={handleTrackById}
-            disabled={!trackingId?.trim()}
+            loading={isLoading}
+            disabled={!trackingId.trim()}
             iconName="Search"
             iconPosition="left"
+            className="sm:w-auto"
           >
             {t?.trackButton}
           </Button>
         </div>
+
+        {/* Error Message */}
+        {error && (
+          <div className="mt-3 p-3 bg-destructive/10 border border-destructive rounded-lg">
+            <p className="text-sm text-destructive">{error}</p>
+          </div>
+        )}
       </div>
-      {/* Complaints List */}
+
+      {/* Empty State or List */}
       {complaints?.length === 0 ? (
         <div className="text-center py-12">
           <Icon name="FileText" size={48} className="text-muted-foreground mx-auto mb-4" />

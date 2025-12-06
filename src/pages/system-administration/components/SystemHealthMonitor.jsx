@@ -1,9 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
+import {
+  getSystemHealth,
+  getServiceStatus,
+  getSystemAlerts,
+  acknowledgeAlert,
+  performHealthCheck,
+  restartService,
+} from '../../../services/systemService';
 
 const SystemHealthMonitor = () => {
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [healthMetrics, setHealthMetrics] = useState(null);
+  const [services, setServices] = useState([]);
+  const [alerts, setAlerts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -13,13 +26,91 @@ const SystemHealthMonitor = () => {
     return () => clearInterval(timer);
   }, []);
 
-  const systemMetrics = [
+  useEffect(() => {
+    fetchAllData();
+    
+    // Refresh every 30 seconds
+    const interval = setInterval(fetchAllData, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const fetchAllData = async () => {
+    try {
+      setLoading(true);
+      const [healthRes, servicesRes, alertsRes] = await Promise.all([
+        getSystemHealth(),
+        getServiceStatus(),
+        getSystemAlerts(),
+      ]);
+
+      if (healthRes.success) {
+        setHealthMetrics(healthRes.data);
+      }
+
+      if (servicesRes.success) {
+        setServices(servicesRes.data);
+      }
+
+      if (alertsRes.success) {
+        setAlerts(alertsRes.data);
+      }
+
+      setError(null);
+    } catch (err) {
+      console.error('Error fetching system data:', err);
+      setError(err.response?.data?.message || 'Failed to load system data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRefresh = () => {
+    fetchAllData();
+  };
+
+  const handleAcknowledgeAlert = async (alertId) => {
+    try {
+      await acknowledgeAlert(alertId);
+      fetchAllData();
+    } catch (err) {
+      console.error('Error acknowledging alert:', err);
+      alert('Failed to acknowledge alert');
+    }
+  };
+
+  const handleRestartService = async (serviceName) => {
+    if (!confirm(`Are you sure you want to restart ${serviceName}?`)) return;
+
+    try {
+      await restartService(serviceName);
+      alert(`${serviceName} restart initiated`);
+      setTimeout(fetchAllData, 2000);
+    } catch (err) {
+      console.error('Error restarting service:', err);
+      alert('Failed to restart service');
+    }
+  };
+
+  const handleHealthCheck = async () => {
+    try {
+      const response = await performHealthCheck();
+      if (response.success) {
+        alert(response.healthy ? 'System is healthy!' : 'System health check detected issues');
+        fetchAllData();
+      }
+    } catch (err) {
+      console.error('Error performing health check:', err);
+      alert('Failed to perform health check');
+    }
+  };
+
+  const systemMetrics = healthMetrics ? [
     {
       id: 1,
       name: "CPU Usage",
-      value: 45,
+      value: healthMetrics.cpu_usage,
       unit: "%",
-      status: "Normal",
+      status: healthMetrics.cpu_usage > 80 ? "Critical" : healthMetrics.cpu_usage > 60 ? "Warning" : "Normal",
       threshold: 80,
       icon: "Cpu",
       trend: "stable"
@@ -27,9 +118,9 @@ const SystemHealthMonitor = () => {
     {
       id: 2,
       name: "Memory Usage",
-      value: 62,
+      value: healthMetrics.memory_usage,
       unit: "%",
-      status: "Normal",
+      status: healthMetrics.memory_usage > 85 ? "Critical" : healthMetrics.memory_usage > 70 ? "Warning" : "Normal",
       threshold: 85,
       icon: "HardDrive",
       trend: "increasing"
@@ -37,9 +128,9 @@ const SystemHealthMonitor = () => {
     {
       id: 3,
       name: "Disk Usage",
-      value: 78,
+      value: healthMetrics.disk_usage,
       unit: "%",
-      status: "Warning",
+      status: healthMetrics.disk_usage > 90 ? "Critical" : healthMetrics.disk_usage > 75 ? "Warning" : "Normal",
       threshold: 75,
       icon: "Database",
       trend: "increasing"
@@ -47,89 +138,14 @@ const SystemHealthMonitor = () => {
     {
       id: 4,
       name: "Network I/O",
-      value: 234,
+      value: healthMetrics.network_io,
       unit: "Mbps",
       status: "Normal",
       threshold: 500,
       icon: "Wifi",
       trend: "stable"
     }
-  ];
-
-  const services = [
-    {
-      id: 1,
-      name: "Web Server",
-      status: "Running",
-      uptime: "15d 8h 23m",
-      port: "443",
-      lastRestart: "2024-10-13 02:00:00",
-      health: "Healthy"
-    },
-    {
-      id: 2,
-      name: "Database Server",
-      status: "Running",
-      uptime: "15d 8h 23m",
-      port: "5432",
-      lastRestart: "2024-10-13 02:00:00",
-      health: "Healthy"
-    },
-    {
-      id: 3,
-      name: "Authentication Service",
-      status: "Running",
-      uptime: "7d 12h 45m",
-      port: "8080",
-      lastRestart: "2024-10-21 10:15:00",
-      health: "Healthy"
-    },
-    {
-      id: 4,
-      name: "Email Service",
-      status: "Warning",
-      uptime: "2d 4h 12m",
-      port: "587",
-      lastRestart: "2024-10-26 06:30:00",
-      health: "Degraded"
-    },
-    {
-      id: 5,
-      name: "Backup Service",
-      status: "Running",
-      uptime: "15d 8h 23m",
-      port: "9000",
-      lastRestart: "2024-10-13 02:00:00",
-      health: "Healthy"
-    }
-  ];
-
-  const alerts = [
-    {
-      id: 1,
-      type: "Warning",
-      message: "Disk usage approaching threshold on primary server",
-      timestamp: "2024-10-28 10:15:00",
-      severity: "Medium",
-      acknowledged: false
-    },
-    {
-      id: 2,
-      type: "Info",
-      message: "Scheduled maintenance completed successfully",
-      timestamp: "2024-10-28 02:00:00",
-      severity: "Low",
-      acknowledged: true
-    },
-    {
-      id: 3,
-      type: "Warning",
-      message: "Email service experiencing intermittent connectivity issues",
-      timestamp: "2024-10-27 16:30:00",
-      severity: "Medium",
-      acknowledged: false
-    }
-  ];
+  ] : [];
 
   const getStatusBadge = (status) => {
     const statusConfig = {
@@ -208,12 +224,28 @@ const SystemHealthMonitor = () => {
             <div className="text-sm text-muted-foreground">
               Last updated: {currentTime?.toLocaleTimeString('en-MY')}
             </div>
-            <Button variant="outline" iconName="RefreshCw" iconPosition="left">
+            <Button variant="outline" iconName="RefreshCw" iconPosition="left" onClick={handleRefresh} disabled={loading}>
               Refresh
             </Button>
           </div>
         </div>
 
+        {error && (
+          <div className="mb-6 p-3 bg-error/10 border border-error/20 rounded-lg">
+            <div className="flex items-center">
+              <Icon name="AlertTriangle" size={20} className="text-error mr-2" />
+              <span className="text-sm text-error">{error}</span>
+            </div>
+          </div>
+        )}
+
+        {loading && !healthMetrics ? (
+          <div className="flex items-center justify-center py-12">
+            <Icon name="Loader" size={32} className="animate-spin text-primary mr-3" />
+            <span className="text-muted-foreground">Loading system health data...</span>
+          </div>
+        ) : (
+          <>
         {/* System Metrics */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           {systemMetrics?.map((metric) => (
@@ -286,7 +318,7 @@ const SystemHealthMonitor = () => {
                     </td>
                     <td className="py-3 px-4">
                       <div className="flex items-center space-x-2">
-                        <Button variant="ghost" size="sm" iconName="RotateCcw">
+                        <Button variant="ghost" size="sm" iconName="RotateCcw" onClick={() => handleRestartService(service?.name)}>
                           Restart
                         </Button>
                         <Button variant="ghost" size="sm" iconName="Settings">
@@ -329,7 +361,7 @@ const SystemHealthMonitor = () => {
                           {formatTimestamp(alert?.timestamp)}
                         </span>
                         {!alert?.acknowledged && (
-                          <Button variant="ghost" size="sm" iconName="Check">
+                          <Button variant="ghost" size="sm" iconName="Check" onClick={() => handleAcknowledgeAlert(alert?.id)}>
                             Acknowledge
                           </Button>
                         )}
@@ -348,6 +380,8 @@ const SystemHealthMonitor = () => {
             ))}
           </div>
         </div>
+          </>
+        )}
       </div>
     </div>
   );

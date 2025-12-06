@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import axios from 'axios';
 import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
 import Input from '../../../components/ui/Input';
@@ -176,27 +177,55 @@ const ComplaintSubmissionForm = ({ language, citizenData, onSubmitSuccess }) => 
 
     setIsSubmitting(true);
 
-    // Simulate API submission
-    setTimeout(() => {
-      const complaintId = `CMP-${Date.now()}`;
+    try {
+      // Prepare form data for API
+      const submitData = new FormData();
+      submitData.append('category', formData.category);
+      submitData.append('priority', formData.priority.toLowerCase());
+      submitData.append('subject', formData.subject);
+      submitData.append('description', formData.description);
+      submitData.append('customer_name', citizenData.name);
+      submitData.append('customer_email', citizenData.email);
+      submitData.append('customer_phone', citizenData.phone || '');
+      submitData.append('customer_id_type', citizenData.idType || '');
+      submitData.append('customer_id_number', citizenData.idNumber || '');
+      
+      // Add attachments if any
+      formData.attachments.forEach((file) => {
+        submitData.append('attachments[]', file);
+      });
+
+      // Call API
+      const response = await axios.post('/api/v1/public/tickets', submitData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+
+      // Success - pass real data to parent
       const complaintData = {
-        id: complaintId,
+        id: response.data.ticket_id,
+        ticket_number: response.data.ticket_number,
         ...formData,
         citizenData,
         submittedAt: new Date(),
         status: 'submitted',
-        estimatedResolution: getEstimatedResolution(formData?.priority),
-        assignedDepartment: getDepartmentRouting(formData?.category)
+        estimatedResolution: response.data.estimated_resolution,
+        assignedDepartment: response.data.assigned_department
       };
-
-      // Save to localStorage for tracking
-      const existingComplaints = JSON.parse(localStorage.getItem('citizen-complaints') || '[]');
-      existingComplaints?.push(complaintData);
-      localStorage.setItem('citizen-complaints', JSON.stringify(existingComplaints));
 
       onSubmitSuccess(complaintData);
       setIsSubmitting(false);
-    }, 2000);
+    } catch (error) {
+      console.error('Ticket submission failed:', error);
+      
+      // Show error to user
+      setErrors({
+        submit: error.response?.data?.message || 'Failed to submit complaint. Please try again.'
+      });
+      
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -340,6 +369,13 @@ const ComplaintSubmissionForm = ({ language, citizenData, onSubmitSuccess }) => 
             </div>
           )}
         </div>
+
+        {/* Error Message */}
+        {errors.submit && (
+          <div className="p-4 bg-destructive/10 border border-destructive rounded-lg">
+            <p className="text-sm text-destructive">{errors.submit}</p>
+          </div>
+        )}
 
         {/* Submit Actions */}
         <div className="flex flex-col sm:flex-row gap-3 pt-4">

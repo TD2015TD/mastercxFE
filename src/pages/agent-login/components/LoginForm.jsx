@@ -30,10 +30,8 @@ const LoginForm = () => {
 
   const loadTranslations = async (locale) => {
     try {
-      const response = await languageService.getTranslations(locale);
-      if (response.success) {
-        setTranslations(response.translations);
-      }
+      const translations = await languageService.getTranslations(locale);
+      setTranslations(translations);
     } catch (error) {
       console.error('Failed to load translations:', error);
       // Fallback to empty object, UI will use keys as fallback
@@ -93,24 +91,29 @@ const LoginForm = () => {
       });
       
       if (response?.user) {
-        // Store authentication data
-        localStorage.setItem('user-session', JSON.stringify({
+        // Extract role slug from role object if it exists
+        const roleSlug = typeof response.user.role === 'string' 
+          ? response.user.role 
+          : response.user.role?.slug || 'agent';
+        
+        // Store authentication data using authService
+        authService.setCurrentUser({
           username: formData.username,
-          role: response.user.role || 'agent',
+          role: roleSlug,
           authMethod: formData.authMethod,
           loginTime: new Date().toISOString(),
-          ...response.user
-        }));
+          ...response.user,
+          role: roleSlug // Override the role object with just the slug
+        });
         
         if (formData.rememberMe) {
           localStorage.setItem('remember-user', formData.username);
         }
         
         // Navigate based on role
-        const userRole = response.user.role;
-        if (userRole === 'supervisor') {
+        if (roleSlug === 'supervisor' || roleSlug === 'super_admin') {
           navigate('/supervisor-dashboard');
-        } else if (userRole === 'admin') {
+        } else if (roleSlug === 'admin') {
           navigate('/system-administration');
         } else {
           navigate('/agent-dashboard');
@@ -175,7 +178,7 @@ const LoginForm = () => {
         </div>
 
         {/* Authentication Method */}
-        <Select
+       {/*  <Select
           label={t?.authMethod || 'Authentication Method'}
           placeholder={t?.selectAuth || 'Select authentication method'}
           options={authMethodOptions}
@@ -184,7 +187,7 @@ const LoginForm = () => {
           disabled={isLoading}
           className="w-full"
         />
-
+ */}
         {/* Remember Me */}
         <Checkbox
           label={t?.rememberMe || 'Remember me on this device'}
