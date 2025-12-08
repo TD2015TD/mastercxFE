@@ -66,7 +66,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>((
     const Comp = asChild ? Slot : "button";
 
     // Icon size mapping based on button size
-    const iconSizeMap = {
+    const iconSizeMap: Record<string, number> = {
         xs: 12,
         sm: 14,
         default: 16,
@@ -75,7 +75,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>((
         icon: 16,
     };
 
-    const calculatedIconSize = iconSize || iconSizeMap?.[size] || 16;
+    const calculatedIconSize = iconSize || (size ? iconSizeMap[size] : undefined) || 16;
 
     // Loading spinner
     const LoadingSpinner = () => (
@@ -132,22 +132,23 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>((
             if (!React.isValidElement(child)) {
                 return renderFallbackButton();
             }
+            const childProps = child.props as any;
             const content = (
                 <>
                     {loading && <LoadingSpinner />}
                     {iconName && iconPosition === 'left' && renderIcon()}
-                    {child?.props?.children}
+                    {childProps?.children}
                     {iconName && iconPosition === 'right' && renderIcon()}
                 </>
             );
 
-            const clonedChild = React.cloneElement(child, {
+            const clonedChild = React.cloneElement(child as any, {
                 className: cn(
                     buttonVariants({ variant, size, className }),
                     fullWidth && "w-full",
-                    child?.props?.className
+                    childProps?.className
                 ),
-                disabled: disabled || loading || child?.props?.disabled,
+                disabled: disabled || loading || childProps?.disabled,
                 children: content,
             });
 
