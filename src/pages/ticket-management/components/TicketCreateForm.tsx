@@ -4,7 +4,7 @@ import { ticketService } from '../../../services/ticketService';
 import { ticketSequenceService } from '../../../services/ticketSequenceService';
 import lookupService from '../../../services/lookupService';
 import { agentService, type Agent } from '../../../services/agentService';
-import { customerService, type Customer } from '../../../services/customerService';
+import { customerService, type Customer, type CustomerNote } from '../../../services/customerService';
 import categoryService, { type Category } from '../../../services/categoryService';
 import { authService } from '../../../services/authService';
 import Icon from '../../../components/AppIcon';
@@ -52,6 +52,8 @@ const TicketCreateForm: React.FC<{
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sequencePreview, setSequencePreview] = useState<string>('');
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [createdTicket, setCreatedTicket] = useState<{ id: number; ticket_number: string } | null>(null);
   
   // User and Agent Management
   const [currentUser, setCurrentUser] = useState<{ id: number; role: string; agent?: { id: number; mitel_agent_id?: string } } | null>(null);
@@ -66,6 +68,8 @@ const TicketCreateForm: React.FC<{
   const [isSearchingPhone, setIsSearchingPhone] = useState(false);
   const [showCustomerConfirmModal, setShowCustomerConfirmModal] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [pinnedNotes, setPinnedNotes] = useState<CustomerNote[]>([]);
+  const [isLoadingNotes, setIsLoadingNotes] = useState(false);
   
   // Lookups
   const [priorities, setPriorities] = useState<Array<{ value: string; label: string; hours: number }>>([]);
@@ -307,6 +311,23 @@ const TicketCreateForm: React.FC<{
     []
   );
 
+  // Fetch customer notes
+  const fetchCustomerNotes = async (customerId: number) => {
+    setIsLoadingNotes(true);
+    try {
+      const response = await customerService.getNotes(customerId);
+      if (response.success && response.data) {
+        // Filter pinned notes
+        const pinned = response.data.filter((note: CustomerNote) => note.is_pinned);
+        setPinnedNotes(pinned);
+      }
+    } catch (error) {
+      console.error('Error fetching customer notes:', error);
+    } finally {
+      setIsLoadingNotes(false);
+    }
+  };
+
   // Debounce phone search
   useEffect(() => {
     const timeoutId = setTimeout(() => {
@@ -320,6 +341,10 @@ const TicketCreateForm: React.FC<{
     setSelectedCustomer(customer);
     setShowPhoneDropdown(false);
     setShowCustomerConfirmModal(true);
+    // Fetch customer notes
+    if (customer.id) {
+      fetchCustomerNotes(customer.id);
+    }
   };
 
   const handleConfirmCustomerSelection = () => {
@@ -333,13 +358,14 @@ const TicketCreateForm: React.FC<{
         customer_id_no: selectedCustomer.id_no
       }));
       setShowCustomerConfirmModal(false);
-      setSelectedCustomer(null);
+      // Keep selectedCustomer to maintain notes display
     }
   };
 
   const handleCancelCustomerSelection = () => {
     setShowCustomerConfirmModal(false);
     setSelectedCustomer(null);
+    setPinnedNotes([]);
   };
 
   // Load categories when department changes
@@ -543,12 +569,12 @@ const TicketCreateForm: React.FC<{
       const response = await ticketService.createTicket(ticketData as Parameters<typeof ticketService.createTicket>[0]);
       
       if (response.success) {
-        // Success! Navigate to the new ticket
-        if (onSuccess) {
-          onSuccess(response.data.id);
-        } else {
-          navigate(`/ticket-management/${response.data.id}`);
-        }
+        // Show success modal with ticket number
+        setCreatedTicket({
+          id: response.data.id,
+          ticket_number: response.data.ticket_number || sequencePreview
+        });
+        setShowSuccessModal(true);
       } else {
         setError(response.message || 'Failed to create ticket');
       }
@@ -573,14 +599,22 @@ const TicketCreateForm: React.FC<{
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Header */}
       <div className="bg-card rounded-lg border border-border p-6">
-        <div className="flex items-center justify-between mb-4">
-          {sequencePreview && (
-            <div className="text-right">
-              <p className="text-sm text-muted-foreground">Next Ticket Number</p>
-              <p className="text-lg font-mono font-semibold text-primary">{sequencePreview}</p>
+        {sequencePreview && (
+          <div className="mb-4">
+            <div className="bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border-2 border-primary/20 rounded-xl p-6 shadow-lg">
+              <div className="flex items-center justify-center gap-3">
+                <div className="flex-1 text-center">
+                  <p className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-2">Next Ticket Number</p>
+                  <p className="text-4xl md:text-5xl font-mono font-bold text-primary tracking-tight select-all">{sequencePreview}</p>
+                  <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground mt-2">
+                    <Icon name="Hash" size={12} />
+                    <span>Auto-generated on submission</span>
+                  </div>
+                </div>
+              </div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
         {error && (
           <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-4">
@@ -686,6 +720,39 @@ const TicketCreateForm: React.FC<{
             placeholder="Enter ID number"
           />
         </div>
+
+        {/* Pinned Customer Notes */}
+        {pinnedNotes.length > 0 && (
+          <div className="mt-4 pt-4 border-t border-border">
+            <div className="flex items-center mb-3">
+              <Icon name="Pin" size={16} className="mr-2 text-warning" />
+              <h4 className="text-sm font-semibold text-foreground">Customer Notes</h4>
+            </div>
+            <div className="space-y-2">
+              {pinnedNotes.map((note) => (
+                <div
+                  key={note.id}
+                  className="bg-warning/10 border border-warning/20 rounded-md p-3"
+                >
+                  <p className="text-sm text-foreground whitespace-pre-wrap">{note.content}</p>
+                  <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
+                    <span>By: {note.creator?.name || 'Unknown'}</span>
+                    <span>{new Date(note.created_at).toLocaleDateString()}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {isLoadingNotes && (
+          <div className="mt-4 pt-4 border-t border-border">
+            <div className="flex items-center text-sm text-muted-foreground">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2"></div>
+              Loading customer notes...
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Ticket Classification */}
@@ -1102,6 +1169,72 @@ const TicketCreateForm: React.FC<{
               >
                 Use This Customer
               </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Success Modal */}
+      {showSuccessModal && createdTicket && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-card border border-border rounded-lg shadow-2xl w-full max-w-md">
+            {/* Header */}
+            <div className="text-center p-8 border-b border-border">
+              <div className="w-20 h-20 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Icon name="CheckCircle" size={40} className="text-green-600 dark:text-green-400" />
+              </div>
+              <h2 className="text-2xl font-semibold text-foreground mb-2">Ticket Created Successfully!</h2>
+              <p className="text-sm text-muted-foreground">Your ticket has been created and is ready for assignment</p>
+            </div>
+
+            {/* Content */}
+            <div className="p-6">
+              {/* Ticket Number */}
+              <div className="bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border-2 border-primary/20 rounded-xl p-8 mb-6 shadow-lg">
+                <div className="text-center">
+                  <span className="text-sm font-medium text-muted-foreground uppercase tracking-wide block mb-3">Ticket Number</span>
+                  <div className="text-5xl md:text-6xl font-mono font-bold text-primary mb-3 tracking-tight select-all">
+                    {createdTicket.ticket_number}
+                  </div>
+                  <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+                    <Icon name="Info" size={12} />
+                    <span>Click to select and copy</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex flex-col gap-3">
+                <Button
+                  onClick={() => {
+                    setShowSuccessModal(false);
+                    if (onSuccess) {
+                      onSuccess(createdTicket.id);
+                    } else {
+                      navigate(`/ticket-management/${createdTicket.id}`);
+                    }
+                  }}
+                  fullWidth
+                  iconName="ExternalLink"
+                  iconPosition="left"
+                >
+                  View Ticket Details
+                </Button>
+                <Button
+                  onClick={() => {
+                    setShowSuccessModal(false);
+                    setCreatedTicket(null);
+                    // Optionally reset form here if needed
+                    window.location.reload(); // Simple way to create another ticket
+                  }}
+                  variant="outline"
+                  fullWidth
+                  iconName="Plus"
+                  iconPosition="left"
+                >
+                  Create Another Ticket
+                </Button>
+              </div>
             </div>
           </div>
         </div>

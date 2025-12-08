@@ -62,7 +62,7 @@ const TicketHeader = ({ ticket, liveTimeRemaining, onStatusChange, onTransfer, o
             </div>
             <div className="flex items-center gap-1">
               <Icon name="Calendar" size={16} />
-              <span>Created: {new Date(ticket.createdAt)?.toLocaleDateString('en-GB')}</span>
+              <span>Created: {new Date(ticket.created_at)?.toLocaleDateString('en-GB')}</span>
             </div>
           </div>
         </div>

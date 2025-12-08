@@ -39,6 +39,21 @@ export interface CustomerStatistics {
   last_contact_at?: string;
 }
 
+export interface CustomerNote {
+  id: number;
+  customer_id: number;
+  created_by: number;
+  content: string;
+  is_pinned: boolean;
+  created_at: string;
+  updated_at: string;
+  creator?: {
+    id: number;
+    name: string;
+    email: string;
+  };
+}
+
 export const customerService = {
   // Get all customers
   getCustomers: async (params?: {
@@ -89,6 +104,30 @@ export const customerService = {
   // Get customer statistics
   getStatistics: async (id: number) => {
     const response = await api.get(`/customers/${id}/statistics`);
+    return response.data;
+  },
+
+  // Get customer notes
+  getNotes: async (customerId: number) => {
+    const response = await api.get(`/customers/${customerId}/notes`);
+    return response.data;
+  },
+
+  // Create customer note
+  createNote: async (customerId: number, data: { content: string; is_pinned?: boolean }) => {
+    const response = await api.post(`/customers/${customerId}/notes`, data);
+    return response.data;
+  },
+
+  // Update customer note
+  updateNote: async (customerId: number, noteId: number, data: { content?: string; is_pinned?: boolean }) => {
+    const response = await api.put(`/customers/${customerId}/notes/${noteId}`, data);
+    return response.data;
+  },
+
+  // Delete customer note
+  deleteNote: async (customerId: number, noteId: number) => {
+    const response = await api.delete(`/customers/${customerId}/notes/${noteId}`);
     return response.data;
   },
 };
