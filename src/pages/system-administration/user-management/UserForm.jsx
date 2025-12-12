@@ -41,9 +41,9 @@ const CreateUser = () => {
   const [agentData, setAgentData] = useState({
     agent_code: '',
     employee_id: '',
+    agent_username: '',
     department: '',
     designation: '',
-    mitel_agent_id: '',
     mitel_extension: '',
     mitel_agent_name: '',
     skills: [],
@@ -118,9 +118,10 @@ const CreateUser = () => {
           setAgentData({
             agent_code: user.agent.agent_code || '',
             employee_id: user.agent.employee_id || '',
+            mitel_agent_name: user.agent.mitel_agent_name || '',
+            agent_username: user.agent.agent_username || '',
             department: user.agent.department || '',
             designation: user.agent.designation || '',
-            mitel_agent_id: user.agent.mitel_agent_id || '',
             mitel_extension: user.agent.mitel_extension || '',
             skills: user.agent.skills || [],
             languages: user.agent.languages || ['en', 'ms'],
@@ -200,9 +201,10 @@ const CreateUser = () => {
   const handleMitelAgentSelect = (agent) => {
     setAgentData(prev => ({
       ...prev,
-      mitel_agent_id: agent.id || '',
+      employee_id: agent.id || '',
       mitel_extension: agent.extension || '',
       mitel_agent_name: agent.name || '',
+      agent_username: agent.username || ''
     }));
     setMitelModalOpen(false);
   };
@@ -210,9 +212,10 @@ const CreateUser = () => {
   const handleClearMitelAgent = () => {
     setAgentData(prev => ({
       ...prev,
-      mitel_agent_id: '',
+      employee_id: '',
       mitel_extension: '',
       mitel_agent_name: '',
+      agent_username: ''
     }));
   };
 
@@ -305,7 +308,6 @@ const CreateUser = () => {
           employee_id: agentData.employee_id.trim() || null,
           department: agentData.department.trim(),
           designation: agentData.designation.trim() || null,
-          mitel_agent_id: agentData.mitel_agent_id.trim() || null,
           mitel_extension: agentData.mitel_extension.trim() || null,
           skills: agentData.skills,
           languages: agentData.languages,
@@ -316,6 +318,7 @@ const CreateUser = () => {
           payload.agent_data.status = 'active';
           payload.agent_data.availability = 'available';
         }
+        payload.agent_data.agent_username = agentData.agent_username.trim() || null;
       }
 
       const response = isEditMode 
@@ -552,7 +555,7 @@ const CreateUser = () => {
                     />
                   </div>
 
-                  <div>
+                 {/*  <div>
                     <label className="block text-sm font-medium text-foreground mb-2">
                       Employee ID
                     </label>
@@ -562,7 +565,7 @@ const CreateUser = () => {
                       value={agentData.employee_id}
                       onChange={(e) => handleAgentDataChange('employee_id', e.target.value)}
                     />
-                  </div>
+                  </div> */}
 
                   <div>
                     <label className="block text-sm font-medium text-foreground mb-2">
@@ -591,18 +594,18 @@ const CreateUser = () => {
 
                   <div>
                     <label className="block text-sm font-medium text-foreground mb-2">
-                      Mitel Agent ID
+                      Mitel Employee ID
                     </label>
-                    {agentData.mitel_agent_id ? (
+                    {agentData.employee_id ? (
                       <div className="space-y-2">
                         <div className="p-3 bg-muted rounded-lg border border-border">
                           <div className="flex items-center justify-between">
                             <div>
                               <p className="text-sm font-medium text-foreground">
-                                {agentData.mitel_agent_name || agentData.mitel_agent_id}
+                                {agentData.mitel_agent_name || agentData.employee_id}
                               </p>
                               <p className="text-xs text-muted-foreground">
-                                ID: {agentData.mitel_agent_id} {agentData.mitel_extension && `• Ext: ${agentData.mitel_extension}`}
+                                ID: {agentData.employee_id} {agentData.mitel_extension && `• Ext: ${agentData.mitel_extension}`}
                               </p>
                             </div>
                             <Button
@@ -643,7 +646,7 @@ const CreateUser = () => {
                     )}
                   </div>
 
-                  <div>
+                  {/* <div>
                     <label className="block text-sm font-medium text-foreground mb-2">
                       Mitel Extension
                     </label>
@@ -654,7 +657,7 @@ const CreateUser = () => {
                       onChange={(e) => handleAgentDataChange('mitel_extension', e.target.value)}
                       disabled={!!agentData.mitel_agent_id}
                     />
-                  </div>
+                  </div> */}
 
                   <div>
                     <label className="block text-sm font-medium text-foreground mb-2">
@@ -766,7 +769,7 @@ const CreateUser = () => {
           isOpen={mitelModalOpen}
           onClose={() => setMitelModalOpen(false)}
           onSelect={handleMitelAgentSelect}
-          selectedAgentId={agentData.mitel_agent_id}
+          selectedAgentId={agentData.employee_id}
         />
         </>
         )}

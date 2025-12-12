@@ -37,6 +37,7 @@
     "react-router-hash-link": "^2.4.3",
     "recharts": "^3.4.1",
     "redux": "^5.0.1",
+    "signalr-no-jquery": "^0.2.1",
     "tailwind-merge": "^3.4.0",
     "vite-tsconfig-paths": "^5.1.4"
   },
@@ -44,9 +45,11 @@
     "@eslint/js": "^9.39.1",
     "@tailwindcss/forms": "^0.5.10",
     "@tailwindcss/typography": "^0.5.19",
+    "@types/jquery": "^3.5.33",
     "@types/node": "^24.10.1",
     "@types/react": "^19.2.5",
     "@types/react-dom": "^19.2.3",
+    "@types/signalr": "^2.4.3",
     "@vitejs/plugin-react": "^5.1.1",
     "autoprefixer": "^10.4.2",
     "eslint": "^9.39.1",
@@ -58,6 +61,7 @@
     "tailwindcss-animate": "^1.0.7",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.46.4",
-    "vite": "^7.2.4"
+    "vite": "^7.2.4",
+    "vite-plugin-commonjs": "^0.10.4"
   }
 }

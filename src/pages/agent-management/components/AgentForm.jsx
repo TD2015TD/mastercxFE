@@ -55,7 +55,18 @@ const AgentForm = ({ agent, onSubmit, onCancel }) => {
   }, [agent]);
 
   const handleChange = (field) => (event) => {
-    setFormData({ ...formData, [field]: event.target.value });
+    // Special handling for mitel_agent_id selection: expects employee object or id
+    if (field === 'mitel_agent_id') {
+      const value = event.target.value;
+      // If value is an object (from autocomplete/dropdown), use its id
+      if (value && typeof value === 'object' && value.id) {
+        setFormData({ ...formData, mitel_agent_id: value.id });
+      } else {
+        setFormData({ ...formData, mitel_agent_id: value });
+      }
+    } else {
+      setFormData({ ...formData, [field]: event.target.value });
+    }
     if (errors[field]) {
       setErrors({ ...errors, [field]: null });
     }
@@ -165,6 +176,7 @@ const AgentForm = ({ agent, onSubmit, onCancel }) => {
           />
         </Grid>
 
+        {/*
         <Grid item xs={12} sm={4}>
           <TextField
             fullWidth
@@ -173,6 +185,7 @@ const AgentForm = ({ agent, onSubmit, onCancel }) => {
             onChange={handleChange('mitel_extension')}
           />
         </Grid>
+        */}
 
         <Grid item xs={12} sm={4}>
           <FormControl fullWidth>

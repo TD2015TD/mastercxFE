@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { agentService } from '../../../services/agentService';
+import { authService } from '../../../services/authService';
+import mitelService from '../../../services/mitelService';
 import { Helmet } from 'react-helmet';
 import { useNavigate } from 'react-router-dom';
-import TelephonyBar from '../../../components/TelephonyBar';
 import BreadcrumbNavigation from '../../../components/ui/BreadcrumbNavigation';
 import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
@@ -15,35 +17,43 @@ import MySchedule from './components/MySchedule';
 const AgentDashboard = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
-  const [userStatus, setUserStatus] = useState('available');
+  const [userStatus, setUserStatus] = useState('Offline');
+  const [mitelAgentId, setMitelAgentId] = useState(null);
+  const [agentState, setAgentState] = useState(null);
+  const [isLoadingMitelState, setIsLoadingMitelState] = useState(false);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
-  // Get logged-in user data
-  const getUserData = () => {
-    try {
-      const userSession = localStorage.getItem('user-session');
-      if (userSession) {
-        const userData = JSON.parse(userSession);
-        return {
-          name: userData.name || 'User',
-          email: userData.email || '',
-          role: userData.role || 'agent',
-          department: userData.department || 'Customer Service',
-          avatar: userData.avatar || null
-        };
-      }
-    } catch (error) {
-      console.error('Error parsing user session:', error);
-    }
-    return {
-      name: 'Ahmad Rahman',
-      email: 'ahmad.rahman@jkdm.gov.my',
-      role: 'agent',
-      department: 'Customer Service',
-      avatar: null
-    };
+  // Get logged-in user data using authService
+  const currentUser = authService.getCurrentUser() || {
+    name: 'Ahmad Rahman',
+    email: 'ahmad.rahman@jkdm.gov.my',
+    role: 'agent',
+    department: 'Customer Service',
+    avatar: null
   };
 
-  const currentUser = getUserData();
+  // Fetch Mitel agent state when mitelAgentId changes
+  useEffect(() => {
+    if (currentUser) {
+      setIsLoadingMitelState(true);
+      mitelService.getMitelEmployeeState(currentUser.agent.employee_id)
+        .then((state) => {
+          setAgentState(state);
+          console.log('Mitel Agent State:', state);
+          if (state && state.data.presence.aggregate.state) {
+            // Update userStatus based on the fetched Mitel state
+            setUserStatus(state.data.presence.aggregate.state);
+          }
+        })
+        .catch((error) => {
+          console.error('Error fetching Mitel state:', error);
+          setUserStatus('offline');
+        })
+        .finally(() => {
+          setIsLoadingMitelState(false);
+        });
+    }
+  }, [currentUser.id]);
 
   const [stats, setStats] = useState({
     myTickets: 12,
@@ -85,10 +95,56 @@ const AgentDashboard = () => {
     }
   ];
 
-  const handleStatusChange = (newStatus) => {
+  const handleStatusChange = async (newStatus) => {
+    // Don't proceed if already updating or no current user ID
+    if (isUpdatingStatus || !currentUser.id) {
+      console.warn('Cannot update status: either already updating or no user ID');
+      return;
+    }
+
+    const previousStatus = userStatus;
+    
+    // Optimistically update UI
     setUserStatus(newStatus);
-    // TODO: API call to update agent status
-    console.log('Status changed to:', newStatus);
+    setIsUpdatingStatus(true);
+    
+    try {
+      // Create the payload using the helper function from mitelService
+      const payload = mitelService.createPresenceStatePayload(newStatus);
+
+      // Use currentUser.id (this is the user_id that the backend expects)
+      const result = await mitelService.updateMitelEmployeeState(currentUser.agent.employee_id, payload);
+      
+      if (result && result.status) {
+        console.log('Employee state updated successfully:', newStatus);
+        // Update agent state
+        setAgentState(prevState => ({
+          ...prevState,
+          state: newStatus
+        }));
+      } else {
+        console.error('Failed to update employee state:', result?.message);
+        // Revert the status on error
+        setUserStatus(previousStatus);
+        alert(`Failed to update status: ${result?.message || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Error updating employee state:', error);
+      // Revert the status on error
+      setUserStatus(previousStatus);
+      alert(`Error updating status: ${error.message || 'Network error'}`);
+    } finally {
+      setIsUpdatingStatus(false);
+    }
+  };
+
+  // Helper function to get status color
+  const getStatusColor = (status) => {
+    const statusLower = status.toLowerCase();
+    if (statusLower === 'available') return 'text-green-500';
+    if (statusLower === 'busy' || statusLower === 'on-call') return 'text-red-500';
+    if (statusLower === 'away' || statusLower === 'after-call-work') return 'text-yellow-500';
+    return 'text-gray-500';
   };
 
   const renderTabContent = () => {
@@ -127,9 +183,6 @@ const AgentDashboard = () => {
         <meta name="description" content="Agent workspace for managing tickets, customer interactions, and performance metrics" />
       </Helmet>
 
-      {/* Telephony Bar */}
-      <TelephonyBar />
-
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <BreadcrumbNavigation />
         
@@ -139,30 +192,39 @@ const AgentDashboard = () => {
             <div>
               <h1 className="text-3xl font-bold text-foreground flex items-center">
                 <Icon name="User" size={32} className="mr-3 text-primary" />
-                Welcome back, {currentUser.name}
+                Welcome back, {currentUser?.name}
               </h1>
               <p className="text-lg text-muted-foreground mt-2">
-                {currentUser.department} • {currentUser.role}
+                {currentUser?.agent?.department} • {currentUser.role.name}
               </p>
             </div>
             <div className="flex items-center space-x-3">
               {/* Status Selector */}
               <div className="flex items-center space-x-2 bg-card border border-border rounded-lg px-4 py-2">
-                <Icon name="Circle" size={12} className={`${
-                  userStatus === 'available' ? 'text-green-500' :
-                  userStatus === 'busy' ? 'text-red-500' :
-                  userStatus === 'away' ? 'text-yellow-500' : 'text-gray-500'
-                }`} />
+                {(isLoadingMitelState || isUpdatingStatus) ? (
+                  <Icon name="Loader" size={12} className="text-gray-500 animate-spin" />
+                ) : (
+                  <Icon name="Circle" size={12} className={getStatusColor(userStatus)} />
+                )}
                 <select
                   value={userStatus}
                   onChange={(e) => handleStatusChange(e.target.value)}
-                  className="bg-transparent text-foreground font-medium focus:outline-none"
+                  className="bg-transparent text-foreground font-medium focus:outline-none cursor-pointer"
+                  disabled={isLoadingMitelState || isUpdatingStatus}
                 >
-                  <option value="available">Available</option>
-                  <option value="busy">Busy</option>
-                  <option value="away">Away</option>
-                  <option value="offline">Offline</option>
+                  <option value="Available">Available</option>
+                  <option value="Busy">Busy</option>
+                  <option value="OnCall">On Call</option>
+                  <option value="DND">Do Not Disturb</option>
+                  <option value="Away">Away</option>
+                  <option value="Offline">Offline</option>
                 </select>
+                {isLoadingMitelState && (
+                  <span className="text-xs text-muted-foreground ml-2">Loading...</span>
+                )}
+                {isUpdatingStatus && (
+                  <span className="text-xs text-muted-foreground ml-2">Updating...</span>
+                )}
               </div>
               <Button variant="outline" iconName="Settings" iconPosition="left">
                 Settings

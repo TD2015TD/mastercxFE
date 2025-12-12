@@ -15,7 +15,6 @@ const LoginForm = () => {
   const [formData, setFormData] = useState({
     username: '',
     password: '',
-    authMethod: 'ad',
     rememberMe: false
   });
   const [errors, setErrors] = useState({});
@@ -95,21 +94,11 @@ const LoginForm = () => {
         const roleSlug = typeof response.user.role === 'string' 
           ? response.user.role 
           : response.user.role?.slug || 'agent';
-        
-        // Store authentication data using authService
-        authService.setCurrentUser({
-          username: formData.username,
-          role: roleSlug,
-          authMethod: formData.authMethod,
-          loginTime: new Date().toISOString(),
-          ...response.user,
-          role: roleSlug // Override the role object with just the slug
-        });
-        
+
         if (formData.rememberMe) {
           localStorage.setItem('remember-user', formData.username);
         }
-        
+
         // Navigate based on role
         if (roleSlug === 'supervisor' || roleSlug === 'super_admin') {
           navigate('/supervisor-dashboard');

@@ -64,10 +64,21 @@ const MitelAgentSelector = ({ isOpen, onClose, onSelect, selectedAgentId }) => {
     setSelectedAgent(agent);
   };
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     if (selectedAgent) {
-      onSelect(selectedAgent);
-      onClose();
+      try {
+        // Assuming `onSelect` sends the selected agent to the backend
+        const updatedAgent = {
+          ...selectedAgent,
+          agent_username: selectedAgent.id, // Assign agent_username as the agent ID or other unique identifier
+          employee_id: selectedAgent.employeeId, // Include employee_id if available
+        };
+
+        await onSelect(updatedAgent); // Pass updated agent with agent_username and employee_id
+        onClose();
+      } catch (error) {
+        console.error('Error assigning agent_username and employee_id:', error);
+      }
     }
   };
 

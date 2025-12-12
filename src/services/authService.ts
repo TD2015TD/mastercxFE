@@ -8,14 +8,55 @@ export interface LoginCredentials {
 
 export interface AuthResponse {
   success: boolean;
-  access_token: string;
-  token_type: string;
-  expires_in: number;
-  user: {
-    id: number;
-    name: string;
-    email: string;
-    role: string;
+  data: {
+    user: {
+      id: number;
+      name: string;
+      email: string;
+      email_verified_at: string | null;
+      created_at: string;
+      updated_at: string;
+      ignite_id: string;
+      role_id: number;
+      status: string;
+      deleted_at: string | null;
+      role: {
+        id: number;
+        name: string;
+        slug: string;
+        description: string;
+        created_at: string;
+        updated_at: string;
+      };
+      agent: {
+        id: number;
+        user_id: number;
+        agent_code: string;
+        employee_id: string;
+        department: string;
+        designation: string;
+        mitel_agent_id: string;
+        mitel_extension: string | null;
+        mitel_queue_ids: string[];
+        status: string;
+        availability: string;
+        skills: string[];
+        languages: string[];
+        max_concurrent_tickets: number;
+        notes: string | null;
+        last_activity_at: string;
+        created_at: string;
+        updated_at: string;
+        deleted_at: string | null;
+        mitel_state: string;
+        mitel_state_reason: string | null;
+        mitel_logged_in: boolean;
+        mitel_last_state_change: string;
+        agent_username: string;
+      };
+      MitelToken: string;
+    };
+    MitelToken: string;
   };
 }
 
@@ -33,20 +74,23 @@ const getRoleFromRoleId = (roleId: number): string => {
 
 export const authService = {
   // Login
-  login: async (credentials: LoginCredentials): Promise<AuthResponse> => {
+  login: async (credentials: LoginCredentials): Promise<{ jwtToken: string; user: AuthResponse['data']['user'] }> => {
     const response = await api.post('/auth/login', credentials);
-    const data = response.data.data || response.data;
-    
-    if (data.access_token) {
-      localStorage.setItem('jwt_token', data.access_token);
+    const data = response.data;
+
+    if (data.success && data.data.user) {
+      const jwtToken = data.data.access_token; // Assuming MitelToken is used as JWT token
+      const mitelToken = data.data.MitelToken;
+      const user = data.data.user;
+
+      localStorage.setItem('jwt_token', jwtToken);
+      localStorage.setItem('mitel_token', mitelToken);
+      authService.setCurrentUser(user);
+
+      return { jwtToken, user };
     }
-    
-    // Map role_id to role name if needed
-    if (data.user && data.user.role_id && !data.user.role) {
-      data.user.role = getRoleFromRoleId(data.user.role_id);
-    }
-    
-    return data;
+
+    throw new Error('Login failed');
   },
 
   // Logout
@@ -60,18 +104,37 @@ export const authService = {
   },
 
   // Get current user
-  me: async () => {
+  me: async (): Promise<{ user: AuthResponse['data']['user']; agent: AuthResponse['data']['user']['agent'] }> => {
     const response = await api.get('/auth/me');
-    return response.data;
+    const data = response.data;
+
+    if (data.success && data.data.user) {
+      const user = data.data.user;
+      const agent = user.agent;
+
+      authService.setCurrentUser(user);
+      return { user, agent };
+    }
+
+    throw new Error('Failed to fetch user data');
   },
 
   // Refresh token
-  refresh: async () => {
+  refresh: async (): Promise<{ jwtToken: string; mitelToken: string }> => {
     const response = await api.post('/auth/refresh');
-    if (response.data.access_token) {
-      localStorage.setItem('jwt_token', response.data.access_token);
+    const data = response.data;
+
+    if (data.success && data.data.MitelToken) {
+      const jwtToken = data.data.MitelToken; // Assuming MitelToken is used as JWT token
+      const mitelToken = data.data.MitelToken;
+
+      localStorage.setItem('jwt_token', jwtToken);
+      localStorage.setItem('mitel_token', mitelToken);
+
+      return { jwtToken, mitelToken };
     }
-    return response.data;
+
+    throw new Error('Failed to refresh token');
   },
 
   // Check if user is authenticated
@@ -80,7 +143,7 @@ export const authService = {
   },
 
   // Get current user from localStorage
-  getCurrentUser: (): AuthResponse['user'] | null => {
+  getCurrentUser: (): AuthResponse['data']['user'] | null => {
     try {
       const userData = localStorage.getItem('user-session');
       if (userData) {
@@ -99,7 +162,7 @@ export const authService = {
   },
 
   // Set current user to localStorage
-  setCurrentUser: (user: AuthResponse['user']) => {
+  setCurrentUser: (user: AuthResponse['data']['user']) => {
     try {
       localStorage.setItem('user-session', JSON.stringify(user));
     } catch (err) {
