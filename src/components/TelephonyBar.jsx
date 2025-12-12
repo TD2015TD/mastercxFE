@@ -14,6 +14,8 @@ const TelephonyBar = ({ className = '', onCallEvent }) => {
   const [showWrapUp, setShowWrapUp] = useState(false);
   const [wrapUpCode, setWrapUpCode] = useState('');
   const [wrapUpNotes, setWrapUpNotes] = useState('');
+  const [agentStatus, setAgentStatus] = useState('Offline');
+  const [isReadyForCalls, setIsReadyForCalls] = useState(false);
 
   const intervalRef = useRef(null);
   const autoResetTimeoutRef = useRef(null);
@@ -59,12 +61,69 @@ const TelephonyBar = ({ className = '', onCallEvent }) => {
     // Employee state changes
     const offEmployeeState = on('employeeHub', 'employeeStateChanged', (data) => {
       console.log('👤 Employee State Changed:', data);
-      // You can track agent presence here if needed
+
+      // Update agent status based on presence state
+      if (data?.presence?.aggregate?.state) {
+        const newState = data.presence.aggregate.state;
+        setAgentStatus(newState);
+
+        // Prepare to accept calls when agent becomes Available
+        if (newState === 'Available') {
+          console.log('✅ Agent is now Available - Ready to accept calls');
+          setIsReadyForCalls(true);
+
+          // Reset telephony bar to IDLE state if it's not currently handling a call
+          if (status === 'ENDED') {
+            setStatus('IDLE');
+            setCaller(null);
+            setTimer(0);
+            setMuted(false);
+          }
+
+          // Notify parent component that agent is ready for calls
+          onCallEvent?.('telephony:ready', { agentStatus: newState, timestamp: new Date() });
+        } else {
+          console.log(`⚠️ Agent status changed to ${newState} - Not ready for calls`);
+          setIsReadyForCalls(false);
+
+          // Notify parent component that agent is not ready for calls
+          onCallEvent?.('telephony:not_ready', { agentStatus: newState, timestamp: new Date() });
+        }
+      }
     });
 
     // Agent state changes (alternative event)
     const offAgentState = on('agentHub', 'onAgentStateChanged', (data) => {
       console.log('🎧 Agent State Changed:', data);
+
+      // Alternative path to update agent status
+      if (data?.state) {
+        const newState = data.state;
+        setAgentStatus(newState);
+
+        // Prepare to accept calls when agent becomes Available
+        if (newState === 'Available') {
+          console.log('✅ Agent is now Available (via agentHub) - Ready to accept calls');
+          setIsReadyForCalls(true);
+
+          // Reset telephony bar to IDLE state if it's not currently handling a call
+          if (status === 'ENDED') {
+            setStatus('IDLE');
+            setCaller(null);
+            setTimer(0);
+            setMuted(false);
+          }
+
+          // Notify parent component that agent is ready for calls
+          onCallEvent?.('telephony:ready', { agentStatus: newState, timestamp: new Date() });
+        } else {
+          console.log(`⚠️ Agent status changed to ${newState} (via agentHub) - Not ready for calls`);
+          setIsReadyForCalls(false);
+
+          // Notify parent component that agent is not ready for calls
+          onCallEvent?.('telephony:not_ready', { agentStatus: newState, timestamp: new Date() });
+        }
+      }
     });
 
     // Queue-level events (if you add queue monitors)
@@ -209,12 +268,16 @@ const TelephonyBar = ({ className = '', onCallEvent }) => {
   // ---- Status display ----
   const getStatusDisplay = () => {
     switch(status){
-      case 'IDLE': return { text:'Ready', className:'bg-gray-100 text-gray-700 border-gray-300' };
+      case 'IDLE':
+        if (isReadyForCalls) {
+          return { text:'Ready for Calls', className:'bg-green-100 text-green-700 border-green-300' };
+        }
+        return { text:'Not Ready', className:'bg-gray-100 text-gray-700 border-gray-300' };
       case 'RINGING': return { text:`Incoming from ${caller?.name} (${caller?.number})`, className:'bg-amber-100 text-amber-800 border-amber-300 animate-pulse' };
       case 'IN_CALL': return { text:`In Call – ${formatTime(timer)}`, className:'bg-green-100 text-green-800 border-green-300' };
       case 'TRANSFERRING': return { text:`Transferring to ${transferTarget}...`, className:'bg-blue-100 text-blue-800 border-blue-300' };
       case 'ENDED': return { text:`Call Ended – ${formatTime(timer)}`, className:'bg-red-100 text-red-800 border-red-300' };
-      default: return { text:'Ready', className:'bg-gray-100 text-gray-700 border-gray-300' };
+      default: return { text:'Not Ready', className:'bg-gray-100 text-gray-700 border-gray-300' };
     }
   };
   const statusDisplay = getStatusDisplay();
@@ -237,6 +300,17 @@ const TelephonyBar = ({ className = '', onCallEvent }) => {
             <Icon name={status==='RINGING'?'PhoneIncoming':status==='IN_CALL'?'Phone':'PhoneOff'} size={14} className="mr-2"/>
             {statusDisplay?.text}
           </div>
+          {/* Agent Status Indicator */}
+          {agentStatus && (
+            <div className="flex items-center px-2 py-1 rounded-md text-xs bg-muted text-muted-foreground border border-border" title={`Agent Status: ${agentStatus}`}>
+              <Icon
+                name={agentStatus === 'Available' ? 'CheckCircle2' : agentStatus === 'Busy' ? 'AlertCircle' : 'Circle'}
+                size={12}
+                className={`mr-1 ${agentStatus === 'Available' ? 'text-green-600' : agentStatus === 'Busy' ? 'text-red-600' : 'text-gray-600'}`}
+              />
+              <span>{agentStatus}</span>
+            </div>
+          )}
         </div>
 
         <div className="flex items-center space-x-2">
