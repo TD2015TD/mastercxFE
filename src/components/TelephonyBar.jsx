@@ -27,33 +27,120 @@ const TelephonyBar = ({ className = '', onCallEvent }) => {
     token: localStorage.getItem('mitel_token')
   });
 
+  // Subscribe to employee and queue monitoring when connected
+  useEffect(() => {
+    if (connState === 'connected') {
+      console.log('🔗 SignalR Connected - No subscription needed, listening for events directly');
+
+      // NOTE: Mitel may not require explicit subscription if you're already authenticated
+      // Events should be pushed automatically once connected
+      // If you find the correct subscription method name, add it here
+    }
+  }, [connState, invoke]);
+
   // ---- Map Mitel events → FSM ----
   useEffect(() => {
     console.log('🔗 Setting up Mitel event listeners...');
 
-    // Employee conversation events (this is what Mitel actually uses for calls)
-    const offConversationChanged = on('employeeHub', 'employeeConversationChanged', (data) => {
-      console.log('📞 Conversation Changed:', data);
-      
-      // Map conversation state to your FSM
-      if (data?.state === 'Ringing' || data?.state === 'Alerting') {
+    // Media Stats Updated - This event is fired when call media stats are updated
+    const offMediaStats = on('employeeHub', 'mediaStatsUpdated', (data) => {
+      console.log('📊 Media Stats Updated:', JSON.stringify(data, null, 2));
+      // This event indicates an active call is in progress
+      // You can use this as an additional indicator that a call is active
+    });
+
+    // Alternative event names that might be used by Mitel
+    const offConversationAssigned = on('employeeHub', 'conversationAssigned', (data) => {
+      console.log('📞 Conversation ASSIGNED:', JSON.stringify(data, null, 2));
+      if (data) {
         setCaller({
-          name: data?.remotePartyName || data?.ani,
-          number: data?.ani || data?.remoteParty,
-          queue: data?.queueName
+          name: data?.remotePartyName || data?.ani || data?.remoteParty || 'Unknown',
+          number: data?.ani || data?.remoteParty || data?.dnis || 'Unknown',
+          queue: data?.queueName || data?.queue?.name || 'General'
         });
         setTimer(0);
         setMuted(false);
         setStatus('RINGING');
         onCallEvent?.('telephony:incoming', data);
-      } else if (data?.state === 'Connected' || data?.state === 'Active') {
+      }
+    });
+
+    const offEmployeeConversation = on('employeeHub', 'employeeConversation', (data) => {
+      console.log('📞 Employee Conversation:', JSON.stringify(data, null, 2));
+      // Handle various conversation events
+      if (data?.state === 'Ringing' || data?.state === 'Alerting') {
+        setCaller({
+          name: data?.remotePartyName || data?.ani || data?.remoteParty || 'Unknown',
+          number: data?.ani || data?.remoteParty || data?.dnis || 'Unknown',
+          queue: data?.queueName || data?.queue?.name || 'General'
+        });
+        setTimer(0);
+        setMuted(false);
+        setStatus('RINGING');
+        onCallEvent?.('telephony:incoming', data);
+      } else if (data?.state === 'Connected' || data?.state === 'Active' || data?.state === 'Established') {
         setStatus('IN_CALL');
         onCallEvent?.('telephony:connected', data);
       }
     });
 
+    // Employee conversation ADDED - Triggered when a new call/conversation is assigned to the agent
+    const offConversationAdded = on('employeeHub', 'employeeConversationAdded', (data) => {
+      console.log('📞 Conversation ADDED:', JSON.stringify(data, null, 2));
+
+      // When a new conversation is added, it's likely an incoming call
+      if (data) {
+        setCaller({
+          name: data?.remotePartyName || data?.ani || data?.remoteParty || 'Unknown',
+          number: data?.ani || data?.remoteParty || data?.dnis || 'Unknown',
+          queue: data?.queueName || data?.queue?.name || 'General'
+        });
+        setTimer(0);
+        setMuted(false);
+        setStatus('RINGING');
+        onCallEvent?.('telephony:incoming', data);
+      }
+    });
+
+    // Employee conversation CHANGED - Triggered when conversation state changes
+    const offConversationChanged = on('employeeHub', 'employeeConversationChanged', (conversations) => {
+      console.log('📞 Conversation CHANGED:', JSON.stringify(conversations, null, 2));
+
+      // The event sends an ARRAY of conversations, get the first one
+      const conversation = Array.isArray(conversations) ? conversations[0] : conversations;
+
+      if (!conversation) return;
+
+      const state = conversation.conversationState; // Note: it's conversationState, not state
+
+      console.log(`📞 Conversation State: ${state}`);
+
+      // Map conversation state to your FSM
+      if (state === 'Offered' || state === 'Ringing' || state === 'Alerting') {
+        console.log('📞 INCOMING CALL DETECTED!');
+        setCaller({
+          name: conversation.fromName || conversation.ani || 'Unknown',
+          number: conversation.ani || conversation.fromAddress || 'Unknown',
+          queue: conversation.queueName || 'Direct Call'
+        });
+        setTimer(0);
+        setMuted(false);
+        setStatus('RINGING');
+        onCallEvent?.('telephony:incoming', conversation);
+      } else if (state === 'Connected' || state === 'Active' || state === 'Established') {
+        console.log('✅ Call connected/active');
+        setStatus('IN_CALL');
+        onCallEvent?.('telephony:connected', conversation);
+      } else if (state === 'Disconnected' || state === 'Ended' || state === 'Completed') {
+        console.log('❌ Call disconnected/ended');
+        setStatus('ENDED');
+        onCallEvent?.('telephony:ended', conversation);
+      }
+    });
+
+    // Employee conversation REMOVED - Triggered when conversation is removed/ended
     const offConversationRemoved = on('employeeHub', 'employeeConversationRemoved', (data) => {
-      console.log('📞 Conversation Removed:', data);
+      console.log('📞 Conversation REMOVED:', JSON.stringify(data, null, 2));
       setStatus('ENDED');
       onCallEvent?.('telephony:ended', data);
     });
@@ -126,17 +213,34 @@ const TelephonyBar = ({ className = '', onCallEvent }) => {
       }
     });
 
-    // Queue-level events (if you add queue monitors)
-    const offQueueConversation = on('queueHub', 'queueConversationChanged', (data) => {
-      console.log('📋 Queue Conversation Changed:', data);
+    // Queue-level events - Monitor incoming calls in queues
+    const offQueueConversationAdded = on('queueHub', 'queueConversationAdded', (data) => {
+      console.log('📋 Queue Conversation ADDED:', JSON.stringify(data, null, 2));
+      // This fires when a call enters the queue (before being assigned to an agent)
+    });
+
+    const offQueueConversationChanged = on('queueHub', 'queueConversationChanged', (data) => {
+      console.log('📋 Queue Conversation CHANGED:', JSON.stringify(data, null, 2));
+      // This fires when a call in queue changes state
+    });
+
+    const offQueueConversationRemoved = on('queueHub', 'queueConversationRemoved', (data) => {
+      console.log('📋 Queue Conversation REMOVED:', JSON.stringify(data, null, 2));
+      // This fires when a call is removed from queue (answered, abandoned, etc.)
     });
 
     return () => {
+      offMediaStats();
+      offConversationAssigned();
+      offEmployeeConversation();
+      offConversationAdded();
       offConversationChanged();
       offConversationRemoved();
       offEmployeeState();
       offAgentState();
-      offQueueConversation();
+      offQueueConversationAdded();
+      offQueueConversationChanged();
+      offQueueConversationRemoved();
     };
   }, [on, onCallEvent]);
 
