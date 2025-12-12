@@ -1,9 +1,12 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Icon from './AppIcon';
 import Button from './ui/Button';
 import { useMitelSignalR } from '../hooks/useMitelSignalR';
+import mitelService from '../services/mitelService';
 
 const TelephonyBar = ({ className = '', onCallEvent }) => {
+  const navigate = useNavigate();
   // FSM state
   const [status, setStatus] = useState('IDLE');
   const [caller, setCaller] = useState(null);
@@ -16,6 +19,7 @@ const TelephonyBar = ({ className = '', onCallEvent }) => {
   const [wrapUpNotes, setWrapUpNotes] = useState('');
   const [agentStatus, setAgentStatus] = useState('Offline');
   const [isReadyForCalls, setIsReadyForCalls] = useState(false);
+  const [currentConversationId, setCurrentConversationId] = useState(null);
 
   const intervalRef = useRef(null);
   const autoResetTimeoutRef = useRef(null);
@@ -118,17 +122,26 @@ const TelephonyBar = ({ className = '', onCallEvent }) => {
       // Map conversation state to your FSM
       if (state === 'Offered' || state === 'Ringing' || state === 'Alerting') {
         console.log('📞 INCOMING CALL DETECTED!');
-        setCaller({
+        setCurrentConversationId(conversation.conversationId);
+
+        const callerInfo = {
           name: conversation.fromName || conversation.ani || 'Unknown',
           number: conversation.ani || conversation.fromAddress || 'Unknown',
           queue: conversation.queueName || 'Direct Call'
-        });
+        };
+
+        setCaller(callerInfo);
         setTimer(0);
         setMuted(false);
         setStatus('RINGING');
         onCallEvent?.('telephony:incoming', conversation);
+
+        // Navigate to ticket creation form with callId as identifier
+        // This will auto-populate customer if they exist in the system
+        navigate(`/ticket-management/create?callId=${encodeURIComponent(callerInfo.number)}&source=call`);
       } else if (state === 'Connected' || state === 'Active' || state === 'Established') {
         console.log('✅ Call connected/active');
+        setCurrentConversationId(conversation.conversationId);
         setStatus('IN_CALL');
         onCallEvent?.('telephony:connected', conversation);
       } else if (state === 'Disconnected' || state === 'Ended' || state === 'Completed') {
@@ -283,28 +296,32 @@ const TelephonyBar = ({ className = '', onCallEvent }) => {
 
   // ---- Action handlers ----
   const acceptCall = useCallback(async () => {
-    if (status === 'RINGING') {
+    if (status === 'RINGING' && currentConversationId) {
       try {
-        // Mitel method to answer call - check your API docs for exact method name
-        await invoke('employeeHub', 'answerConversation', { /* conversation ID */ });
-        console.log('✅ Answered call');
+        console.log(`📞 Accepting call: ${currentConversationId}`);
+        await mitelService.acceptConversation(currentConversationId);
+        console.log('✅ Call accepted');
+        // State will be updated by SignalR event
       } catch (err) {
-        console.error('❌ Failed to answer call:', err);
+        console.error('❌ Failed to accept call:', err);
+        alert(`Failed to accept call: ${err.message}`);
       }
     }
-  }, [status, invoke]);
+  }, [status, currentConversationId]);
 
   const hangUp = useCallback(async () => {
-    if (['IN_CALL', 'RINGING', 'TRANSFERRING'].includes(status)) {
+    if (['IN_CALL', 'RINGING', 'TRANSFERRING'].includes(status) && currentConversationId) {
       try {
-        // Mitel method to end call
-        await invoke('employeeHub', 'endConversation', { /* conversation ID */ });
+        console.log(`📞 Ending call: ${currentConversationId}`);
+        await mitelService.endConversation(currentConversationId);
         console.log('✅ Call ended');
+        // State will be updated by SignalR event
       } catch (err) {
         console.error('❌ Failed to end call:', err);
+        alert(`Failed to end call: ${err.message}`);
       }
     }
-  }, [status, invoke]);
+  }, [status, currentConversationId]);
 
   const toggleMute = useCallback(async () => {
     if (status === 'IN_CALL') {
@@ -351,6 +368,7 @@ const TelephonyBar = ({ className = '', onCallEvent }) => {
     setShowWrapUp(false);
     setWrapUpCode('');
     setWrapUpNotes('');
+    setCurrentConversationId(null);
   }, [caller, timer, wrapUpCode, wrapUpNotes, onCallEvent]);
 
   // ---- Keyboard shortcuts ----

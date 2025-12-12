@@ -164,6 +164,64 @@ export const getMitelEmployeeStats = async (employeeId: string) => {
   return response.data;
 };
 
+/**
+ * Perform conversation action (Accept, End, Hold, etc.)
+ * Maps to direct Mitel API: PUT /MiccSdk/api/v1/employees/me/conversations/{conversationId}
+ */
+export const performConversationAction = async (conversationId: string, action: 'Accept' | 'End' | 'Hold' | 'Resume') => {
+  const mitelToken = localStorage.getItem('mitel_token');
+  const mitelBaseUrl = import.meta.env.VITE_MITEL_BASE_URL || 'micc.telediant.com.my';
+
+  const response = await fetch(`https://${mitelBaseUrl}/MiccSdk/api/v1/employees/me/conversations/${conversationId}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${mitelToken}`,
+      'Accept': 'application/json'
+    },
+    body: JSON.stringify({
+      conversationAction: action,
+      conversationId: conversationId
+    })
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Failed to ${action} conversation: ${response.status} ${response.statusText} - ${errorText}`);
+  }
+
+  // Mitel returns 200 with no JSON body for successful conversation actions
+  return { success: true, status: response.status };
+};
+
+/**
+ * Accept incoming conversation/call
+ */
+export const acceptConversation = async (conversationId: string) => {
+  return performConversationAction(conversationId, 'Accept');
+};
+
+/**
+ * End active conversation/call
+ */
+export const endConversation = async (conversationId: string) => {
+  return performConversationAction(conversationId, 'End');
+};
+
+/**
+ * Hold active conversation/call
+ */
+export const holdConversation = async (conversationId: string) => {
+  return performConversationAction(conversationId, 'Hold');
+};
+
+/**
+ * Resume held conversation/call
+ */
+export const resumeConversation = async (conversationId: string) => {
+  return performConversationAction(conversationId, 'Resume');
+};
+
 // ========================================================================
 // REASON CODE ROUTES
 // ========================================================================
@@ -455,7 +513,14 @@ export default {
   getMitelEmployeeDetails,
   getMitelEmployeeState,
   updateMitelEmployeeState,
-  getMitelEmployeeStats, // Added
+  getMitelEmployeeStats,
+
+  // Conversation Actions
+  performConversationAction,
+  acceptConversation,
+  endConversation,
+  holdConversation,
+  resumeConversation,
 
   // Reason Code Endpoints
   getMitelReasonCodes,
