@@ -5,6 +5,9 @@ import { Checkbox } from '../../../components/ui/Checkbox';
 import api from '../../../services/api';
 import CategoryModal from './CategoryModal';
 import LookupModal from './LookupModal';
+import EmailConfiguration from '../email-configuration/EmailConfiguration';
+import AuthenticationConfiguration from '../authentication-configuration/AuthenticationConfiguration';
+import LdapConfiguration from '../ldap-configuration/LdapConfiguration';
 
 const SystemConfigurationPanel = () => {
   const [activeTab, setActiveTab] = useState('categories');
@@ -23,7 +26,10 @@ const SystemConfigurationPanel = () => {
 
   const tabs = [
     { id: 'categories', label: 'Categories & Sub-categories', icon: 'FolderTree' },
-    { id: 'lookups', label: 'Lookup Configuration', icon: 'List' }
+    { id: 'lookups', label: 'Lookup Configuration', icon: 'List' },
+    { id: 'email', label: 'Email Configuration', icon: 'Mail' },
+    { id: 'authentication', label: 'Authentication', icon: 'Shield' },
+    { id: 'ldap', label: 'LDAP Configuration', icon: 'Server' }
   ];
 
   // Load lookup types on mount
@@ -387,6 +393,9 @@ const SystemConfigurationPanel = () => {
       <div className="p-6">
         {activeTab === 'categories' && renderCategories()}
         {activeTab === 'lookups' && renderLookups()}
+        {activeTab === 'email' && <EmailConfiguration />}
+        {activeTab === 'authentication' && <AuthenticationConfiguration />}
+        {activeTab === 'ldap' && <LdapConfiguration />}
       </div>
 
       {/* Category Modal */}

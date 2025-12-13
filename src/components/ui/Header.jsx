@@ -5,6 +5,7 @@ import UserProfileDropdown from './UserProfileDropdown';
 import NotificationCenter from './NotificationCenter';
 import CommandPalette from './CommandPalette';
 import TelephonyBar from '../TelephonyBar';
+import EmployeeInbox from '../EmployeeInbox';
 
 const Header = ({ user = null, onMenuToggle }) => {
   const location = useLocation();
@@ -125,8 +126,14 @@ const Header = ({ user = null, onMenuToggle }) => {
 
   // Handle telephony events
   const handleCallEvent = (eventType, eventData) => {
-    console.log('Telephony Event:', eventType, eventData);
+    console.log('📞 Telephony Event:', eventType, eventData);
     // You can add additional handling here (e.g., create ticket, log interaction)
+  };
+
+  // Handle conversation events from Employee Inbox
+  const handleConversationEvent = (eventType, eventData) => {
+    console.log('📬 Conversation Event:', eventType, eventData);
+    // You can add additional handling here (e.g., notifications, logging)
   };
 
   return (
@@ -214,18 +221,6 @@ const Header = ({ user = null, onMenuToggle }) => {
               <span className="text-xs">Ctrl+/</span>
             </button>
 
-            {/* Back to CRM Button (for non-dashboard pages) */}
-            {!location?.pathname?.includes('dashboard') && (
-              <button
-                onClick={handleDashboardNavigation}
-                className="hidden sm:flex items-center space-x-2 px-3 py-2 bg-muted border border-border rounded-lg text-sm text-foreground hover:bg-muted/80 transition-colors duration-200"
-                title="Back to CRM Dashboard (Ctrl + H)"
-              >
-                <Icon name="Home" size={16} />
-                <span>Back to CRM</span>
-              </button>
-            )}
-
             <NotificationCenter />
             <UserProfileDropdown user={user} />
           </div>
@@ -279,8 +274,16 @@ const Header = ({ user = null, onMenuToggle }) => {
           </div>
         )}
       </header>
-      {/* Telephony Bar - Directly below header */}
-      <TelephonyBar onCallEvent={handleCallEvent} />
+
+      {/* Communication Tools - Directly below header */}
+      <div className="sticky top-16 z-40 space-y-2 px-6 pt-2 bg-background">
+        {/* Telephony Bar */}
+        <TelephonyBar onCallEvent={handleCallEvent} />
+
+        {/* Employee Inbox */}
+        <EmployeeInbox onConversationEvent={handleConversationEvent} />
+      </div>
+
       {/* Command Palette */}
       {isCommandPaletteOpen && (
         <CommandPalette
