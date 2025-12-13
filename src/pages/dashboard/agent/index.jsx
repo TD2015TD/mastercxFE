@@ -185,53 +185,6 @@ const AgentDashboard = () => {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <BreadcrumbNavigation />
-        
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-foreground flex items-center">
-                <Icon name="User" size={32} className="mr-3 text-primary" />
-                Welcome back, {currentUser?.name}
-              </h1>
-              <p className="text-lg text-muted-foreground mt-2">
-                {currentUser?.agent?.department} • {currentUser.role.name}
-              </p>
-            </div>
-            <div className="flex items-center space-x-3">
-              {/* Status Selector */}
-              <div className="flex items-center space-x-2 bg-card border border-border rounded-lg px-4 py-2">
-                {(isLoadingMitelState || isUpdatingStatus) ? (
-                  <Icon name="Loader" size={12} className="text-gray-500 animate-spin" />
-                ) : (
-                  <Icon name="Circle" size={12} className={getStatusColor(userStatus)} />
-                )}
-                <select
-                  value={userStatus}
-                  onChange={(e) => handleStatusChange(e.target.value)}
-                  className="bg-transparent text-foreground font-medium focus:outline-none cursor-pointer"
-                  disabled={isLoadingMitelState || isUpdatingStatus}
-                >
-                  <option value="Available">Available</option>
-                  <option value="Busy">Busy</option>
-                  <option value="OnCall">On Call</option>
-                  <option value="DND">Do Not Disturb</option>
-                  <option value="Away">Away</option>
-                  <option value="Offline">Offline</option>
-                </select>
-                {isLoadingMitelState && (
-                  <span className="text-xs text-muted-foreground ml-2">Loading...</span>
-                )}
-                {isUpdatingStatus && (
-                  <span className="text-xs text-muted-foreground ml-2">Updating...</span>
-                )}
-              </div>
-              <Button variant="outline" iconName="Settings" iconPosition="left">
-                Settings
-              </Button>
-            </div>
-          </div>
-        </div>
 
         {/* Stats Overview */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">

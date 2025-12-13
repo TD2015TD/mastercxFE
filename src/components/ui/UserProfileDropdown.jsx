@@ -5,6 +5,7 @@ import languageService from '../../services/languageService';
 const UserProfileDropdown = ({ user = null }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [currentLanguage, setCurrentLanguage] = useState('en');
+  const [availability, setAvailability] = useState('Available'); // State for availability
   const dropdownRef = useRef(null);
 
   const defaultUser = {
@@ -53,6 +54,11 @@ const UserProfileDropdown = ({ user = null }) => {
 
   const handleProfileSettings = () => {
     setIsOpen(false);
+  };
+
+  const handleAvailabilityChange = (status) => {
+    setAvailability(status);
+    // Add logic to update status in backend or SignalR if needed
   };
 
   const getRoleDisplayName = (role) => {
@@ -163,6 +169,29 @@ const UserProfileDropdown = ({ user = null }) => {
                     <span>{language?.flag}</span>
                     <span>{language?.name}</span>
                     {currentLanguage === language?.code && (
+                      <Icon name="Check" size={14} className="ml-auto" />
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Availability Status Section */}
+            <div className="px-4 py-2">
+              <div className="text-xs font-medium text-muted-foreground mb-2">Status</div>
+              <div className="space-y-1">
+                {['Available', 'Busy', 'Do Not Disturb', 'Offline'].map((status) => (
+                  <button
+                    key={status}
+                    onClick={() => handleAvailabilityChange(status)}
+                    className={`w-full flex items-center space-x-3 px-2 py-1 rounded text-sm transition-colors duration-200 ${
+                      availability === status
+                        ? 'bg-primary text-primary-foreground'
+                        : 'text-popover-foreground hover:bg-muted'
+                    }`}
+                  >
+                    <span>{status}</span>
+                    {availability === status && (
                       <Icon name="Check" size={14} className="ml-auto" />
                     )}
                   </button>
