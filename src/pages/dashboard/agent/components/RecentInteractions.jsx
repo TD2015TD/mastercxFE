@@ -47,9 +47,6 @@ const RecentInteractions = () => {
     'call': { icon: 'Phone', color: 'text-primary', bgColor: 'bg-primary/10' },
     'chat': { icon: 'MessageSquare', color: 'text-accent', bgColor: 'bg-accent/10' },
     'email': { icon: 'Mail', color: 'text-warning', bgColor: 'bg-warning/10' },
-    'sms': { icon: 'MessageCircle', color: 'text-info', bgColor: 'bg-info/10' },
-    'meeting': { icon: 'Video', color: 'text-success', bgColor: 'bg-success/10' },
-    'note': { icon: 'FileText', color: 'text-secondary', bgColor: 'bg-secondary/10' }
   };
 
   const filteredInteractions = filter === 'all'
@@ -58,7 +55,7 @@ const RecentInteractions = () => {
 
   const handleInteractionClick = (interaction) => {
     if (interaction?.ticket_id) {
-      navigate(`/ticket-management?id=${interaction.ticket?.ticket_number || interaction.ticket_id}`);
+      navigate(`/ticket-management/${interaction.ticket_id}`);
     }
   };
 

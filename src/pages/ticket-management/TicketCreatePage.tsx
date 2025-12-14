@@ -16,6 +16,7 @@ const TicketCreatePage: React.FC = () => {
     customerEmail: searchParams.get('customer_email') || searchParams.get('customerEmail'),
     channel: searchParams.get('channel') || 'phone', // Default to phone for MiTel calls
     callId: callId,
+    conversationId: searchParams.get('conversation_id') || searchParams.get('conversationId'),
     agentId: searchParams.get('agent_id') || searchParams.get('agentId'),
     queueId: searchParams.get('queue_id') || searchParams.get('queueId'),
     subject: searchParams.get('subject'),

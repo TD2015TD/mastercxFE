@@ -4,6 +4,7 @@ import Icon from './AppIcon';
 import Button from './ui/Button';
 import { useMitelSignalR } from '../hooks/useMitelSignalR';
 import mitelService from '../services/mitelService';
+import customerInteractionService from '../services/customerInteractionService';
 
 const TelephonyBar = ({ className = '', onCallEvent }) => {
   const navigate = useNavigate();
@@ -23,6 +24,77 @@ const TelephonyBar = ({ className = '', onCallEvent }) => {
 
   const intervalRef = useRef(null);
   const autoResetTimeoutRef = useRef(null);
+  const callStartTimeRef = useRef(null);
+  const customerIdRef = useRef(null);
+  const ticketIdRef = useRef(null);
+  const conversationIdRef = useRef(null);
+  const pendingInteractionIdsRef = useRef([]);
+
+  // ---- Helper: Log Customer Interaction Asynchronously ----
+  const logInteractionAsync = useCallback(async (interactionData) => {
+    try {
+      // Get agent info from localStorage or auth context
+      const authData = JSON.parse(localStorage.getItem('user') || '{}');
+      const agentId = authData?.agent?.id;
+
+      const payload = {
+        customer_id: customerIdRef.current,
+        ticket_id: ticketIdRef.current,
+        agent_id: agentId,
+        conversation_id: conversationIdRef.current,
+        interaction_at: new Date().toISOString(),
+        ...interactionData,
+      };
+
+      // Log asynchronously without blocking UI
+      customerInteractionService.createInteraction(payload)
+        .then(response => {
+          if (response.success && response.data?.id) {
+            // Track this interaction ID if we don't have customer/ticket info yet
+            if (!customerIdRef.current || !ticketIdRef.current) {
+              pendingInteractionIdsRef.current.push(response.data.id);
+              console.log('📝 Interaction logged without customer/ticket, tracking for update:', response.data.id);
+            } else {
+              console.log('✅ Interaction logged with customer/ticket:', response.data.id);
+            }
+          }
+        })
+        .catch(err => {
+          console.error('Failed to log interaction:', err);
+          // Silent fail - don't disrupt user experience
+        });
+    } catch (error) {
+      console.error('Error preparing interaction log:', error);
+    }
+  }, []);
+
+  // ---- Helper: Update Pending Interactions ----
+  const updatePendingInteractions = useCallback(async (customerId, ticketId) => {
+    const interactionIds = [...pendingInteractionIdsRef.current];
+
+    if (interactionIds.length === 0) {
+      console.log('📝 No pending interactions to update');
+      return;
+    }
+
+    console.log(`📝 Updating ${interactionIds.length} pending interactions with customer_id: ${customerId}, ticket_id: ${ticketId}`);
+
+    // Update each pending interaction
+    for (const interactionId of interactionIds) {
+      try {
+        await customerInteractionService.updateInteraction(interactionId, {
+          customer_id: customerId,
+          ticket_id: ticketId,
+        });
+        console.log(`✅ Updated interaction ${interactionId} with customer/ticket info`);
+      } catch (err) {
+        console.error(`❌ Failed to update interaction ${interactionId}:`, err);
+      }
+    }
+
+    // Clear pending interactions list
+    pendingInteractionIdsRef.current = [];
+  }, []);
 
   // ---- Mitel SignalR Hook ----
   const { state: connState, on, invoke, error } = useMitelSignalR({
@@ -123,6 +195,7 @@ const TelephonyBar = ({ className = '', onCallEvent }) => {
       if (state === 'Offered' || state === 'Ringing' || state === 'Alerting') {
         console.log('📞 INCOMING CALL DETECTED!');
         setCurrentConversationId(conversation.conversationId);
+        conversationIdRef.current = conversation.conversationId;
 
         const callerInfo = {
           name: conversation.fromName || conversation.ani || 'Unknown',
@@ -136,9 +209,25 @@ const TelephonyBar = ({ className = '', onCallEvent }) => {
         setStatus('RINGING');
         onCallEvent?.('telephony:incoming', conversation);
 
-        // Navigate to ticket creation form with callId as identifier
+        // Log incoming call interaction asynchronously
+        logInteractionAsync({
+          interaction_type: 'call',
+          channel: 'phone',
+          subject: `Incoming call from ${callerInfo.name}`,
+          description: `Call received from ${callerInfo.number} via ${callerInfo.queue}`,
+          metadata: {
+            conversationId: conversation.conversationId,
+            callerNumber: callerInfo.number,
+            callerName: callerInfo.name,
+            queue: callerInfo.queue,
+            callState: 'ringing',
+            direction: 'inbound',
+          },
+        });
+
+        // Navigate to ticket creation form with callId as identifier and conversationId
         // This will auto-populate customer if they exist in the system
-        navigate(`/ticket-management/create?callId=${encodeURIComponent(callerInfo.number)}&source=call`);
+        navigate(`/ticket-management/create?callId=${encodeURIComponent(callerInfo.number)}&source=call&conversationId=${conversation.conversationId}`);
       } else if (state === 'Connected' || state === 'Active' || state === 'Established') {
         console.log('✅ Call connected/active');
         setCurrentConversationId(conversation.conversationId);
@@ -301,27 +390,76 @@ const TelephonyBar = ({ className = '', onCallEvent }) => {
         console.log(`📞 Accepting call: ${currentConversationId}`);
         await mitelService.acceptConversation(currentConversationId);
         console.log('✅ Call accepted');
-        // State will be updated by SignalR event
+
+        // Immediately change status to IN_CALL
+        setStatus('IN_CALL');
+        callStartTimeRef.current = new Date();
+
+        // Log call answered interaction asynchronously
+        logInteractionAsync({
+          interaction_type: 'call',
+          channel: 'phone',
+          subject: `Call answered - ${caller?.name || 'Unknown'}`,
+          description: `Agent answered call from ${caller?.number || 'Unknown'}`,
+          metadata: {
+            conversationId: currentConversationId,
+            callerNumber: caller?.number,
+            callerName: caller?.name,
+            queue: caller?.queue,
+            callState: 'answered',
+            answeredAt: new Date().toISOString(),
+          },
+        });
+
+        // State will also be updated by SignalR event
       } catch (err) {
         console.error('❌ Failed to accept call:', err);
         alert(`Failed to accept call: ${err.message}`);
       }
     }
-  }, [status, currentConversationId]);
+  }, [status, currentConversationId, caller, logInteractionAsync]);
 
   const hangUp = useCallback(async () => {
     if (['IN_CALL', 'RINGING', 'TRANSFERRING'].includes(status) && currentConversationId) {
       try {
         console.log(`📞 Ending call: ${currentConversationId}`);
+
+        // Calculate call duration
+        const callDuration = callStartTimeRef.current
+          ? Math.floor((new Date() - callStartTimeRef.current) / 1000 / 60) // in minutes
+          : timer ? Math.floor(timer / 60) : 0;
+
         await mitelService.endConversation(currentConversationId);
         console.log('✅ Call ended');
+
+        // Log call ended interaction asynchronously
+        logInteractionAsync({
+          interaction_type: 'call',
+          channel: 'phone',
+          subject: `Call ended - ${caller?.name || 'Unknown'}`,
+          description: `Call ended with ${caller?.number || 'Unknown'}. Duration: ${callDuration} minutes`,
+          duration_minutes: callDuration,
+          metadata: {
+            conversationId: currentConversationId,
+            callerNumber: caller?.number,
+            callerName: caller?.name,
+            queue: caller?.queue,
+            callState: 'ended',
+            endedAt: new Date().toISOString(),
+            durationSeconds: timer,
+          },
+        });
+
+        // Reset call start time
+        callStartTimeRef.current = null;
+
         // State will be updated by SignalR event
       } catch (err) {
         console.error('❌ Failed to end call:', err);
         alert(`Failed to end call: ${err.message}`);
       }
     }
-  }, [status, currentConversationId]);
+  }, [status, currentConversationId, caller, timer, logInteractionAsync]);
 
   const toggleMute = useCallback(async () => {
     if (status === 'IN_CALL') {
@@ -345,22 +483,72 @@ const TelephonyBar = ({ className = '', onCallEvent }) => {
     setIsTransferModalOpen(false);
 
     try {
+      const callDuration = callStartTimeRef.current
+        ? Math.floor((new Date() - callStartTimeRef.current) / 1000 / 60)
+        : timer ? Math.floor(timer / 60) : 0;
+
       await invoke('employeeHub', 'transferConversation', {
         target: transferTarget,
         // Add conversation ID and other required params
       });
       setStatus('ENDED');
       onCallEvent?.('telephony:transferred', { caller, target: transferTarget, duration: timer });
+
+      // Log call transfer interaction asynchronously
+      logInteractionAsync({
+        interaction_type: 'call',
+        channel: 'phone',
+        subject: `Call transferred - ${caller?.name || 'Unknown'}`,
+        description: `Call from ${caller?.number || 'Unknown'} transferred to ${transferTarget}`,
+        duration_minutes: callDuration,
+        metadata: {
+          conversationId: currentConversationId,
+          callerNumber: caller?.number,
+          callerName: caller?.name,
+          queue: caller?.queue,
+          callState: 'transferred',
+          transferTarget: transferTarget,
+          transferredAt: new Date().toISOString(),
+          durationSeconds: timer,
+        },
+      });
+
       setTransferTarget('');
+      callStartTimeRef.current = null;
       console.log('✅ Transfer initiated');
     } catch (err) {
       console.error('❌ Transfer failed:', err);
       setStatus('IN_CALL'); // Revert on error
     }
-  }, [transferTarget, caller, timer, invoke, onCallEvent]);
+  }, [transferTarget, caller, timer, currentConversationId, invoke, onCallEvent, logInteractionAsync]);
 
   const completeWrapUp = useCallback(() => {
+    const callDuration = Math.floor(timer / 60);
+
     onCallEvent?.('telephony:wrap_up', { caller, duration: timer, wrapUpCode, notes: wrapUpNotes, type: 'voice' });
+
+    // Log wrap-up interaction asynchronously
+    if (wrapUpCode || wrapUpNotes) {
+      logInteractionAsync({
+        interaction_type: 'note',
+        channel: 'phone',
+        subject: `Call wrap-up - ${wrapUpCode || 'No code selected'}`,
+        description: wrapUpNotes || 'No wrap-up notes provided',
+        duration_minutes: callDuration,
+        notes: wrapUpNotes,
+        metadata: {
+          conversationId: currentConversationId,
+          callerNumber: caller?.number,
+          callerName: caller?.name,
+          queue: caller?.queue,
+          wrapUpCode: wrapUpCode,
+          callState: 'wrapped_up',
+          wrappedUpAt: new Date().toISOString(),
+          durationSeconds: timer,
+        },
+      });
+    }
+
     setStatus('IDLE');
     setCaller(null);
     setTimer(0);
@@ -369,7 +557,46 @@ const TelephonyBar = ({ className = '', onCallEvent }) => {
     setWrapUpCode('');
     setWrapUpNotes('');
     setCurrentConversationId(null);
-  }, [caller, timer, wrapUpCode, wrapUpNotes, onCallEvent]);
+    customerIdRef.current = null;
+    ticketIdRef.current = null;
+  }, [caller, timer, wrapUpCode, wrapUpNotes, currentConversationId, onCallEvent, logInteractionAsync]);
+
+  // ---- Listen for Ticket Created Events ----
+  useEffect(() => {
+    const handleTicketCreated = (event) => {
+      const { ticketId, customerId, ticketNumber, conversationId } = event.detail;
+
+      console.log('📋 Ticket created event received:', {
+        ticketId,
+        customerId,
+        ticketNumber,
+        conversationId,
+        currentConversationId: currentConversationId,
+      });
+
+      // Check if this ticket is for the current conversation
+      if (conversationId && conversationId === currentConversationId) {
+        // Update refs with customer and ticket IDs
+        if (customerId) {
+          customerIdRef.current = customerId;
+          console.log('✅ Customer ID set:', customerId);
+        }
+
+        if (ticketId) {
+          ticketIdRef.current = ticketId;
+          console.log('✅ Ticket ID set:', ticketId);
+        }
+
+        // Update all pending interactions with customer and ticket IDs
+        if (customerId || ticketId) {
+          updatePendingInteractions(customerId, ticketId);
+        }
+      }
+    };
+
+    window.addEventListener('ticketCreated', handleTicketCreated);
+    return () => window.removeEventListener('ticketCreated', handleTicketCreated);
+  }, [currentConversationId, updatePendingInteractions]);
 
   // ---- Keyboard shortcuts ----
   useEffect(() => {

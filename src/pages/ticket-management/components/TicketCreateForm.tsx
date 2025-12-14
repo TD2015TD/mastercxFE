@@ -543,7 +543,8 @@ const TicketCreateForm: React.FC<{
       // Step 2: Create ticket with customer_id
       const ticketData = {
         customer_id: customerId,
-        
+        conversation_id: initialData?.conversationId || null,
+
         // Ticket classification
         priority: formData.priority,
         department: formData.department,
@@ -567,7 +568,7 @@ const TicketCreateForm: React.FC<{
       };
 
       const response = await ticketService.createTicket(ticketData as Parameters<typeof ticketService.createTicket>[0]);
-      
+
       if (response.success) {
         // Show success modal with ticket number
         setCreatedTicket({
@@ -575,6 +576,21 @@ const TicketCreateForm: React.FC<{
           ticket_number: response.data.ticket_number || sequencePreview
         });
         setShowSuccessModal(true);
+
+        // Dispatch custom event to notify TelephonyBar about ticket creation
+        const ticketCreatedEvent = new CustomEvent('ticketCreated', {
+          detail: {
+            ticketId: response.data.id,
+            customerId: response.data.customer_id || selectedCustomer?.id,
+            ticketNumber: response.data.ticket_number || sequencePreview,
+            conversationId: initialData?.conversationId,
+          }
+        });
+        window.dispatchEvent(ticketCreatedEvent);
+        console.log('📋 Ticket created event dispatched:', {
+          ticketId: response.data.id,
+          customerId: response.data.customer_id || selectedCustomer?.id,
+        });
       } else {
         setError(response.message || 'Failed to create ticket');
       }

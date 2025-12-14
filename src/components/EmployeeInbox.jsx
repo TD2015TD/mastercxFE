@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Icon from './AppIcon';
 import Button from './ui/Button';
 import { useMitelSignalR } from '../hooks/useMitelSignalR';
+import customerInteractionService from '../services/customerInteractionService';
 
 const EmployeeInbox = ({ className = '', onConversationEvent }) => {
   const navigate = useNavigate();
@@ -10,6 +11,29 @@ const EmployeeInbox = ({ className = '', onConversationEvent }) => {
   const [filter, setFilter] = useState('all'); // all, voice, email, chat, callback
   const [isExpanded, setIsExpanded] = useState(true);
   const [agentStatus, setAgentStatus] = useState('Offline');
+
+  // ---- Helper: Log Customer Interaction Asynchronously ----
+  const logInteractionAsync = useCallback(async (interactionData) => {
+    try {
+      // Get agent info from localStorage or auth context
+      const authData = JSON.parse(localStorage.getItem('user') || '{}');
+      const agentId = authData?.agent?.id;
+
+      const payload = {
+        agent_id: agentId,
+        interaction_at: new Date().toISOString(),
+        ...interactionData,
+      };
+
+      // Log asynchronously without blocking UI
+      customerInteractionService.createInteraction(payload).catch(err => {
+        console.error('Failed to log interaction:', err);
+        // Silent fail - don't disrupt user experience
+      });
+    } catch (error) {
+      console.error('Error preparing interaction log:', error);
+    }
+  }, []);
 
   // ---- Mitel SignalR Hook ----
   const { state: connState, on } = useMitelSignalR({
@@ -56,6 +80,27 @@ const EmployeeInbox = ({ className = '', onConversationEvent }) => {
           return [newConversation, ...prev];
         });
 
+        // Log conversation added interaction asynchronously
+        logInteractionAsync({
+          interaction_type: newConversation.mediaType?.toLowerCase() === 'email' ? 'email' :
+                           newConversation.mediaType?.toLowerCase() === 'chat' ? 'chat' :
+                           newConversation.mediaType?.toLowerCase() === 'sms' ? 'sms' : 'call',
+          channel: newConversation.mediaType?.toLowerCase() === 'voice' ? 'phone' :
+                   newConversation.mediaType?.toLowerCase() || 'web',
+          subject: `${newConversation.mediaType || 'Conversation'} conversation added - ${newConversation.fromName}`,
+          description: `New ${newConversation.direction?.toLowerCase() || 'inbound'} ${newConversation.mediaType?.toLowerCase() || 'conversation'} from ${newConversation.fromAddress}`,
+          metadata: {
+            conversationId: newConversation.conversationId,
+            mediaType: newConversation.mediaType,
+            direction: newConversation.direction,
+            conversationState: newConversation.conversationState,
+            fromName: newConversation.fromName,
+            fromAddress: newConversation.fromAddress,
+            queueName: newConversation.queueName,
+            subject: newConversation.subject,
+          },
+        });
+
         onConversationEvent?.('inbox:conversation_added', newConversation);
       }
     });
@@ -98,6 +143,30 @@ const EmployeeInbox = ({ className = '', onConversationEvent }) => {
           return [updatedConversation, ...prev];
         });
 
+        // Log conversation state change interaction asynchronously (only for significant state changes)
+        const significantStates = ['Connected', 'Active', 'Established', 'Disconnected', 'Ended', 'Completed'];
+        if (significantStates.includes(updatedConversation.conversationState)) {
+          logInteractionAsync({
+            interaction_type: updatedConversation.mediaType?.toLowerCase() === 'email' ? 'email' :
+                             updatedConversation.mediaType?.toLowerCase() === 'chat' ? 'chat' :
+                             updatedConversation.mediaType?.toLowerCase() === 'sms' ? 'sms' : 'call',
+            channel: updatedConversation.mediaType?.toLowerCase() === 'voice' ? 'phone' :
+                     updatedConversation.mediaType?.toLowerCase() || 'web',
+            subject: `Conversation state changed to ${updatedConversation.conversationState} - ${updatedConversation.fromName}`,
+            description: `${updatedConversation.mediaType || 'Conversation'} from ${updatedConversation.fromAddress} changed to ${updatedConversation.conversationState}`,
+            metadata: {
+              conversationId: updatedConversation.conversationId,
+              mediaType: updatedConversation.mediaType,
+              direction: updatedConversation.direction,
+              conversationState: updatedConversation.conversationState,
+              fromName: updatedConversation.fromName,
+              fromAddress: updatedConversation.fromAddress,
+              queueName: updatedConversation.queueName,
+              eventType: 'state_change',
+            },
+          });
+        }
+
         onConversationEvent?.('inbox:conversation_changed', updatedConversation);
       });
     });
@@ -110,7 +179,34 @@ const EmployeeInbox = ({ className = '', onConversationEvent }) => {
       const idsToRemove = Array.isArray(conversationIds) ? conversationIds : [conversationIds];
 
       idsToRemove.forEach(conversationId => {
+        // Get conversation details before removing for logging
+        const conversation = conversations.find(c => c.conversationId === conversationId);
+
         setConversations(prev => prev.filter(c => c.conversationId !== conversationId));
+
+        // Log conversation removal interaction asynchronously
+        if (conversation) {
+          logInteractionAsync({
+            interaction_type: conversation.mediaType?.toLowerCase() === 'email' ? 'email' :
+                             conversation.mediaType?.toLowerCase() === 'chat' ? 'chat' :
+                             conversation.mediaType?.toLowerCase() === 'sms' ? 'sms' : 'call',
+            channel: conversation.mediaType?.toLowerCase() === 'voice' ? 'phone' :
+                     conversation.mediaType?.toLowerCase() || 'web',
+            subject: `Conversation removed/ended - ${conversation.fromName || 'Unknown'}`,
+            description: `${conversation.mediaType || 'Conversation'} from ${conversation.fromAddress || 'Unknown'} was removed from inbox`,
+            metadata: {
+              conversationId: conversation.conversationId,
+              mediaType: conversation.mediaType,
+              direction: conversation.direction,
+              conversationState: conversation.conversationState,
+              fromName: conversation.fromName,
+              fromAddress: conversation.fromAddress,
+              queueName: conversation.queueName,
+              eventType: 'conversation_removed',
+            },
+          });
+        }
+
         onConversationEvent?.('inbox:conversation_removed', { conversationId });
       });
     });
@@ -157,7 +253,7 @@ const EmployeeInbox = ({ className = '', onConversationEvent }) => {
       offQueueConversationChanged();
       offQueueConversationRemoved();
     };
-  }, [on, onConversationEvent]);
+  }, [on, onConversationEvent, conversations, logInteractionAsync]);
 
   // ---- Filter conversations ----
   const filteredConversations = conversations.filter(conv => {
@@ -212,6 +308,27 @@ const EmployeeInbox = ({ className = '', onConversationEvent }) => {
   const handleConversationClick = useCallback((conversation) => {
     console.log('🖱️ Conversation clicked:', conversation);
 
+    // Log conversation click interaction asynchronously
+    logInteractionAsync({
+      interaction_type: conversation.mediaType?.toLowerCase() === 'email' ? 'email' :
+                       conversation.mediaType?.toLowerCase() === 'chat' ? 'chat' :
+                       conversation.mediaType?.toLowerCase() === 'sms' ? 'sms' : 'call',
+      channel: conversation.mediaType?.toLowerCase() === 'voice' ? 'phone' :
+               conversation.mediaType?.toLowerCase() || 'web',
+      subject: `Conversation clicked - ${conversation.fromName || 'Unknown'}`,
+      description: `Agent opened ${conversation.mediaType?.toLowerCase() || 'conversation'} from ${conversation.fromAddress || 'Unknown'}`,
+      metadata: {
+        conversationId: conversation.conversationId,
+        mediaType: conversation.mediaType,
+        direction: conversation.direction,
+        conversationState: conversation.conversationState,
+        fromName: conversation.fromName,
+        fromAddress: conversation.fromAddress,
+        queueName: conversation.queueName,
+        eventType: 'conversation_clicked',
+      },
+    });
+
     // Navigate based on media type
     if (conversation.mediaType?.toLowerCase() === 'voice' || conversation.mediaType?.toLowerCase() === 'phone') {
       // Navigate to ticket creation with caller information
@@ -225,7 +342,7 @@ const EmployeeInbox = ({ className = '', onConversationEvent }) => {
     }
 
     onConversationEvent?.('inbox:conversation_clicked', conversation);
-  }, [navigate, onConversationEvent]);
+  }, [navigate, onConversationEvent, logInteractionAsync]);
 
   // ---- Connection indicator ----
   const connectionStatus = {

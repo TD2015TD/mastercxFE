@@ -87,7 +87,12 @@ export const customerInteractionService = {
       params.agent_id = agentId;
     }
     const response = await api.get('/customer-interactions', { params });
-    return response.data;
+    // Handle paginated response from Laravel
+    return {
+      success: true,
+      data: response.data.data || response.data, // Extract data array from pagination
+      meta: response.data.meta || null,
+    };
   },
 };
 

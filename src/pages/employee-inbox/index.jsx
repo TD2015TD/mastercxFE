@@ -243,15 +243,13 @@ const EmployeeInboxPage = () => {
       </Helmet>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <BreadcrumbNavigation />
-
         {/* Page Header */}
         <div className="mb-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Icon name="Inbox" size={32} className="text-primary" />
               <div>
-                <h1 className="text-3xl font-bold text-foreground">Employee Inbox</h1>
+                <h1 className="text-3xl font-bold text-foreground">Inbox</h1>
                 <p className="text-sm text-muted-foreground mt-1">
                   Manage all your conversations in one place
                 </p>
@@ -260,24 +258,6 @@ const EmployeeInboxPage = () => {
                 <span className="px-3 py-1.5 bg-primary text-primary-foreground rounded-full text-sm font-medium">
                   {conversations.length} Active
                 </span>
-              )}
-            </div>
-
-            <div className="flex items-center gap-3">
-              <span title={`SignalR: ${connState}`} className="text-2xl">
-                {connectionStatus}
-              </span>
-
-              {/* Agent Status */}
-              {agentStatus && (
-                <div className="flex items-center px-3 py-2 rounded-lg text-sm bg-card border border-border">
-                  <Icon
-                    name={agentStatus === 'Available' ? 'CheckCircle2' : agentStatus === 'Busy' ? 'AlertCircle' : 'Circle'}
-                    size={16}
-                    className={`mr-2 ${agentStatus === 'Available' ? 'text-green-600' : agentStatus === 'Busy' ? 'text-red-600' : 'text-gray-600'}`}
-                  />
-                  <span className="font-medium">{agentStatus}</span>
-                </div>
               )}
             </div>
           </div>
