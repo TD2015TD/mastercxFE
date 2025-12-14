@@ -20,6 +20,7 @@ import KnowledgeBaseContentCreatorPortal from './pages/knowledge-base-content-cr
 import DirectorySearchAndBrowsing from './pages/directory-search-and-browsing';
 import AgentManagement from './pages/agent-management';
 import UserForm from './pages/system-administration/user-management/UserForm';
+import EmployeeInboxPage from './pages/employee-inbox';
 
 const Routes = () => {
   return (
@@ -49,6 +50,7 @@ const Routes = () => {
         <Route path="/knowledge-base-content-creator-portal" element={<Layout><KnowledgeBaseContentCreatorPortal /></Layout>} />
         <Route path="/directory-search-and-browsing" element={<Layout><DirectorySearchAndBrowsing /></Layout>} />
         <Route path="/agent-management" element={<Layout><AgentManagement /></Layout>} />
+        <Route path="/employee-inbox" element={<Layout><EmployeeInboxPage /></Layout>} />
         <Route path="*" element={<NotFound />} />
       </RouterRoutes>
       </ErrorBoundary>

@@ -3,9 +3,9 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import Icon from '../AppIcon';
 import UserProfileDropdown from './UserProfileDropdown';
 import NotificationCenter from './NotificationCenter';
+import ConversationNotification from './ConversationNotification';
 import CommandPalette from './CommandPalette';
 import TelephonyBar from '../TelephonyBar';
-import EmployeeInbox from '../EmployeeInbox';
 
 const Header = ({ user = null, onMenuToggle }) => {
   const location = useLocation();
@@ -221,6 +221,7 @@ const Header = ({ user = null, onMenuToggle }) => {
               <span className="text-xs">Ctrl+/</span>
             </button>
 
+            <ConversationNotification onConversationEvent={handleConversationEvent} />
             <NotificationCenter />
             <UserProfileDropdown user={user} />
           </div>
@@ -279,9 +280,6 @@ const Header = ({ user = null, onMenuToggle }) => {
       <div className="sticky top-16 z-40 space-y-2 px-6 pt-2 bg-background">
         {/* Telephony Bar */}
         <TelephonyBar onCallEvent={handleCallEvent} />
-
-        {/* Employee Inbox */}
-        <EmployeeInbox onConversationEvent={handleConversationEvent} />
       </div>
 
       {/* Command Palette */}

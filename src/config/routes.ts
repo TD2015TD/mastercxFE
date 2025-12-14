@@ -71,8 +71,12 @@ export const routeConfig: Record<string, RouteConfig> = {
     label: 'Global Navigation System', 
     parent: '/system-administration'
   },
-  '/agent-management': { 
-    label: 'Agent Management', 
+  '/agent-management': {
+    label: 'Agent Management',
     parent: '/system-administration'
+  },
+  '/employee-inbox': {
+    label: 'Employee Inbox',
+    parent: '/agent-dashboard'
   }
 };

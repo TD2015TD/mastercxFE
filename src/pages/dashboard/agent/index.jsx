@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { agentService } from '../../../services/agentService';
 import { authService } from '../../../services/authService';
+import { ticketService } from '../../../services/ticketService';
 import mitelService from '../../../services/mitelService';
 import { Helmet } from 'react-helmet';
 import { useNavigate } from 'react-router-dom';
@@ -56,11 +57,46 @@ const AgentDashboard = () => {
   }, [currentUser.id]);
 
   const [stats, setStats] = useState({
-    myTickets: 12,
-    ticketsResolved: 8,
-    avgResponseTime: '8 min',
-    slaCompliance: 94
+    myTickets: 0,
+    ticketsResolved: 0,
+    newToday: 0,
+    avgResponseTime: '0 min',
+    slaCompliance: 0
   });
+  const [isLoadingStats, setIsLoadingStats] = useState(false);
+
+  // Fetch agent statistics
+  useEffect(() => {
+    const fetchAgentStats = async () => {
+      if (!currentUser?.agent?.id) return;
+
+      try {
+        setIsLoadingStats(true);
+        const response = await ticketService.getAgentStatistics(currentUser.agent.id);
+
+        if (response.success) {
+          setStats({
+            myTickets: response.data.activeTickets,
+            ticketsResolved: response.data.resolvedToday,
+            newToday: response.data.newToday,
+            avgResponseTime: response.data.avgResponseTime,
+            slaCompliance: response.data.slaCompliance
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching agent statistics:', error);
+      } finally {
+        setIsLoadingStats(false);
+      }
+    };
+
+    fetchAgentStats();
+
+    // Refresh stats every 5 minutes
+    const interval = setInterval(fetchAgentStats, 5 * 60 * 1000);
+
+    return () => clearInterval(interval);
+  }, [currentUser?.agent?.id]);
 
   const tabs = [
     { 
@@ -192,10 +228,12 @@ const AgentDashboard = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">My Active Tickets</p>
-                <p className="text-3xl font-bold text-foreground mt-1">{stats.myTickets}</p>
+                <p className="text-3xl font-bold text-foreground mt-1">
+                  {isLoadingStats ? '...' : stats.myTickets}
+                </p>
                 <p className="text-sm text-primary mt-2">
                   <Icon name="TrendingUp" size={14} className="inline mr-1" />
-                  3 new today
+                  {stats.newToday} new today
                 </p>
               </div>
               <div className="w-12 h-12 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
@@ -208,8 +246,10 @@ const AgentDashboard = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Resolved Today</p>
-                <p className="text-3xl font-bold text-foreground mt-1">{stats.ticketsResolved}</p>
-                <p className="text-sm text-muted-foreground mt-2">Target: 15</p>
+                <p className="text-3xl font-bold text-foreground mt-1">
+                  {isLoadingStats ? '...' : stats.ticketsResolved}
+                </p>
+                <p className="text-sm text-muted-foreground mt-2">Keep up the good work!</p>
               </div>
               <div className="w-12 h-12 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
                 <Icon name="CheckCircle" size={24} className="text-green-600 dark:text-green-400" />
@@ -221,11 +261,10 @@ const AgentDashboard = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Avg Response Time</p>
-                <p className="text-3xl font-bold text-foreground mt-1">{stats.avgResponseTime}</p>
-                <p className="text-sm text-success mt-2">
-                  <Icon name="TrendingDown" size={14} className="inline mr-1" />
-                  Improved by 20%
+                <p className="text-3xl font-bold text-foreground mt-1">
+                  {isLoadingStats ? '...' : stats.avgResponseTime}
                 </p>
+                <p className="text-sm text-muted-foreground mt-2">Last 7 days</p>
               </div>
               <div className="w-12 h-12 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
                 <Icon name="Clock" size={24} className="text-purple-600 dark:text-purple-400" />
@@ -237,11 +276,10 @@ const AgentDashboard = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">SLA Compliance</p>
-                <p className="text-3xl font-bold text-foreground mt-1">{stats.slaCompliance}%</p>
-                <p className="text-sm text-success mt-2">
-                  <Icon name="Target" size={14} className="inline mr-1" />
-                  Above target
+                <p className="text-3xl font-bold text-foreground mt-1">
+                  {isLoadingStats ? '...' : `${stats.slaCompliance}%`}
                 </p>
+                <p className="text-sm text-muted-foreground mt-2">Last 30 days</p>
               </div>
               <div className="w-12 h-12 rounded-lg bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
                 <Icon name="Target" size={24} className="text-orange-600 dark:text-orange-400" />

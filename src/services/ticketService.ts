@@ -168,6 +168,12 @@ export const ticketService = {
     return response.data;
   },
 
+  // Get agent statistics
+  getAgentStatistics: async (agentId: number) => {
+    const response = await api.get(`/agents/${agentId}/statistics`);
+    return response.data;
+  },
+
   // Get ticket history
   getTicketHistory: async (id: number) => {
     const response = await api.get(`/tickets/${id}/history`);

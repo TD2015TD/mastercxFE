@@ -1,52 +1,91 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Icon from '../../../../components/AppIcon';
 import Button from '../../../../components/ui/Button';
+import { customerInteractionService } from '../../../../services/customerInteractionService';
+import { authService } from '../../../../services/authService';
 
-const RecentInteractions = ({ interactions, onInteractionClick }) => {
+const RecentInteractions = () => {
+  const navigate = useNavigate();
+  const currentUser = authService.getCurrentUser();
+
+  const [interactions, setInteractions] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
   const [filter, setFilter] = useState('all');
+
+  // Fetch recent interactions
+  useEffect(() => {
+    const fetchRecentInteractions = async () => {
+      if (!currentUser?.agent?.id) return;
+
+      try {
+        setIsLoading(true);
+        const response = await customerInteractionService.getRecentInteractions(
+          currentUser.agent.id,
+          7 // Last 7 days
+        );
+
+        if (response.success) {
+          setInteractions(response.data || []);
+        }
+      } catch (error) {
+        console.error('Error fetching recent interactions:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchRecentInteractions();
+
+    // Refresh interactions every 3 minutes
+    const interval = setInterval(fetchRecentInteractions, 3 * 60 * 1000);
+
+    return () => clearInterval(interval);
+  }, [currentUser?.agent?.id]);
 
   const interactionTypes = {
     'call': { icon: 'Phone', color: 'text-primary', bgColor: 'bg-primary/10' },
     'chat': { icon: 'MessageSquare', color: 'text-accent', bgColor: 'bg-accent/10' },
     'email': { icon: 'Mail', color: 'text-warning', bgColor: 'bg-warning/10' },
-    'ticket': { icon: 'Ticket', color: 'text-secondary', bgColor: 'bg-secondary/10' },
-    'social': { icon: 'Share2', color: 'text-success', bgColor: 'bg-success/10' }
+    'sms': { icon: 'MessageCircle', color: 'text-info', bgColor: 'bg-info/10' },
+    'meeting': { icon: 'Video', color: 'text-success', bgColor: 'bg-success/10' },
+    'note': { icon: 'FileText', color: 'text-secondary', bgColor: 'bg-secondary/10' }
   };
 
-  const filteredInteractions = filter === 'all' 
-    ? interactions 
-    : interactions?.filter(interaction => interaction?.type === filter);
+  const filteredInteractions = filter === 'all'
+    ? interactions
+    : interactions?.filter(interaction => interaction?.interaction_type === filter);
+
+  const handleInteractionClick = (interaction) => {
+    if (interaction?.ticket_id) {
+      navigate(`/ticket-management?id=${interaction.ticket?.ticket_number || interaction.ticket_id}`);
+    }
+  };
 
   const formatTimeAgo = (timestamp) => {
     const now = new Date();
     const diff = now - new Date(timestamp);
     const minutes = Math.floor(diff / (1000 * 60));
     const hours = Math.floor(diff / (1000 * 60 * 60));
-    
+
     if (minutes < 1) return 'Just now';
     if (minutes < 60) return `${minutes}m ago`;
     if (hours < 24) return `${hours}h ago`;
     return new Date(timestamp)?.toLocaleDateString();
   };
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'resolved': return 'text-success bg-success/10';
-      case 'pending': return 'text-warning bg-warning/10';
-      case 'escalated': return 'text-error bg-error/10';
-      case 'in_progress': return 'text-primary bg-primary/10';
+  const getSentimentColor = (sentiment) => {
+    switch (sentiment) {
+      case 'positive': return 'text-success bg-success/10';
+      case 'neutral': return 'text-muted-foreground bg-muted';
+      case 'negative': return 'text-error bg-error/10';
       default: return 'text-muted-foreground bg-muted';
     }
   };
 
-  const getStatusLabel = (status) => {
-    switch (status) {
-      case 'resolved': return 'Resolved';
-      case 'pending': return 'Pending';
-      case 'escalated': return 'Escalated';
-      case 'in_progress': return 'In Progress';
-      default: return 'Unknown';
-    }
+  const getSentimentLabel = (sentiment) => {
+    if (!sentiment) return null;
+    return sentiment.charAt(0).toUpperCase() + sentiment.slice(1);
   };
 
   return (
@@ -86,7 +125,12 @@ const RecentInteractions = ({ interactions, onInteractionClick }) => {
       </div>
       {/* Interactions List */}
       <div className="max-h-80 overflow-y-auto">
-        {filteredInteractions?.length === 0 ? (
+        {isLoading && interactions.length === 0 ? (
+          <div className="p-8 text-center">
+            <div className="animate-spin mx-auto mb-2 w-8 h-8 border-2 border-primary border-t-transparent rounded-full"></div>
+            <p className="text-sm text-muted-foreground">Loading interactions...</p>
+          </div>
+        ) : filteredInteractions?.length === 0 ? (
           <div className="p-8 text-center">
             <Icon name="MessageSquare" size={32} className="text-muted-foreground mx-auto mb-2" />
             <p className="text-sm text-muted-foreground">No interactions found</p>
@@ -94,13 +138,13 @@ const RecentInteractions = ({ interactions, onInteractionClick }) => {
         ) : (
           <div className="divide-y divide-border">
             {filteredInteractions?.map((interaction) => {
-              const typeConfig = interactionTypes?.[interaction?.type];
-              
+              const typeConfig = interactionTypes?.[interaction?.interaction_type];
+
               return (
                 <div
                   key={interaction?.id}
                   className="p-4 hover:bg-muted/30 transition-colors duration-200 cursor-pointer"
-                  onClick={() => onInteractionClick(interaction)}
+                  onClick={() => handleInteractionClick(interaction)}
                 >
                   <div className="flex items-start space-x-3">
                     {/* Type Icon */}
@@ -113,17 +157,19 @@ const RecentInteractions = ({ interactions, onInteractionClick }) => {
                       <div className="flex items-start justify-between mb-1">
                         <div className="flex-1">
                           <h4 className="text-sm font-medium text-foreground truncate">
-                            {interaction?.customerName}
+                            {interaction?.customer?.name}
                           </h4>
                           <p className="text-xs text-muted-foreground">
-                            {interaction?.customerEmail}
+                            {interaction?.customer?.email}
                           </p>
                         </div>
-                        <div className="flex items-center space-x-2 ml-2">
-                          <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(interaction?.status)}`}>
-                            {getStatusLabel(interaction?.status)}
-                          </span>
-                        </div>
+                        {interaction?.sentiment && (
+                          <div className="flex items-center space-x-2 ml-2">
+                            <span className={`px-2 py-1 rounded text-xs font-medium ${getSentimentColor(interaction?.sentiment)}`}>
+                              {getSentimentLabel(interaction?.sentiment)}
+                            </span>
+                          </div>
+                        )}
                       </div>
 
                       <p className="text-sm text-foreground mb-2 line-clamp-2">
@@ -133,49 +179,47 @@ const RecentInteractions = ({ interactions, onInteractionClick }) => {
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-2">
                           <span className="text-xs text-muted-foreground">
-                            {formatTimeAgo(interaction?.timestamp)}
+                            {formatTimeAgo(interaction?.interaction_at || interaction?.created_at)}
                           </span>
-                          {interaction?.ticketNumber && (
+                          {interaction?.ticket?.ticket_number && (
                             <>
                               <span className="text-xs text-muted-foreground">•</span>
                               <span className="text-xs text-primary">
-                                {interaction?.ticketNumber}
+                                {interaction?.ticket?.ticket_number}
                               </span>
                             </>
                           )}
                         </div>
-                        
-                        {interaction?.priority && (
-                          <span className={`text-xs px-2 py-1 rounded font-medium ${
-                            interaction?.priority === 'P1' ? 'bg-error text-error-foreground' :
-                            interaction?.priority === 'P2' ? 'bg-warning text-warning-foreground' :
-                            'bg-muted text-muted-foreground'
-                          }`}>
-                            {interaction?.priority}
+
+                        {interaction?.duration_minutes && (
+                          <span className="text-xs text-muted-foreground">
+                            {interaction?.duration_minutes} min
                           </span>
                         )}
                       </div>
 
                       {/* Quick Actions */}
                       <div className="flex items-center space-x-2 mt-2">
-                        {interaction?.type === 'call' && (
+                        {interaction?.interaction_type === 'call' && (
                           <Button variant="ghost" size="sm" iconName="Phone">
                             Call Back
                           </Button>
                         )}
-                        {interaction?.type === 'chat' && (
+                        {interaction?.interaction_type === 'chat' && (
                           <Button variant="ghost" size="sm" iconName="MessageSquare">
                             Continue Chat
                           </Button>
                         )}
-                        {interaction?.type === 'email' && (
+                        {interaction?.interaction_type === 'email' && (
                           <Button variant="ghost" size="sm" iconName="Reply">
                             Reply
                           </Button>
                         )}
-                        <Button variant="ghost" size="sm" iconName="Eye">
-                          View Details
-                        </Button>
+                        {interaction?.ticket_id && (
+                          <Button variant="ghost" size="sm" iconName="Eye">
+                            View Ticket
+                          </Button>
+                        )}
                       </div>
                     </div>
                   </div>
