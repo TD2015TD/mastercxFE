@@ -1,11 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Icon from '../AppIcon';
 import languageService from '../../services/languageService';
+import { updateMitelEmployeeState, createPresenceStatePayload } from '../../services/mitelService';
 
 const UserProfileDropdown = ({ user = null }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [currentLanguage, setCurrentLanguage] = useState('en');
   const [availability, setAvailability] = useState('Available'); // State for availability
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const dropdownRef = useRef(null);
 
   const defaultUser = {
@@ -56,9 +58,31 @@ const UserProfileDropdown = ({ user = null }) => {
     setIsOpen(false);
   };
 
-  const handleAvailabilityChange = (status) => {
-    setAvailability(status);
-    // Add logic to update status in backend or SignalR if needed
+  const handleAvailabilityChange = async (status) => {
+    try {
+      setIsUpdatingStatus(true);
+
+      // Map UI status to Mitel status
+      const mitelStatus = status === 'Do Not Disturb' ? 'DoNotDisturb' : status;
+
+      // Create the payload using the helper function
+      const payload = createPresenceStatePayload(mitelStatus);
+
+      // Update Mitel employee state (using 'me' for current user)
+      const response = await updateMitelEmployeeState('me', payload);
+
+      if (response.success || response.status === 'success') {
+        setAvailability(status);
+        console.log('✅ Mitel status updated successfully:', status);
+      } else {
+        throw new Error(response.message || 'Failed to update status');
+      }
+    } catch (error) {
+      console.error('❌ Failed to update Mitel status:', error);
+      alert('Failed to update status. Please try again.');
+    } finally {
+      setIsUpdatingStatus(false);
+    }
   };
 
   const getRoleDisplayName = (role) => {
@@ -178,17 +202,23 @@ const UserProfileDropdown = ({ user = null }) => {
 
             {/* Availability Status Section */}
             <div className="px-4 py-2">
-              <div className="text-xs font-medium text-muted-foreground mb-2">Status</div>
+              <div className="text-xs font-medium text-muted-foreground mb-2 flex items-center justify-between">
+                <span>Status</span>
+                {isUpdatingStatus && (
+                  <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-primary"></div>
+                )}
+              </div>
               <div className="space-y-1">
                 {['Available', 'Busy', 'Do Not Disturb', 'Offline'].map((status) => (
                   <button
                     key={status}
                     onClick={() => handleAvailabilityChange(status)}
+                    disabled={isUpdatingStatus}
                     className={`w-full flex items-center space-x-3 px-2 py-1 rounded text-sm transition-colors duration-200 ${
                       availability === status
                         ? 'bg-primary text-primary-foreground'
                         : 'text-popover-foreground hover:bg-muted'
-                    }`}
+                    } ${isUpdatingStatus ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
                     <span>{status}</span>
                     {availability === status && (
