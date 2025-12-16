@@ -101,7 +101,7 @@ export const knowledgeBaseService = {
     display_order?: number;
     parent_code?: string;
   }) => {
-    const response = await api.post('/lookups', {
+    const response = await api.post('/admin/lookups', {
       type: 'knowledge_base_category',
       ...data,
       is_active: true
@@ -110,12 +110,12 @@ export const knowledgeBaseService = {
   },
 
   updateCategory: async (id: number, data: Partial<Category>) => {
-    const response = await api.put(`/lookups/${id}`, data);
+    const response = await api.put(`/admin/lookups/${id}`, data);
     return response.data;
   },
 
   deleteCategory: async (id: number) => {
-    const response = await api.delete(`/lookups/${id}`);
+    const response = await api.delete(`/admin/lookups/${id}`);
     return response.data;
   },
 };

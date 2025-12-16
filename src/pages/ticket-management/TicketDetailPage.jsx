@@ -10,6 +10,7 @@ import TicketHeader from './components/TicketHeader';
 import TicketDetails from './components/TicketDetails';
 import TicketActivityTimeline from './components/TicketActivityTimeline';
 import TicketAttachments from './components/TicketAttachments';
+import { toast } from 'react-toastify';
 
 const TicketDetailPage = () => {
   const { id } = useParams();
@@ -120,11 +121,12 @@ const TicketDetailPage = () => {
         if (response.success) {
           setTicket(response.data);
           setShowStatusModal(false);
+          toast.success('Ticket status updated successfully');
           await loadTicket();
         }
       } catch (err) {
         console.error('Error updating status:', err);
-        alert('Failed to update status');
+        toast.error('Failed to update status');
       }
     } else {
       setShowStatusModal(false);
@@ -199,11 +201,12 @@ const TicketDetailPage = () => {
           setTicket(response.data);
           setShowTransferModal(false);
           setSelectedAgent(null);
+          toast.success('Ticket transferred successfully');
           await loadTicket();
         }
       } catch (err) {
         console.error('Error transferring ticket:', err);
-        alert('Failed to transfer ticket: ' + (err.response?.data?.message || err.message));
+        toast.error('Failed to transfer ticket: ' + (err.response?.data?.message || err.message));
       }
     } else {
       setShowTransferModal(false);
@@ -216,11 +219,12 @@ const TicketDetailPage = () => {
         const response = await ticketService.closeTicket(ticket.id);
         if (response.success) {
           setTicket(response.data);
+          toast.success('Ticket closed successfully');
           await loadTicket();
         }
       } catch (err) {
         console.error('Error closing ticket:', err);
-        alert('Failed to close ticket');
+        toast.error('Failed to close ticket');
       }
     }
   };

@@ -1,50 +1,71 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import Icon from '../../../../components/AppIcon';
 import Button from '../../../../components/ui/Button';
+import { toast } from 'react-toastify';
 
 const ArticleForm = ({ article, categories, onSave, onClose, isLoading }) => {
   const [formData, setFormData] = useState({
     title: '',
-    content: '',
-    category: '',
-    tags: [],
+    category_code: '',
     status: 'draft'
   });
-  const [tagInput, setTagInput] = useState('');
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [fileError, setFileError] = useState('');
 
   useEffect(() => {
     if (article) {
       setFormData({
         title: article.title || '',
-        content: article.content || '',
-        category: article.category || '',
-        tags: article.tags || [],
+        category_code: article.category_code || article.category || '',
         status: article.status || 'draft'
       });
     }
   }, [article]);
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    onSave(formData);
-  };
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const allowedTypes = [
+        'application/pdf',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'text/plain'
+      ];
 
-  const handleAddTag = (e) => {
-    e.preventDefault();
-    if (tagInput.trim() && !formData.tags.includes(tagInput.trim())) {
-      setFormData({
-        ...formData,
-        tags: [...formData.tags, tagInput.trim()]
-      });
-      setTagInput('');
+      if (!allowedTypes.includes(file.type)) {
+        const errorMsg = 'Invalid file type. Only PDF, DOC, DOCX, and TXT files are allowed.';
+        setFileError(errorMsg);
+        toast.error(errorMsg);
+        e.target.value = '';
+        return;
+      }
+
+      if (file.size > 10 * 1024 * 1024) {
+        const errorMsg = 'File size exceeds 10MB limit.';
+        setFileError(errorMsg);
+        toast.error(errorMsg);
+        e.target.value = '';
+        return;
+      }
+
+      setSelectedFile(file);
+      setFileError('');
     }
   };
 
-  const handleRemoveTag = (tagToRemove) => {
-    setFormData({
-      ...formData,
-      tags: formData.tags.filter(tag => tag !== tagToRemove)
-    });
+  const handleSubmit = (e) => {
+    e.preventDefault();
+
+    // Check if file is required (for new articles)
+    if (!article && !selectedFile) {
+      const errorMsg = 'Please select a document file to upload';
+      setFileError(errorMsg);
+      toast.error(errorMsg);
+      return;
+    }
+
+    // Pass both formData and selectedFile to parent
+    onSave({ ...formData, file: selectedFile });
   };
 
   return (
@@ -86,13 +107,15 @@ const ArticleForm = ({ article, categories, onSave, onClose, isLoading }) => {
               </label>
               <select
                 required
-                value={formData.category}
-                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                value={formData.category_code}
+                onChange={(e) => setFormData({ ...formData, category_code: e.target.value })}
                 className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground focus:ring-2 focus:ring-primary focus:border-transparent"
               >
                 <option value="">Select a category</option>
                 {categories.map(cat => (
-                  <option key={cat.code} value={cat.code}>{cat.value}</option>
+                  <option key={cat.code} value={cat.code}>
+                    {cat.name || cat.value || cat.name_en}
+                  </option>
                 ))}
               </select>
             </div>
@@ -114,70 +137,54 @@ const ArticleForm = ({ article, categories, onSave, onClose, isLoading }) => {
             </div>
           </div>
 
-          {/* Content */}
+          {/* File Upload */}
           <div>
             <label className="block text-sm font-medium text-foreground mb-2">
-              Content *
+              Document File {!article && '*'}
             </label>
-            <textarea
-              required
-              value={formData.content}
-              onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-              rows={12}
-              className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground focus:ring-2 focus:ring-primary focus:border-transparent font-mono text-sm"
-              placeholder="Enter article content... You can use HTML or Markdown"
+            <input
+              type="file"
+              onChange={handleFileChange}
+              accept=".pdf,.doc,.docx,.txt"
+              className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground focus:ring-2 focus:ring-primary focus:border-transparent file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90"
+              required={!article}
             />
             <p className="text-xs text-muted-foreground mt-1">
-              Supports HTML and Markdown formatting
+              Supported formats: PDF, DOC, DOCX, TXT (Max 10MB)
             </p>
-          </div>
-
-          {/* Tags */}
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-2">
-              Tags
-            </label>
-            <div className="flex items-center space-x-2 mb-2">
-              <input
-                type="text"
-                value={tagInput}
-                onChange={(e) => setTagInput(e.target.value)}
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter') {
-                    handleAddTag(e);
-                  }
-                }}
-                className="flex-1 px-3 py-2 border border-border rounded-md bg-background text-foreground focus:ring-2 focus:ring-primary focus:border-transparent"
-                placeholder="Add a tag and press Enter"
-              />
-              <Button
-                type="button"
-                variant="outline"
-                iconName="Plus"
-                onClick={handleAddTag}
-              >
-                Add Tag
-              </Button>
-            </div>
-            {formData.tags.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {formData.tags.map((tag, idx) => (
-                  <span
-                    key={idx}
-                    className="inline-flex items-center px-3 py-1 bg-primary/10 text-primary text-sm rounded-md"
-                  >
-                    {tag}
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveTag(tag)}
-                      className="ml-2 text-primary hover:text-primary/70"
-                    >
-                      <Icon name="X" size={14} />
-                    </button>
-                  </span>
-                ))}
+            {article && (
+              <p className="text-xs text-muted-foreground mt-1">
+                Leave empty to keep the current document
+              </p>
+            )}
+            {selectedFile && (
+              <div className="mt-2 flex items-center gap-2 text-sm text-foreground bg-primary/10 px-3 py-2 rounded">
+                <Icon name="FileText" size={16} />
+                <span>{selectedFile.name}</span>
+                <span className="text-muted-foreground">
+                  ({(selectedFile.size / 1024 / 1024).toFixed(2)} MB)
+                </span>
               </div>
             )}
+            {fileError && (
+              <p className="text-xs text-red-500 mt-1">{fileError}</p>
+            )}
+          </div>
+
+          {/* Info Box */}
+          <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-md p-4">
+            <div className="flex items-start gap-2">
+              <Icon name="Info" size={16} className="text-blue-600 dark:text-blue-400 mt-0.5" />
+              <div className="text-sm text-blue-800 dark:text-blue-200">
+                <p className="font-medium mb-1">How it works:</p>
+                <ul className="list-disc list-inside space-y-1 text-xs">
+                  <li>Upload a PDF, Word document, or text file</li>
+                  <li>The system will automatically extract and index the text content</li>
+                  <li>You can only edit the title and category after upload</li>
+                  <li>To change the content, upload a new document</li>
+                </ul>
+              </div>
+            </div>
           </div>
 
           {/* Actions */}
@@ -195,7 +202,7 @@ const ArticleForm = ({ article, categories, onSave, onClose, isLoading }) => {
               variant="default"
               disabled={isLoading}
             >
-              {isLoading ? 'Saving...' : article ? 'Update Article' : 'Create Article'}
+              {isLoading ? 'Processing...' : article ? 'Update Article' : 'Create Article'}
             </Button>
           </div>
         </form>

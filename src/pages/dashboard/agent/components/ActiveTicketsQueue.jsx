@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import Icon from '../../../../components/AppIcon';
 import Button from '../../../../components/ui/Button';
 import { ticketService } from '../../../../services/ticketService';
@@ -165,10 +166,11 @@ const ActiveTicketsQueue = ({ fullView = false }) => {
             ticket.id === ticketId ? { ...ticket, status: newStatus } : ticket
           )
         );
+        toast.success('Ticket status updated successfully');
       }
     } catch (error) {
       console.error('Error updating ticket status:', error);
-      alert('Failed to update ticket status');
+      toast.error('Failed to update ticket status');
     }
   };
 

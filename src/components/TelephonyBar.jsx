@@ -5,6 +5,7 @@ import Button from './ui/Button';
 import { useMitelSignalR } from '../hooks/useMitelSignalR';
 import mitelService from '../services/mitelService';
 import customerInteractionService from '../services/customerInteractionService';
+import { toast } from 'react-toastify';
 
 const TelephonyBar = ({ className = '', onCallEvent }) => {
   const navigate = useNavigate();
@@ -414,7 +415,7 @@ const TelephonyBar = ({ className = '', onCallEvent }) => {
         // State will also be updated by SignalR event
       } catch (err) {
         console.error('❌ Failed to accept call:', err);
-        alert(`Failed to accept call: ${err.message}`);
+        toast.error(`Failed to accept call: ${err.message}`);
       }
     }
   }, [status, currentConversationId, caller, logInteractionAsync]);
@@ -456,7 +457,7 @@ const TelephonyBar = ({ className = '', onCallEvent }) => {
         // State will be updated by SignalR event
       } catch (err) {
         console.error('❌ Failed to end call:', err);
-        alert(`Failed to end call: ${err.message}`);
+        toast.error(`Failed to end call: ${err.message}`);
       }
     }
   }, [status, currentConversationId, caller, timer, logInteractionAsync]);

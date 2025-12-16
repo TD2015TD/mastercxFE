@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import Icon from '../AppIcon';
 import languageService from '../../services/languageService';
 import { updateMitelEmployeeState, createPresenceStatePayload } from '../../services/mitelService';
+import { toast } from 'react-toastify';
 
 const UserProfileDropdown = ({ user = null }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -79,7 +80,7 @@ const UserProfileDropdown = ({ user = null }) => {
       }
     } catch (error) {
       console.error('❌ Failed to update Mitel status:', error);
-      alert('Failed to update status. Please try again.');
+      toast.error('Failed to update status. Please try again.');
     } finally {
       setIsUpdatingStatus(false);
     }

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import Button from '../../../components/ui/Button';
 import Input from '../../../components/ui/Input';
 import Select from '../../../components/ui/Select';
@@ -121,10 +122,10 @@ const LoginForm = () => {
   };
 
   const handleForgotPassword = () => {
-    const message = currentLanguage === 'ms' 
+    const message = currentLanguage === 'ms'
       ? 'Sila hubungi pentadbir sistem untuk tetapan semula kata laluan.'
       : 'Please contact your system administrator for password reset.';
-    alert(message);
+    toast.info(message);
   };
 
   return (

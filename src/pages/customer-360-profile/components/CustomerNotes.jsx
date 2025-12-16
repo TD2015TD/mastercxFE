@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { toast } from 'react-toastify';
 import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
 import api from '../../../services/api';
@@ -49,13 +50,13 @@ const CustomerNotes = ({ customerId }) => {
 
   const handleSaveNote = async () => {
     if (!noteContent.trim()) {
-      alert('Please enter note content');
+      toast.error('Please enter note content');
       return;
     }
 
     try {
       setIsSaving(true);
-      
+
       if (editingNote) {
         // Update existing note
         const response = await api.put(`/customers/${customerId}/notes/${editingNote.id}`, {
@@ -66,6 +67,7 @@ const CustomerNotes = ({ customerId }) => {
         if (response.data.success) {
           setShowAddModal(false);
           loadNotes();
+          toast.success('Note updated successfully');
         }
       } else {
         // Create new note
@@ -77,11 +79,12 @@ const CustomerNotes = ({ customerId }) => {
         if (response.data.success) {
           setShowAddModal(false);
           loadNotes();
+          toast.success('Note added successfully');
         }
       }
     } catch (error) {
       console.error('Error saving note:', error);
-      alert(error.response?.data?.message || 'Failed to save note');
+      toast.error(error.response?.data?.message || 'Failed to save note');
     } finally {
       setIsSaving(false);
     }
@@ -95,10 +98,11 @@ const CustomerNotes = ({ customerId }) => {
 
       if (response.data.success) {
         loadNotes();
+        toast.success(note.is_pinned ? 'Note unpinned' : 'Note pinned');
       }
     } catch (error) {
       console.error('Error toggling pin:', error);
-      alert(error.response?.data?.message || 'Failed to update note');
+      toast.error(error.response?.data?.message || 'Failed to update note');
     }
   };
 
@@ -109,13 +113,14 @@ const CustomerNotes = ({ customerId }) => {
 
     try {
       const response = await api.delete(`/customers/${customerId}/notes/${noteId}`);
-      
+
       if (response.data.success) {
         loadNotes();
+        toast.success('Note deleted successfully');
       }
     } catch (error) {
       console.error('Error deleting note:', error);
-      alert(error.response?.data?.message || 'Failed to delete note');
+      toast.error(error.response?.data?.message || 'Failed to delete note');
     }
   };
 

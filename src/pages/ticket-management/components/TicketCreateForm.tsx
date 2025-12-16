@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import { ticketService } from '../../../services/ticketService';
 import { ticketSequenceService } from '../../../services/ticketSequenceService';
 import lookupService from '../../../services/lookupService';
@@ -608,7 +609,7 @@ const TicketCreateForm: React.FC<{
   const handleSaveDraft = () => {
     // Save to localStorage as draft
     localStorage.setItem('ticket_draft', JSON.stringify(formData));
-    alert('Draft saved successfully!');
+    toast.success('Draft saved successfully!');
   };
 
   return (

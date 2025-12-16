@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { toast } from 'react-toastify';
 import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
 import Input from '../../../components/ui/Input';
@@ -108,14 +109,14 @@ const DashboardPersonalization = () => {
 
     setSavedDashboards(prev => [...prev, newDashboard]);
     setIsCustomizing(false);
-    alert('Dashboard saved successfully!');
+    toast.success('Dashboard saved successfully!');
   };
 
   const handleLoadDashboard = (dashboard) => {
     if (dashboard?.config) {
       setDashboardConfig(dashboard?.config);
     }
-    alert(`Loaded dashboard: ${dashboard?.name}`);
+    toast.success(`Loaded dashboard: ${dashboard?.name}`);
   };
 
   const handleSetDefault = (dashboardId) => {
@@ -125,6 +126,7 @@ const DashboardPersonalization = () => {
         isDefault: dashboard?.id === dashboardId
       }))
     );
+    toast.success('Default dashboard updated');
   };
 
   const handleDeleteDashboard = (dashboardId) => {

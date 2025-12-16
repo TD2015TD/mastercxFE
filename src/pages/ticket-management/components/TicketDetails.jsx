@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { toast } from 'react-toastify';
 import { ticketService } from '../../../services/ticketService';
 import lookupService from '../../../services/lookupService';
 import Button from '../../../components/ui/Button';
@@ -58,12 +59,13 @@ const TicketDetails = ({ ticket, onUpdate }) => {
           onUpdate(editData);
         }
         setIsEditing(false);
+        toast.success('Ticket updated successfully');
       } else {
-        alert('Failed to update ticket: ' + (response.message || 'Unknown error'));
+        toast.error('Failed to update ticket: ' + (response.message || 'Unknown error'));
       }
     } catch (error) {
       console.error('Error updating ticket:', error);
-      alert('Failed to update ticket. Please try again.');
+      toast.error('Failed to update ticket. Please try again.');
     } finally {
       setIsSaving(false);
     }

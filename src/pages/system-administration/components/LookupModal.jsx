@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { toast } from 'react-toastify';
 import api from '../../../services/api';
 import Button from '../../../components/ui/Button';
 import JsonEditor from './JsonEditor';
@@ -22,9 +23,9 @@ const LookupModal = ({ lookup, lookupTypes, onClose, onSave }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (jsonError) {
-      alert('Please fix JSON errors before saving');
+      toast.error('Please fix JSON errors before saving');
       return;
     }
 
@@ -33,13 +34,15 @@ const LookupModal = ({ lookup, lookupTypes, onClose, onSave }) => {
       const payload = { ...formData };
 
       if (lookup) {
-        await api.put(`/lookups/${lookup.id}`, payload);
+        await api.put(`/admin/lookups/${lookup.id}`, payload);
+        toast.success('Lookup updated successfully');
       } else {
-        await api.post('/lookups', payload);
+        await api.post('/admin/lookups', payload);
+        toast.success('Lookup created successfully');
       }
       onSave();
     } catch (error) {
-      alert(error.response?.data?.message || 'Failed to save lookup');
+      toast.error(error.response?.data?.message || 'Failed to save lookup');
     } finally {
       setLoading(false);
     }

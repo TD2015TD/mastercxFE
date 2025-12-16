@@ -161,7 +161,7 @@ const KnowledgeBasePortal = () => {
 
       <div className="min-h-screen bg-background">
         <main className="container mx-auto px-6 py-8 max-w-7xl">
-          {/* Header */}}
+          {/* Header */}
           <div className="mb-8">
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
               <div>

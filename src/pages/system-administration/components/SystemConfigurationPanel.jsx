@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { toast } from 'react-toastify';
 import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
 import { Checkbox } from '../../../components/ui/Checkbox';
@@ -155,18 +156,20 @@ const SystemConfigurationPanel = () => {
     try {
       await api.delete(`/categories/${id}`);
       loadCategories();
+      toast.success('Category deleted successfully');
     } catch (error) {
-      alert(error.response?.data?.message || 'Failed to delete category');
+      toast.error(error.response?.data?.message || 'Failed to delete category');
     }
   };
 
   const handleDeleteLookup = async (id) => {
     if (!confirm('Are you sure you want to delete this lookup?')) return;
     try {
-      await api.delete(`/lookups/${id}`);
+      await api.delete(`/admin/lookups/${id}`);
       loadLookups();
+      toast.success('Lookup deleted successfully');
     } catch (error) {
-      alert(error.response?.data?.message || 'Failed to delete lookup');
+      toast.error(error.response?.data?.message || 'Failed to delete lookup');
     }
   };
 

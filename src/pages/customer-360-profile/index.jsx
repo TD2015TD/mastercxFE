@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import { Helmet } from 'react-helmet-async';
 import BreadcrumbNavigation from '../../components/ui/BreadcrumbNavigation';
 import Icon from '../../components/AppIcon';
@@ -105,20 +106,21 @@ const CustomerListingPage = () => {
       if (response.success) {
         setIsAddModalOpen(false);
         await loadCustomers(); // Reload the list
+        toast.success('Customer added successfully');
         // Optionally navigate to the new customer's detail page
         if (response.data?.id) {
           navigate(`/customer-360-profile/${response.data.id}`);
         }
       } else {
-        alert(response.message || 'Failed to add customer');
+        toast.error(response.message || 'Failed to add customer');
       }
     } catch (err) {
       console.error('Error creating customer:', err);
-      const errorMessage = err.response?.data?.message || 
-                          err.response?.data?.errors ? 
+      const errorMessage = err.response?.data?.message ||
+                          err.response?.data?.errors ?
                           Object.values(err.response.data.errors).flat().join('\n') :
                           'Failed to add customer';
-      alert(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setIsSaving(false);
     }

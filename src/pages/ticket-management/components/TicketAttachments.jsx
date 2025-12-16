@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { toast } from 'react-toastify';
 import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
 import { ticketService } from '../../../services/ticketService';
@@ -37,7 +38,7 @@ const TicketAttachments = ({ ticketId }) => {
     if (file) {
       // Check file size (max 10MB)
       if (file.size > 10 * 1024 * 1024) {
-        alert('File size must be less than 10MB');
+        toast.error('File size must be less than 10MB');
         return;
       }
       setSelectedFile(file);
@@ -46,7 +47,7 @@ const TicketAttachments = ({ ticketId }) => {
 
   const handleUpload = async () => {
     if (!selectedFile) {
-      alert('Please select a file');
+      toast.error('Please select a file');
       return;
     }
 
@@ -56,17 +57,19 @@ const TicketAttachments = ({ ticketId }) => {
       setUploadProgress(0);
 
       const response = await ticketService.uploadAttachment(ticketId, selectedFile, description);
-      
+
       if (response.success) {
         setAttachments([response.data, ...attachments]);
         setSelectedFile(null);
         setDescription('');
         // Reset file input
         document.getElementById('file-input').value = '';
+        toast.success('File uploaded successfully');
       }
     } catch (err) {
       console.error('Error uploading file:', err);
       setError('Failed to upload file');
+      toast.error('Failed to upload file');
     } finally {
       setIsUploading(false);
       setUploadProgress(0);
@@ -82,10 +85,11 @@ const TicketAttachments = ({ ticketId }) => {
       const response = await ticketService.deleteAttachment(ticketId, attachmentId);
       if (response.success) {
         setAttachments(attachments.filter(a => a.id !== attachmentId));
+        toast.success('Attachment deleted successfully');
       }
     } catch (err) {
       console.error('Error deleting attachment:', err);
-      alert('Failed to delete attachment');
+      toast.error('Failed to delete attachment');
     }
   };
 
@@ -94,7 +98,7 @@ const TicketAttachments = ({ ticketId }) => {
       await ticketService.downloadAttachment(ticketId, attachmentId, fileName);
     } catch (err) {
       console.error('Error downloading file:', err);
-      alert('Failed to download file');
+      toast.error('Failed to download file');
     }
   };
 

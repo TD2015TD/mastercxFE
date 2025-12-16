@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { toast } from 'react-toastify';
 import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
 import api from '../../../services/api';
@@ -37,7 +38,7 @@ const CustomerDocuments = ({ customerId }) => {
     if (file) {
       // Check file size (10MB limit)
       if (file.size > 10 * 1024 * 1024) {
-        alert('File size must be less than 10MB');
+        toast.error('File size must be less than 10MB');
         return;
       }
       setSelectedFile(file);
@@ -46,7 +47,7 @@ const CustomerDocuments = ({ customerId }) => {
 
   const handleUpload = async () => {
     if (!selectedFile) {
-      alert('Please select a file');
+      toast.error('Please select a file');
       return;
     }
 
@@ -69,10 +70,11 @@ const CustomerDocuments = ({ customerId }) => {
         setSelectedFile(null);
         setDescription('');
         loadAttachments();
+        toast.success('Document uploaded successfully');
       }
     } catch (error) {
       console.error('Error uploading file:', error);
-      alert(error.response?.data?.message || 'Failed to upload file');
+      toast.error(error.response?.data?.message || 'Failed to upload file');
     } finally {
       setIsUploading(false);
     }
@@ -85,13 +87,14 @@ const CustomerDocuments = ({ customerId }) => {
 
     try {
       const response = await api.delete(`/customers/${customerId}/attachments/${attachmentId}`);
-      
+
       if (response.data.success) {
         loadAttachments();
+        toast.success('Document deleted successfully');
       }
     } catch (error) {
       console.error('Error deleting attachment:', error);
-      alert(error.response?.data?.message || 'Failed to delete document');
+      toast.error(error.response?.data?.message || 'Failed to delete document');
     }
   };
 

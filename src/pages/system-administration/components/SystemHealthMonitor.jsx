@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { toast } from 'react-toastify';
 import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
 import {
@@ -72,9 +73,10 @@ const SystemHealthMonitor = () => {
     try {
       await acknowledgeAlert(alertId);
       fetchAllData();
+      toast.success('Alert acknowledged');
     } catch (err) {
       console.error('Error acknowledging alert:', err);
-      alert('Failed to acknowledge alert');
+      toast.error('Failed to acknowledge alert');
     }
   };
 
@@ -83,11 +85,11 @@ const SystemHealthMonitor = () => {
 
     try {
       await restartService(serviceName);
-      alert(`${serviceName} restart initiated`);
+      toast.success(`${serviceName} restart initiated`);
       setTimeout(fetchAllData, 2000);
     } catch (err) {
       console.error('Error restarting service:', err);
-      alert('Failed to restart service');
+      toast.error('Failed to restart service');
     }
   };
 
@@ -95,12 +97,16 @@ const SystemHealthMonitor = () => {
     try {
       const response = await performHealthCheck();
       if (response.success) {
-        alert(response.healthy ? 'System is healthy!' : 'System health check detected issues');
+        if (response.healthy) {
+          toast.success('System is healthy!');
+        } else {
+          toast.warning('System health check detected issues');
+        }
         fetchAllData();
       }
     } catch (err) {
       console.error('Error performing health check:', err);
-      alert('Failed to perform health check');
+      toast.error('Failed to perform health check');
     }
   };
 

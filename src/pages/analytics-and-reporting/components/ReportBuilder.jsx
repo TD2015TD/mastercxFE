@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-
+import { toast } from 'react-toastify';
 import Button from '../../../components/ui/Button';
 import Input from '../../../components/ui/Input';
 import Select from '../../../components/ui/Select';
@@ -103,14 +103,14 @@ const ReportBuilder = () => {
 
   const handleGenerateReport = async () => {
     setIsGenerating(true);
-    
+
     // Simulate report generation
     await new Promise(resolve => setTimeout(resolve, 3000));
-    
+
     setIsGenerating(false);
-    
+
     // Show success message or download file
-    alert('Report generated successfully! Download will begin shortly.');
+    toast.success('Report generated successfully! Download will begin shortly.');
   };
 
   const handleSaveTemplate = () => {
@@ -119,12 +119,12 @@ const ReportBuilder = () => {
       id: Date.now(),
       createdAt: new Date()?.toISOString()
     };
-    
+
     const savedTemplates = JSON.parse(localStorage.getItem('report-templates') || '[]');
     savedTemplates?.push(template);
     localStorage.setItem('report-templates', JSON.stringify(savedTemplates));
-    
-    alert('Report template saved successfully!');
+
+    toast.success('Report template saved successfully!');
   };
 
   return (

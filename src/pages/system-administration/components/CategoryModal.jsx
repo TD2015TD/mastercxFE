@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { toast } from 'react-toastify';
 import api from '../../../services/api';
 import Button from '../../../components/ui/Button';
 
@@ -68,12 +69,14 @@ const CategoryModal = ({ category, categories, onClose, onSave }) => {
       
       if (category) {
         await api.put(`/categories/${category.id}`, submitData);
+        toast.success('Category updated successfully');
       } else {
         await api.post('/categories', submitData);
+        toast.success('Category created successfully');
       }
       onSave();
     } catch (error) {
-      alert(error.response?.data?.message || 'Failed to save category');
+      toast.error(error.response?.data?.message || 'Failed to save category');
     } finally {
       setLoading(false);
     }

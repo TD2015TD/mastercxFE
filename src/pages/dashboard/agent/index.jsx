@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { toast } from 'react-toastify';
 import { agentService } from '../../../services/agentService';
 import { authService } from '../../../services/authService';
 import { ticketService } from '../../../services/ticketService';
@@ -162,13 +163,13 @@ const AgentDashboard = () => {
         console.error('Failed to update employee state:', result?.message);
         // Revert the status on error
         setUserStatus(previousStatus);
-        alert(`Failed to update status: ${result?.message || 'Unknown error'}`);
+        toast.error(`Failed to update status: ${result?.message || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('Error updating employee state:', error);
       // Revert the status on error
       setUserStatus(previousStatus);
-      alert(`Error updating status: ${error.message || 'Network error'}`);
+      toast.error(`Error updating status: ${error.message || 'Network error'}`);
     } finally {
       setIsUpdatingStatus(false);
     }

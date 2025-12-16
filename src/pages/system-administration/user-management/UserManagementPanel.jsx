@@ -5,13 +5,14 @@ import Input from '../../../components/ui/Input';
 import Select from '../../../components/ui/Select';
 import { Checkbox } from '../../../components/ui/Checkbox';
 import Icon from '../../../components/AppIcon';
-import { 
-  getUsers, 
-  bulkActivateUsers, 
-  bulkDeactivateUsers, 
+import {
+  getUsers,
+  bulkActivateUsers,
+  bulkDeactivateUsers,
   bulkDeleteUsers,
-  updateUserStatus 
+  updateUserStatus
 } from '../../../services/userService';
+import { toast } from 'react-toastify';
 
 const UserManagementPanel = () => {
   const navigate = useNavigate();
@@ -67,35 +68,38 @@ const UserManagementPanel = () => {
   const handleBulkActivate = async () => {
     try {
       await bulkActivateUsers(selectedUsers);
+      toast.success('Users activated successfully');
       setSelectedUsers([]);
       fetchUsers();
     } catch (err) {
       console.error('Error activating users:', err);
-      alert('Failed to activate users');
+      toast.error('Failed to activate users');
     }
   };
 
   const handleBulkDeactivate = async () => {
     try {
       await bulkDeactivateUsers(selectedUsers);
+      toast.success('Users deactivated successfully');
       setSelectedUsers([]);
       fetchUsers();
     } catch (err) {
       console.error('Error deactivating users:', err);
-      alert('Failed to deactivate users');
+      toast.error('Failed to deactivate users');
     }
   };
 
   const handleBulkDelete = async () => {
     if (!confirm('Are you sure you want to delete the selected users?')) return;
-    
+
     try {
       await bulkDeleteUsers(selectedUsers);
+      toast.success('Users deleted successfully');
       setSelectedUsers([]);
       fetchUsers();
     } catch (err) {
       console.error('Error deleting users:', err);
-      alert('Failed to delete users');
+      toast.error('Failed to delete users');
     }
   };
 
@@ -103,10 +107,11 @@ const UserManagementPanel = () => {
     try {
       const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
       await updateUserStatus(userId, newStatus);
+      toast.success('User status updated successfully');
       fetchUsers();
     } catch (err) {
       console.error('Error updating user status:', err);
-      alert('Failed to update user status');
+      toast.error('Failed to update user status');
     }
   };
 

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import { Helmet } from 'react-helmet-async';
 import BreadcrumbNavigation from '../../components/ui/BreadcrumbNavigation';
 import Icon from '../../components/AppIcon';
@@ -120,16 +121,17 @@ const CustomerDetailPage = () => {
         // Reload customer data to get updated information
         await loadCustomer();
         setIsEditModalOpen(false);
+        toast.success('Customer profile updated successfully');
       } else {
-        alert(response.message || 'Failed to update customer profile');
+        toast.error(response.message || 'Failed to update customer profile');
       }
     } catch (err) {
       console.error('Error updating customer:', err);
-      const errorMessage = err.response?.data?.message || 
-                          err.response?.data?.errors ? 
+      const errorMessage = err.response?.data?.message ||
+                          err.response?.data?.errors ?
                           Object.values(err.response.data.errors).flat().join('\n') :
                           'Failed to update customer profile';
-      alert(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setIsSaving(false);
     }
