@@ -169,4 +169,9 @@ export const authService = {
       console.error('Error storing user data to localStorage:', err);
     }
   },
+
+  // Get Mitel token from localStorage
+  getMitelToken: (): string | null => {
+    return localStorage.getItem('mitel_token');
+  },
 };

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { softphone, CallSession } from '../services/webrtcSoftphone';
+import { softphone } from '../services/webrtcSoftphone';
+import type { CallSession } from '../services/webrtcSoftphone';
 
 interface SoftphoneState {
   isInitializing: boolean;
@@ -22,17 +23,27 @@ export const useWebRTCSoftphone = () => {
 
   /**
    * Initialize the softphone
+   * @param employeeId - The employee ID to initialize the softphone for
    */
-  const initialize = useCallback(async () => {
+  const initialize = useCallback(async (employeeId: string) => {
     if (isInitializedRef.current) {
       console.log('[useWebRTCSoftphone] Already initialized');
+      return;
+    }
+
+    if (!employeeId) {
+      console.error('[useWebRTCSoftphone] Employee ID is required');
+      setState(prev => ({
+        ...prev,
+        error: 'Employee ID is required to initialize softphone'
+      }));
       return;
     }
 
     setState(prev => ({ ...prev, isInitializing: true, error: null }));
 
     try {
-      await softphone.initialize();
+      await softphone.initialize(employeeId);
       isInitializedRef.current = true;
       setState(prev => ({ ...prev, isInitializing: false }));
     } catch (error: any) {

@@ -1,4 +1,7 @@
 import api from './api';
+import { authService } from './authService';
+
+const mitelBaseUrl = import.meta.env.VITE_MITEL_BASE_URL || 'https://micc.telediant.com.my';
 
 // ========================================================================
 // INTERFACES
@@ -78,6 +81,30 @@ export interface MitelStateUpdatePayload {
   availableReason?: string | null; // Optional available reason
 }
 
+/**
+ * Get current employee (me) details from Mitel API
+ * Maps to: GET /MiccSdk/api/v1/employees/me
+ */
+export const getMe = async () => {
+  const mitelToken = authService.getMitelToken();
+  const mitelBaseUrl = import.meta.env.VITE_MITEL_BASE_URL || 'https://micc.telediant.com.my';
+
+  const response = await fetch(`${mitelBaseUrl}/MiccSdk/api/v1/employees/me`, {
+    method: 'GET',
+    headers: {
+      'Accept': 'application/json',
+      'Authorization': `Bearer ${mitelToken}`
+    }
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Failed to fetch current employee: ${response.status} ${response.statusText} - ${errorText}`);
+  }
+
+  return response.json();
+};
+
 // ========================================================================
 // EXISTING AGENT ROUTES (Keeping original logic)
 // ========================================================================
@@ -112,6 +139,46 @@ export const getMitelAgentState = async (agentId: string) => {
 export const updateEmployeeState = async (userId: string, payload: MitelStateUpdatePayload) => {
   const response = await api.put(`/agents/${userId}/mitel/state`, payload);
   return response.data;
+};
+
+/**
+ * Update Mitel Employee / Agent state directly via MiccSdk
+ *
+ * PUT /MiccSdk/api/v1/employees/{employeeId}/state
+ * employeeId can be 'me'
+ */
+/**
+ * Update Mitel Employee / Agent state directly via MiccSdk
+ * Success = any 2xx response
+ */
+export const updateEmployeeStateDirect = async (
+  employeeId: string = 'me',
+  payload: MitelStateUpdatePayload
+): Promise<{ success: true }> => {
+  const mitelToken = authService.getMitelToken();
+
+  const response = await fetch(
+    `${mitelBaseUrl}/MiccSdk/api/v1/employees/${employeeId}/state`,
+    {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${mitelToken}`,
+        'Content-Type': 'application/json;charset=UTF-8',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    }
+  );
+
+  // ✅ Any 2xx is good enough
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(
+      `Failed to update employee state: ${response.status} ${response.statusText} - ${errorText}`
+    );
+  }
+
+  return { success: true };
 };
 
 
@@ -169,8 +236,7 @@ export const getMitelEmployeeStats = async (employeeId: string) => {
  * Maps to direct Mitel API: PUT /MiccSdk/api/v1/employees/me/conversations/{conversationId}
  */
 export const performConversationAction = async (conversationId: string, action: 'Accept' | 'End' | 'Hold' | 'Resume') => {
-  const mitelToken = localStorage.getItem('mitel_token');
-  const mitelBaseUrl = import.meta.env.VITE_MITEL_BASE_URL || 'https://micc.telediant.com.my';
+  const mitelToken = authService.getMitelToken();
 
   const response = await fetch(`${mitelBaseUrl}/MiccSdk/api/v1/employees/me/conversations/${conversationId}`, {
     method: 'PUT',
@@ -519,6 +585,7 @@ export default {
   getMitelEmployeeDetails,
   getMitelEmployeeState,
   updateMitelEmployeeState,
+  updateEmployeeStateDirect,
   getMitelEmployeeStats,
 
   // Conversation Actions
@@ -576,71 +643,169 @@ export default {
 
 /**
  * Perform a blind transfer (immediate transfer without consultation)
+ * DIRECT Mitel API call
+ * Note: ticketId and destinationAgentId are kept for compatibility but not used by Mitel API
  */
 export const blindTransferCall = async (
   agentId: string,
   conversationId: string,
   destination: string,
-  ticketId?: number,
-  destinationAgentId?: number
+  _ticketId?: number,
+  _destinationAgentId?: number
 ) => {
-  const payload: any = { destination };
-  if (ticketId) payload.ticket_id = ticketId;
-  if (destinationAgentId) payload.destination_agent_id = destinationAgentId;
+  const mitelToken = authService.getMitelToken();
 
-  const response = await api.post(
-    `/mitel/agents/${agentId}/calls/${conversationId}/transfer/blind`,
-    payload
+  // Mitel API expects a specific payload structure for blind transfer
+  const payload = {
+    conversationId: conversationId,
+    destination: destination,
+    transferType: 'Blind'
+  };
+
+  const response = await fetch(
+    `${mitelBaseUrl}/MiccSdk/api/v1/employees/${agentId}/conversations/${conversationId}/transfer`,
+    {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${mitelToken}`,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    }
   );
-  return response.data;
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(
+      `Failed to perform blind transfer: ${response.status} ${response.statusText} - ${errorText}`
+    );
+  }
+
+  return { success: true, status: response.status };
 };
 
 /**
  * Initiate a consultation transfer (talk to destination before completing transfer)
+ * DIRECT Mitel API call
  */
 export const initiateConsultTransfer = async (
   agentId: string,
   conversationId: string,
   destination: string
 ) => {
-  const response = await api.post(
-    `/mitel/agents/${agentId}/calls/${conversationId}/transfer/consult/initiate`,
-    { destination }
+  const mitelToken = authService.getMitelToken();
+
+  // Mitel API expects a specific payload structure for consult transfer
+  const payload = {
+    conversationId: conversationId,
+    destination: destination,
+    transferType: 'Consult'
+  };
+
+  const response = await fetch(
+    `${mitelBaseUrl}/MiccSdk/api/v1/employees/${agentId}/conversations/${conversationId}/transfer`,
+    {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${mitelToken}`,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    }
   );
-  return response.data;
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(
+      `Failed to initiate consultation transfer: ${response.status} ${response.statusText} - ${errorText}`
+    );
+  }
+
+  const data = await response.json();
+  return { success: true, data };
 };
 
 /**
  * Complete a consultation transfer
+ * DIRECT Mitel API call
+ * Note: ticketId and destinationAgentId are kept for compatibility but not used by Mitel API
  */
 export const completeConsultTransfer = async (
   agentId: string,
   conversationId: string,
-  ticketId?: number,
-  destinationAgentId?: number
+  _ticketId?: number,
+  _destinationAgentId?: number
 ) => {
-  const payload: any = {};
-  if (ticketId) payload.ticket_id = ticketId;
-  if (destinationAgentId) payload.destination_agent_id = destinationAgentId;
+  const mitelToken = authService.getMitelToken();
 
-  const response = await api.post(
-    `/mitel/agents/${agentId}/calls/${conversationId}/transfer/consult/complete`,
-    payload
+  // Mitel API expects a PUT request to complete the transfer
+  const payload = {
+    conversationId: conversationId,
+    conversationAction: 'CompleteTransfer'
+  };
+
+  const response = await fetch(
+    `${mitelBaseUrl}/MiccSdk/api/v1/employees/${agentId}/conversations/${conversationId}`,
+    {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${mitelToken}`,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    }
   );
-  return response.data;
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(
+      `Failed to complete consultation transfer: ${response.status} ${response.statusText} - ${errorText}`
+    );
+  }
+
+  return { success: true, status: response.status };
 };
 
 /**
  * Cancel a consultation transfer and return to original call
+ * DIRECT Mitel API call
  */
 export const cancelConsultTransfer = async (
   agentId: string,
   conversationId: string
 ) => {
-  const response = await api.post(
-    `/mitel/agents/${agentId}/calls/${conversationId}/transfer/consult/cancel`
+  const mitelToken = authService.getMitelToken();
+
+  // Mitel API expects a PUT request to cancel the transfer
+  const payload = {
+    conversationId: conversationId,
+    conversationAction: 'CancelTransfer'
+  };
+
+  const response = await fetch(
+    `${mitelBaseUrl}/MiccSdk/api/v1/employees/${agentId}/conversations/${conversationId}`,
+    {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${mitelToken}`,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    }
   );
-  return response.data;
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(
+      `Failed to cancel consultation transfer: ${response.status} ${response.statusText} - ${errorText}`
+    );
+  }
+
+  return { success: true, status: response.status };
 };
 
 // ========================================================================
@@ -650,19 +815,67 @@ export const cancelConsultTransfer = async (
 /**
  * Get agent group presence information
  * Returns agent groups with their presence states (Voice, OpenMedia, etc.)
+ * DIRECT Mitel API call
  */
-export const getAgentGroupPresence = async (agentId: string = 'me') => {
-  const response = await api.get(`/mitel/agents/${agentId}/agentgrouppresence`);
-  return response.data;
+export const getAgentGroupPresence = async (employeeId: string = 'me') => {
+  const mitelToken = authService.getMitelToken();
+
+  const response = await fetch(
+    `${mitelBaseUrl}/MiccSdk/api/v1/employees/${employeeId}/agentgrouppresence`,
+    {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${mitelToken}`,
+        'Accept': 'application/json'
+      }
+    }
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(
+      `Failed to get agent group presence: ${response.status} ${response.statusText} - ${errorText}`
+    );
+  }
+
+  return await response.json();
 };
 
 /**
  * Get integrated softphone credentials for WebRTC connection
  * Returns credentials for connecting to Mitel Border Gateway
  */
-export const getIntegratedSoftphoneCredentials = async (agentId: string) => {
-  const response = await api.get(`/mitel/agents/${agentId}/integratedsoftphone`);
-  return response.data;
+/**
+ * Get integrated softphone credentials for WebRTC connection
+ * Calls Mitel API directly (same pattern as performConversationAction)
+ *
+ * Mitel API:
+ * GET /MiccSdk/api/v1/agents/{agentId}/integratedsoftphone
+ * Usually agentId = 'me'
+ */
+export const getIntegratedSoftphoneCredentials = async (agentId: string = 'me') => {
+  const mitelToken = authService.getMitelToken();
+
+  const response = await fetch(
+    `${mitelBaseUrl}/MiccSdk/api/v1/agents/${agentId}/integratedsoftphone`,
+    {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${mitelToken}`,
+        'Accept': 'application/json'
+      }
+    }
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(
+      `Failed to get integrated softphone credentials: ${response.status} ${response.statusText} - ${errorText}`
+    );
+  }
+
+  // This endpoint DOES return JSON (credentials, gateway, username, password, etc.)
+  return await response.json();
 };
 
 /**
@@ -677,28 +890,49 @@ export const getBusyReasonCodes = async (agentId: string = 'me') => {
 /**
  * Search directory for employees/agents
  * Used for call transfer destination selection
+ * DIRECT Mitel API call
+ * Note: searchType parameter kept for compatibility but not used by Mitel API
  */
 export const searchDirectory = async (
   searchQuery: string = '',
   voiceOnly: boolean = true,
   skip: number = 0,
   top: number = 25,
-  searchType: 'text' | 'id' = 'text'
+  _searchType: 'text' | 'id' = 'text'
 ) => {
-  const params = new URLSearchParams();
-  if (searchQuery) params.append('q', searchQuery);
-  params.append('voiceOnly', voiceOnly.toString());
-  params.append('skip', skip.toString());
-  params.append('top', top.toString());
-  params.append('searchType', searchType);
+  const mitelToken = authService.getMitelToken();
 
-  const response = await api.get(`/mitel/directory/search?${params.toString()}`);
-  return response.data;
+  const params = new URLSearchParams();
+  if (searchQuery) params.append('searchText', searchQuery);
+  if (voiceOnly) params.append('$filter', "statuses/any(s: s/type eq 'Voice')");
+  params.append('$skip', skip.toString());
+  params.append('$top', top.toString());
+
+  const response = await fetch(
+    `${mitelBaseUrl}/MiccSdk/api/v1/directory?${params.toString()}`,
+    {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${mitelToken}`,
+        'Accept': 'application/json'
+      }
+    }
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(
+      `Failed to search directory: ${response.status} ${response.statusText} - ${errorText}`
+    );
+  }
+
+  return await response.json();
 };
 
 /**
  * Make an outbound call
  * Creates a new conversation to initiate an outbound call
+ * DIRECT Mitel API call
  */
 export const makeOutboundCall = async (
   employeeId: string = 'me',
@@ -724,6 +958,8 @@ export const makeOutboundCall = async (
     lightDirectoryEntryModels = []
   } = options;
 
+  const mitelToken = authService.getMitelToken();
+
   const params = new URLSearchParams();
   params.append('dialAsIs', dialAsIs.toString());
 
@@ -734,9 +970,25 @@ export const makeOutboundCall = async (
     lightDirectoryEntryModels
   };
 
-  const response = await api.post(
-    `/mitel/employees/${employeeId}/conversations?${params.toString()}`,
-    payload
+  const response = await fetch(
+    `${mitelBaseUrl}/MiccSdk/api/v1/employees/${employeeId}/conversations?${params.toString()}`,
+    {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${mitelToken}`,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    }
   );
-  return response.data;
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(
+      `Failed to make outbound call: ${response.status} ${response.statusText} - ${errorText}`
+    );
+  }
+
+  return await response.json();
 };

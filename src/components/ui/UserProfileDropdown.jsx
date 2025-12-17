@@ -1,10 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Icon from '../AppIcon';
 import languageService from '../../services/languageService';
-import { updateMitelEmployeeState, createPresenceStatePayload, getMitelEmployeeState } from '../../services/mitelService';
+import { updateEmployeeStateDirect, createPresenceStatePayload, getMitelEmployeeState } from '../../services/mitelService';
 import { toast } from 'react-toastify';
 import BusyReasonModal from '../BusyReasonModal';
 import { authService } from '../../services/authService';
+import { useWebRTCSoftphone } from '../../hooks/useWebRTCSoftphone';
 
 const UserProfileDropdown = ({ user = null }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -16,6 +17,9 @@ const UserProfileDropdown = ({ user = null }) => {
   const [pendingStatusType, setPendingStatusType] = useState(null);
   const [isLoadingInitialStatus, setIsLoadingInitialStatus] = useState(true);
   const dropdownRef = useRef(null);
+
+  // WebRTC Softphone hook
+  const { initialize: initializeWebRTC, isRegistered: isWebRTCRegistered, disconnect: disconnectWebRTC } = useWebRTCSoftphone();
 
   const defaultUser = {
     name: 'Ahmad Rahman',
@@ -52,9 +56,11 @@ const UserProfileDropdown = ({ user = null }) => {
 
         const response = await getMitelEmployeeState(employeeId);
 
-        if (response.success && response.data?.presence?.aggregate?.state) {
-          const mitelState = response.data.presence.aggregate.state;
+        // Handle both response formats: { success: true } and { status: "success" }
+        const isSuccess = response.success || response.status === 'success';
+        const mitelState = response.data?.presence?.aggregate?.state;
 
+        if (isSuccess && mitelState) {
           // Map Mitel state to UI state
           let uiState = mitelState;
           if (mitelState === 'DoNotDisturb') {
@@ -63,8 +69,22 @@ const UserProfileDropdown = ({ user = null }) => {
 
           setAvailability(uiState);
           console.log('✅ Initial Mitel status fetched:', uiState, 'for employee:', employeeId);
+
+          // If status is Available, initialize WebRTC Softphone automatically
+          if (uiState === 'Available' && !isWebRTCRegistered) {
+            console.log('📞 Status is Available on load, initializing WebRTC softphone...');
+            try {
+              await initializeWebRTC(employeeId);
+              console.log('✅ WebRTC softphone initialized successfully on load');
+              toast.success('Softphone connected and ready for calls');
+            } catch (error) {
+              console.error('❌ Failed to initialize WebRTC softphone on load:', error);
+              toast.warning('Could not connect softphone. You may not be able to make/receive calls through browser.');
+            }
+          }
         } else {
           console.warn('⚠️ Could not fetch initial Mitel status, defaulting to Offline');
+          console.log('Response:', response);
           setAvailability('Offline');
         }
       } catch (error) {
@@ -164,7 +184,7 @@ const UserProfileDropdown = ({ user = null }) => {
       const payload = createPresenceStatePayload(mitelStatus, reasonCodeId);
 
       // Update Mitel employee state using actual employee ID
-      const response = await updateMitelEmployeeState(employeeId, payload);
+      const response = await updateEmployeeStateDirect(employeeId, payload);
 
       if (response.success || response.status === 'success') {
         setAvailability(status);
@@ -172,6 +192,30 @@ const UserProfileDropdown = ({ user = null }) => {
 
         if (reasonCodeId) {
           toast.success(`Status changed to ${status}`);
+        }
+
+        // Initialize WebRTC Softphone when status becomes Available
+        if (status === 'Available' && !isWebRTCRegistered) {
+          console.log('📞 Status is now Available, initializing WebRTC softphone...');
+          try {
+            await initializeWebRTC(employeeId);
+            console.log('✅ WebRTC softphone initialized successfully');
+            toast.success('Softphone connected and ready for calls');
+          } catch (error) {
+            console.error('❌ Failed to initialize WebRTC softphone:', error);
+            toast.warning('Status updated but softphone connection failed. You may not be able to make/receive calls.');
+          }
+        }
+
+        // Disconnect WebRTC when status is no longer Available
+        if (status !== 'Available' && isWebRTCRegistered) {
+          console.log('📞 Status changed from Available, disconnecting WebRTC softphone...');
+          try {
+            disconnectWebRTC();
+            console.log('✅ WebRTC softphone disconnected');
+          } catch (error) {
+            console.error('❌ Failed to disconnect WebRTC softphone:', error);
+          }
         }
       } else {
         throw new Error(response.message || 'Failed to update status');
