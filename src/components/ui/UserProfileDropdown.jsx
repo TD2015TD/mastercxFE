@@ -1,14 +1,20 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Icon from '../AppIcon';
 import languageService from '../../services/languageService';
-import { updateMitelEmployeeState, createPresenceStatePayload } from '../../services/mitelService';
+import { updateMitelEmployeeState, createPresenceStatePayload, getMitelEmployeeState } from '../../services/mitelService';
 import { toast } from 'react-toastify';
+import BusyReasonModal from '../BusyReasonModal';
+import { authService } from '../../services/authService';
 
 const UserProfileDropdown = ({ user = null }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [currentLanguage, setCurrentLanguage] = useState('en');
-  const [availability, setAvailability] = useState('Available'); // State for availability
+  const [availability, setAvailability] = useState('Offline'); // Default to Offline until we fetch status
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [isBusyReasonModalOpen, setIsBusyReasonModalOpen] = useState(false);
+  const [pendingStatus, setPendingStatus] = useState(null);
+  const [pendingStatusType, setPendingStatusType] = useState(null);
+  const [isLoadingInitialStatus, setIsLoadingInitialStatus] = useState(true);
   const dropdownRef = useRef(null);
 
   const defaultUser = {
@@ -25,6 +31,52 @@ const UserProfileDropdown = ({ user = null }) => {
     const savedLanguage = localStorage.getItem('preferred-language') || 'en';
     setCurrentLanguage(savedLanguage);
   }, []);
+
+  // Fetch initial Mitel status on mount
+  useEffect(() => {
+    const fetchInitialStatus = async () => {
+      try {
+        setIsLoadingInitialStatus(true);
+
+        // Get employee_id from user object (from localStorage or props)
+        const authData = authService.getCurrentUser();
+        console.log(authData);
+        const employeeId = currentUser?.agent?.employee_id || authData?.agent?.employee_id;
+
+        if (!employeeId) {
+          console.warn('⚠️ No employee ID found, cannot fetch Mitel status');
+          setAvailability('Offline');
+          setIsLoadingInitialStatus(false);
+          return;
+        }
+
+        const response = await getMitelEmployeeState(employeeId);
+
+        if (response.success && response.data?.presence?.aggregate?.state) {
+          const mitelState = response.data.presence.aggregate.state;
+
+          // Map Mitel state to UI state
+          let uiState = mitelState;
+          if (mitelState === 'DoNotDisturb') {
+            uiState = 'Do Not Disturb';
+          }
+
+          setAvailability(uiState);
+          console.log('✅ Initial Mitel status fetched:', uiState, 'for employee:', employeeId);
+        } else {
+          console.warn('⚠️ Could not fetch initial Mitel status, defaulting to Offline');
+          setAvailability('Offline');
+        }
+      } catch (error) {
+        console.error('❌ Failed to fetch initial Mitel status:', error);
+        setAvailability('Offline');
+      } finally {
+        setIsLoadingInitialStatus(false);
+      }
+    };
+
+    fetchInitialStatus();
+  }, [currentUser]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -60,21 +112,67 @@ const UserProfileDropdown = ({ user = null }) => {
   };
 
   const handleAvailabilityChange = async (status) => {
+    // Check if status requires reason code
+    if (status === 'Busy' || status === 'Do Not Disturb') {
+      // Show BusyReasonModal
+      setPendingStatus(status);
+      setPendingStatusType(status === 'Do Not Disturb' ? 'Dnd' : 'Busy');
+      setIsBusyReasonModalOpen(true);
+      return;
+    }
+
+    // For other statuses, update directly
+    await updateStatusWithReason(status, null);
+  };
+
+  const handleBusyReasonSelected = async (reason) => {
+    console.log('Busy/DND reason selected:', reason);
+    // reason object contains: { id, name, reporting, type }
+
+    await updateStatusWithReason(pendingStatus, reason.id);
+
+    // Clear pending state
+    setPendingStatus(null);
+    setPendingStatusType(null);
+  };
+
+  const handleBusyReasonModalClose = () => {
+    setIsBusyReasonModalOpen(false);
+    setPendingStatus(null);
+    setPendingStatusType(null);
+  };
+
+  const updateStatusWithReason = async (status, reasonCodeId = null) => {
     try {
       setIsUpdatingStatus(true);
+
+      // Get employee_id from user object
+      const authData = authService.getCurrentUser();
+      const employeeId = currentUser?.agent?.employee_id || authData?.agent?.employee_id;
+
+      if (!employeeId) {
+        toast.error('Cannot update status: Employee ID not found');
+        console.error('❌ No employee ID available for status update');
+        setIsUpdatingStatus(false);
+        return;
+      }
 
       // Map UI status to Mitel status
       const mitelStatus = status === 'Do Not Disturb' ? 'DoNotDisturb' : status;
 
       // Create the payload using the helper function
-      const payload = createPresenceStatePayload(mitelStatus);
+      const payload = createPresenceStatePayload(mitelStatus, reasonCodeId);
 
-      // Update Mitel employee state (using 'me' for current user)
-      const response = await updateMitelEmployeeState('me', payload);
+      // Update Mitel employee state using actual employee ID
+      const response = await updateMitelEmployeeState(employeeId, payload);
 
       if (response.success || response.status === 'success') {
         setAvailability(status);
-        console.log('✅ Mitel status updated successfully:', status);
+        console.log('✅ Mitel status updated successfully:', status, reasonCodeId ? `with reason: ${reasonCodeId}` : '', 'for employee:', employeeId);
+
+        if (reasonCodeId) {
+          toast.success(`Status changed to ${status}`);
+        }
       } else {
         throw new Error(response.message || 'Failed to update status');
       }
@@ -260,6 +358,15 @@ const UserProfileDropdown = ({ user = null }) => {
           </div>
         </div>
       )}
+
+      {/* Busy Reason Modal */}
+      <BusyReasonModal
+        isOpen={isBusyReasonModalOpen}
+        statusType={pendingStatusType}
+        onClose={handleBusyReasonModalClose}
+        onSelectReason={handleBusyReasonSelected}
+        employeeId={currentUser?.agent?.employee_id || JSON.parse(localStorage.getItem('user') || '{}')?.agent?.employee_id}
+      />
     </div>
   );
 };

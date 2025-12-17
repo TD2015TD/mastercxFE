@@ -16,6 +16,10 @@ const TelephonyBar = ({ className = '', onCallEvent }) => {
   const [muted, setMuted] = useState(false);
   const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
   const [transferTarget, setTransferTarget] = useState('');
+  const [transferType, setTransferType] = useState('blind'); // 'blind' or 'consult'
+  const [transferDestinationAgentId, setTransferDestinationAgentId] = useState(null);
+  const [isInConsultation, setIsInConsultation] = useState(false);
+  const [consultationConversationId, setConsultationConversationId] = useState(null);
   const [showWrapUp, setShowWrapUp] = useState(false);
   const [wrapUpCode, setWrapUpCode] = useState('');
   const [wrapUpNotes, setWrapUpNotes] = useState('');
@@ -99,7 +103,7 @@ const TelephonyBar = ({ className = '', onCallEvent }) => {
 
   // ---- Mitel SignalR Hook ----
   const { state: connState, on, invoke, error } = useMitelSignalR({
-    baseUrl: 'https://micc.telediant.com.my/MiccSdk/signalr',
+    baseUrl: `${import.meta.env.VITE_MITEL_BASE_URL || 'https://micc.telediant.com.my'}/MiccSdk/signalr`,
     hubs: ['queueHub', 'employeeHub', 'agentHub'],
     token: localStorage.getItem('mitel_token')
   });
@@ -475,53 +479,183 @@ const TelephonyBar = ({ className = '', onCallEvent }) => {
   }, [status, muted, invoke]);
 
   const startTransfer = useCallback(() => {
-    if (status === 'IN_CALL') setIsTransferModalOpen(true);
-  }, [status]);
+    if (status === 'IN_CALL' && !isInConsultation) {
+      setIsTransferModalOpen(true);
+      setTransferType('blind'); // Default to blind transfer
+    }
+  }, [status, isInConsultation]);
 
-  const executeTransfer = useCallback(async () => {
-    if (!transferTarget.trim()) return;
-    setStatus('TRANSFERRING');
+  const executeBlindTransfer = useCallback(async () => {
+    if (!transferTarget.trim()) {
+      toast.error('Please enter a transfer destination');
+      return;
+    }
+
     setIsTransferModalOpen(false);
 
     try {
+      console.log(`📞 Executing blind transfer to: ${transferTarget}`);
+
       const callDuration = callStartTimeRef.current
         ? Math.floor((new Date() - callStartTimeRef.current) / 1000 / 60)
         : timer ? Math.floor(timer / 60) : 0;
 
-      await invoke('employeeHub', 'transferConversation', {
-        target: transferTarget,
-        // Add conversation ID and other required params
-      });
+      // Call the blind transfer API
+      await mitelService.blindTransferCall(
+        'me',
+        currentConversationId,
+        transferTarget,
+        ticketIdRef.current,
+        transferDestinationAgentId
+      );
+
+      toast.success(`Call transferred to ${transferTarget}`);
       setStatus('ENDED');
-      onCallEvent?.('telephony:transferred', { caller, target: transferTarget, duration: timer });
+      onCallEvent?.('telephony:blind_transferred', {
+        caller,
+        target: transferTarget,
+        duration: timer,
+        ticketId: ticketIdRef.current
+      });
 
       // Log call transfer interaction asynchronously
       logInteractionAsync({
         interaction_type: 'call',
         channel: 'phone',
-        subject: `Call transferred - ${caller?.name || 'Unknown'}`,
-        description: `Call from ${caller?.number || 'Unknown'} transferred to ${transferTarget}`,
+        subject: `Call blind transferred - ${caller?.name || 'Unknown'}`,
+        description: `Call from ${caller?.number || 'Unknown'} blind transferred to ${transferTarget}`,
         duration_minutes: callDuration,
         metadata: {
           conversationId: currentConversationId,
           callerNumber: caller?.number,
           callerName: caller?.name,
           queue: caller?.queue,
-          callState: 'transferred',
+          callState: 'blind_transferred',
           transferTarget: transferTarget,
           transferredAt: new Date().toISOString(),
           durationSeconds: timer,
+          ticketId: ticketIdRef.current,
         },
       });
 
       setTransferTarget('');
+      setTransferDestinationAgentId(null);
       callStartTimeRef.current = null;
-      console.log('✅ Transfer initiated');
+      console.log('✅ Blind transfer completed');
     } catch (err) {
-      console.error('❌ Transfer failed:', err);
-      setStatus('IN_CALL'); // Revert on error
+      console.error('❌ Blind transfer failed:', err);
+      toast.error(`Failed to transfer call: ${err.message}`);
     }
-  }, [transferTarget, caller, timer, currentConversationId, invoke, onCallEvent, logInteractionAsync]);
+  }, [transferTarget, transferDestinationAgentId, caller, timer, currentConversationId, onCallEvent, logInteractionAsync]);
+
+  const initiateConsultation = useCallback(async () => {
+    if (!transferTarget.trim()) {
+      toast.error('Please enter a transfer destination');
+      return;
+    }
+
+    setIsTransferModalOpen(false);
+
+    try {
+      console.log(`📞 Initiating consultation transfer to: ${transferTarget}`);
+
+      // Call the initiate consult transfer API
+      const response = await mitelService.initiateConsultTransfer(
+        'me',
+        currentConversationId,
+        transferTarget
+      );
+
+      setIsInConsultation(true);
+      setConsultationConversationId(response.data?.consultationConversationId || currentConversationId);
+      setStatus('CONSULTING');
+      toast.info(`Consultation call initiated with ${transferTarget}`);
+
+      console.log('✅ Consultation initiated');
+    } catch (err) {
+      console.error('❌ Consultation initiation failed:', err);
+      toast.error(`Failed to initiate consultation: ${err.message}`);
+    }
+  }, [transferTarget, currentConversationId]);
+
+  const completeConsultTransfer = useCallback(async () => {
+    try {
+      console.log(`📞 Completing consultation transfer`);
+
+      const callDuration = callStartTimeRef.current
+        ? Math.floor((new Date() - callStartTimeRef.current) / 1000 / 60)
+        : timer ? Math.floor(timer / 60) : 0;
+
+      // Complete the consultation transfer
+      await mitelService.completeConsultTransfer(
+        'me',
+        currentConversationId,
+        ticketIdRef.current,
+        transferDestinationAgentId
+      );
+
+      toast.success('Transfer completed successfully');
+      setStatus('ENDED');
+      setIsInConsultation(false);
+      setConsultationConversationId(null);
+
+      onCallEvent?.('telephony:consult_transferred', {
+        caller,
+        target: transferTarget,
+        duration: timer,
+        ticketId: ticketIdRef.current
+      });
+
+      // Log call transfer interaction asynchronously
+      logInteractionAsync({
+        interaction_type: 'call',
+        channel: 'phone',
+        subject: `Call consultation transferred - ${caller?.name || 'Unknown'}`,
+        description: `Call from ${caller?.number || 'Unknown'} transferred to ${transferTarget} after consultation`,
+        duration_minutes: callDuration,
+        metadata: {
+          conversationId: currentConversationId,
+          callerNumber: caller?.number,
+          callerName: caller?.name,
+          queue: caller?.queue,
+          callState: 'consult_transferred',
+          transferTarget: transferTarget,
+          transferredAt: new Date().toISOString(),
+          durationSeconds: timer,
+          ticketId: ticketIdRef.current,
+        },
+      });
+
+      setTransferTarget('');
+      setTransferDestinationAgentId(null);
+      callStartTimeRef.current = null;
+      console.log('✅ Consultation transfer completed');
+    } catch (err) {
+      console.error('❌ Consultation transfer completion failed:', err);
+      toast.error(`Failed to complete transfer: ${err.message}`);
+    }
+  }, [transferTarget, transferDestinationAgentId, caller, timer, currentConversationId, onCallEvent, logInteractionAsync]);
+
+  const cancelConsultation = useCallback(async () => {
+    try {
+      console.log(`📞 Canceling consultation transfer`);
+
+      // Cancel the consultation
+      await mitelService.cancelConsultTransfer('me', consultationConversationId || currentConversationId);
+
+      toast.info('Consultation canceled, returned to original call');
+      setStatus('IN_CALL');
+      setIsInConsultation(false);
+      setConsultationConversationId(null);
+      setTransferTarget('');
+      setTransferDestinationAgentId(null);
+
+      console.log('✅ Consultation canceled');
+    } catch (err) {
+      console.error('❌ Consultation cancelation failed:', err);
+      toast.error(`Failed to cancel consultation: ${err.message}`);
+    }
+  }, [consultationConversationId, currentConversationId]);
 
   const completeWrapUp = useCallback(() => {
     const callDuration = Math.floor(timer / 60);
@@ -684,13 +818,161 @@ const TelephonyBar = ({ className = '', onCallEvent }) => {
 
       {/* Transfer Modal */}
       {isTransferModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]" onClick={()=>{setIsTransferModalOpen(false);setTransferTarget('');}}>
-          <div className="bg-card border border-border rounded-lg p-6 w-96" onClick={e=>e.stopPropagation()}>
-            <h3 className="text-lg font-semibold mb-4">Transfer Call</h3>
-            <input type="text" value={transferTarget} onChange={e=>setTransferTarget(e.target.value)} placeholder="Enter agent/queue" className="w-full px-3 py-2 border rounded-md mb-4"/>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]" onClick={()=>{setIsTransferModalOpen(false);setTransferTarget('');setTransferType('blind');}}>
+          <div className="bg-card border border-border rounded-lg p-6 w-[500px]" onClick={e=>e.stopPropagation()}>
+            <h3 className="text-lg font-semibold mb-4 flex items-center">
+              <Icon name="phone-forwarded" className="mr-2" />
+              Transfer Call
+            </h3>
+
+            {/* Transfer Type Selection */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium mb-2">Transfer Type</label>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setTransferType('blind')}
+                  className={`flex-1 px-4 py-2 rounded-md border transition-colors ${
+                    transferType === 'blind'
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-background border-border hover:bg-accent'
+                  }`}
+                >
+                  <div className="font-medium">Blind Transfer</div>
+                  <div className="text-xs opacity-70">Transfer immediately</div>
+                </button>
+                <button
+                  onClick={() => setTransferType('consult')}
+                  className={`flex-1 px-4 py-2 rounded-md border transition-colors ${
+                    transferType === 'consult'
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-background border-border hover:bg-accent'
+                  }`}
+                >
+                  <div className="font-medium">Consultation</div>
+                  <div className="text-xs opacity-70">Talk before transfer</div>
+                </button>
+              </div>
+            </div>
+
+            {/* Transfer Destination */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium mb-2">Destination</label>
+              <input
+                type="text"
+                value={transferTarget}
+                onChange={e=>setTransferTarget(e.target.value)}
+                placeholder="Extension or phone number"
+                className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground"
+                onKeyPress={e => {
+                  if (e.key === 'Enter' && transferTarget.trim()) {
+                    if (transferType === 'blind') {
+                      executeBlindTransfer();
+                    } else {
+                      initiateConsultation();
+                    }
+                  }
+                }}
+              />
+            </div>
+
+            {/* Ticket Info */}
+            {ticketIdRef.current && (
+              <div className="mb-4 p-3 bg-accent rounded-md">
+                <div className="flex items-center text-sm">
+                  <Icon name="ticket" className="mr-2 text-primary" />
+                  <span className="font-medium">Ticket #{ticketIdRef.current} will be transferred with the call</span>
+                </div>
+              </div>
+            )}
+
+            {/* Action Buttons */}
             <div className="flex justify-end space-x-2">
-              <Button variant="outline" onClick={()=>{setIsTransferModalOpen(false);setTransferTarget('');}}>Cancel</Button>
-              <Button variant="default" onClick={executeTransfer} disabled={!transferTarget.trim()}>Transfer</Button>
+              <Button variant="outline" onClick={()=>{setIsTransferModalOpen(false);setTransferTarget('');setTransferType('blind');}}>
+                Cancel
+              </Button>
+              {transferType === 'blind' ? (
+                <Button
+                  variant="default"
+                  onClick={executeBlindTransfer}
+                  disabled={!transferTarget.trim()}
+                  className="flex items-center"
+                >
+                  <Icon name="phone-forwarded" className="mr-2" />
+                  Blind Transfer
+                </Button>
+              ) : (
+                <Button
+                  variant="default"
+                  onClick={initiateConsultation}
+                  disabled={!transferTarget.trim()}
+                  className="flex items-center"
+                >
+                  <Icon name="phone-call" className="mr-2" />
+                  Start Consultation
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Consultation In Progress Modal */}
+      {isInConsultation && status === 'CONSULTING' && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]">
+          <div className="bg-card border border-border rounded-lg p-6 w-[500px]">
+            <h3 className="text-lg font-semibold mb-4 flex items-center">
+              <Icon name="users" className="mr-2 text-primary" />
+              Consultation in Progress
+            </h3>
+
+            <div className="mb-6 space-y-3">
+              <div className="flex items-center justify-between p-3 bg-accent rounded-md">
+                <div>
+                  <div className="text-sm font-medium">Original Caller</div>
+                  <div className="text-xs text-muted-foreground">{caller?.name || caller?.number || 'Unknown'}</div>
+                </div>
+                <div className="px-3 py-1 bg-yellow-500/20 text-yellow-700 dark:text-yellow-300 rounded-full text-xs font-medium">
+                  On Hold
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between p-3 bg-primary/10 rounded-md">
+                <div>
+                  <div className="text-sm font-medium">Consulting With</div>
+                  <div className="text-xs text-muted-foreground">{transferTarget}</div>
+                </div>
+                <div className="px-3 py-1 bg-green-500/20 text-green-700 dark:text-green-300 rounded-full text-xs font-medium">
+                  Active
+                </div>
+              </div>
+            </div>
+
+            {ticketIdRef.current && (
+              <div className="mb-4 p-3 bg-accent rounded-md">
+                <div className="flex items-center text-sm">
+                  <Icon name="ticket" className="mr-2 text-primary" />
+                  <span>Ticket #{ticketIdRef.current} will be transferred</span>
+                </div>
+              </div>
+            )}
+
+            <div className="flex justify-end space-x-2">
+              <Button
+                variant="outline"
+                onClick={cancelConsultation}
+                className="flex items-center"
+              >
+                <Icon name="x" className="mr-2" />
+                Cancel & Return
+              </Button>
+              <Button
+                variant="default"
+                onClick={completeConsultTransfer}
+                className="flex items-center bg-green-600 hover:bg-green-700"
+              >
+                <Icon name="check" className="mr-2" />
+                Complete Transfer
+              </Button>
             </div>
           </div>
         </div>

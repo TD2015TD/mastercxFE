@@ -170,9 +170,9 @@ export const getMitelEmployeeStats = async (employeeId: string) => {
  */
 export const performConversationAction = async (conversationId: string, action: 'Accept' | 'End' | 'Hold' | 'Resume') => {
   const mitelToken = localStorage.getItem('mitel_token');
-  const mitelBaseUrl = import.meta.env.VITE_MITEL_BASE_URL || 'micc.telediant.com.my';
+  const mitelBaseUrl = import.meta.env.VITE_MITEL_BASE_URL || 'https://micc.telediant.com.my';
 
-  const response = await fetch(`https://${mitelBaseUrl}/MiccSdk/api/v1/employees/me/conversations/${conversationId}`, {
+  const response = await fetch(`${mitelBaseUrl}/MiccSdk/api/v1/employees/me/conversations/${conversationId}`, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
@@ -480,20 +480,26 @@ export const mapStatusToAvailableReason = (status: string): number => {
 /**
  * Create presence state payload for Mitel API
  */
-export const createPresenceStatePayload = (status: string, reason?: string): MitelStateUpdatePayload => {
+export const createPresenceStatePayload = (status: string, reasonCodeId?: string | null): MitelStateUpdatePayload => {
   if (status === 'Available') {
     return {
       state: status,
       availableReason: "Login"
     };
   } else if (status === 'Busy') {
-    return { state: "Busy", reason: "54bbba16-7858-4f62-b89a-4d4d5ed1d69e" };
+    return {
+      state: "Busy",
+      reason: reasonCodeId || "54bbba16-7858-4f62-b89a-4d4d5ed1d69e" // Use provided reason or default
+    };
   } else if (status === 'DoNotDisturb') {
-    return { state: "DoNotDisturb", reason: "eb591174-3ba3-441a-bf1f-6553bf6de8ef" };
+    return {
+      state: "DoNotDisturb",
+      reason: reasonCodeId || "eb591174-3ba3-441a-bf1f-6553bf6de8ef" // Use provided reason or default
+    };
   }
   return {
-    state: status, // Changed from State to state for consistency with payload interface
-    reason: reason || null
+    state: status,
+    reason: reasonCodeId || null
   };
 };
 
@@ -562,4 +568,175 @@ export default {
   // Helpers
   mapStatusToMitelState,
   createPresenceStatePayload,
+};
+
+// ========================================================================
+// CALL TRANSFER FUNCTIONS
+// ========================================================================
+
+/**
+ * Perform a blind transfer (immediate transfer without consultation)
+ */
+export const blindTransferCall = async (
+  agentId: string,
+  conversationId: string,
+  destination: string,
+  ticketId?: number,
+  destinationAgentId?: number
+) => {
+  const payload: any = { destination };
+  if (ticketId) payload.ticket_id = ticketId;
+  if (destinationAgentId) payload.destination_agent_id = destinationAgentId;
+
+  const response = await api.post(
+    `/mitel/agents/${agentId}/calls/${conversationId}/transfer/blind`,
+    payload
+  );
+  return response.data;
+};
+
+/**
+ * Initiate a consultation transfer (talk to destination before completing transfer)
+ */
+export const initiateConsultTransfer = async (
+  agentId: string,
+  conversationId: string,
+  destination: string
+) => {
+  const response = await api.post(
+    `/mitel/agents/${agentId}/calls/${conversationId}/transfer/consult/initiate`,
+    { destination }
+  );
+  return response.data;
+};
+
+/**
+ * Complete a consultation transfer
+ */
+export const completeConsultTransfer = async (
+  agentId: string,
+  conversationId: string,
+  ticketId?: number,
+  destinationAgentId?: number
+) => {
+  const payload: any = {};
+  if (ticketId) payload.ticket_id = ticketId;
+  if (destinationAgentId) payload.destination_agent_id = destinationAgentId;
+
+  const response = await api.post(
+    `/mitel/agents/${agentId}/calls/${conversationId}/transfer/consult/complete`,
+    payload
+  );
+  return response.data;
+};
+
+/**
+ * Cancel a consultation transfer and return to original call
+ */
+export const cancelConsultTransfer = async (
+  agentId: string,
+  conversationId: string
+) => {
+  const response = await api.post(
+    `/mitel/agents/${agentId}/calls/${conversationId}/transfer/consult/cancel`
+  );
+  return response.data;
+};
+
+// ========================================================================
+// INTEGRATED SOFTPHONE FUNCTIONS
+// ========================================================================
+
+/**
+ * Get agent group presence information
+ * Returns agent groups with their presence states (Voice, OpenMedia, etc.)
+ */
+export const getAgentGroupPresence = async (agentId: string = 'me') => {
+  const response = await api.get(`/mitel/agents/${agentId}/agentgrouppresence`);
+  return response.data;
+};
+
+/**
+ * Get integrated softphone credentials for WebRTC connection
+ * Returns credentials for connecting to Mitel Border Gateway
+ */
+export const getIntegratedSoftphoneCredentials = async (agentId: string) => {
+  const response = await api.get(`/mitel/agents/${agentId}/integratedsoftphone`);
+  return response.data;
+};
+
+/**
+ * Get busy reason codes for agent
+ * Returns available reason codes when agent changes status to busy
+ */
+export const getBusyReasonCodes = async (agentId: string = 'me') => {
+  const response = await api.get(`/mitel/agents/${agentId}/busyreasoncodes`);
+  return response.data;
+};
+
+/**
+ * Search directory for employees/agents
+ * Used for call transfer destination selection
+ */
+export const searchDirectory = async (
+  searchQuery: string = '',
+  voiceOnly: boolean = true,
+  skip: number = 0,
+  top: number = 25,
+  searchType: 'text' | 'id' = 'text'
+) => {
+  const params = new URLSearchParams();
+  if (searchQuery) params.append('q', searchQuery);
+  params.append('voiceOnly', voiceOnly.toString());
+  params.append('skip', skip.toString());
+  params.append('top', top.toString());
+  params.append('searchType', searchType);
+
+  const response = await api.get(`/mitel/directory/search?${params.toString()}`);
+  return response.data;
+};
+
+/**
+ * Make an outbound call
+ * Creates a new conversation to initiate an outbound call
+ */
+export const makeOutboundCall = async (
+  employeeId: string = 'me',
+  to: string,
+  options: {
+    from?: string;
+    type?: string;
+    dialAsIs?: boolean;
+    lightDirectoryEntryModels?: Array<{
+      id: string;
+      name: string;
+      email?: string;
+      phone: string;
+      agentId?: string | null;
+      type: string;
+    }>;
+  } = {}
+) => {
+  const {
+    from = '',
+    type = 'Voice',
+    dialAsIs = false,
+    lightDirectoryEntryModels = []
+  } = options;
+
+  const params = new URLSearchParams();
+  params.append('dialAsIs', dialAsIs.toString());
+
+  const payload = {
+    to,
+    from,
+    type,
+    lightDirectoryEntryModels
+  };
+
+  const response = await api.post(
+    `/mitel/employees/${employeeId}/conversations?${params.toString()}`,
+    payload
+  );
+  return response.data;
 };

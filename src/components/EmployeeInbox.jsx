@@ -37,7 +37,7 @@ const EmployeeInbox = ({ className = '', onConversationEvent }) => {
 
   // ---- Mitel SignalR Hook ----
   const { state: connState, on } = useMitelSignalR({
-    baseUrl: 'https://micc.telediant.com.my/MiccSdk/signalr',
+    baseUrl: `${import.meta.env.VITE_MITEL_BASE_URL || 'https://micc.telediant.com.my'}/MiccSdk/signalr`,
     hubs: ['queueHub', 'employeeHub', 'agentHub'],
     token: localStorage.getItem('mitel_token')
   });
