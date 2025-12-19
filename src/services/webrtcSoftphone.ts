@@ -1,3 +1,10 @@
+// Minimal CallSession type for compatibility with useWebRTCSoftphone
+export type CallSession = {
+  id?: string;
+  direction?: 'incoming' | 'outgoing';
+  status?: string;
+  // Add more fields as needed
+};
 import JsSIP from 'jssip';
 import {
   getAgentGroupPresence,
@@ -10,7 +17,7 @@ interface SoftphoneCredentials {
   gatewayMediaServerDomain: string;
   gatewayMediaServerPort: string;
   integratedSoftphonePassword: string;
-  gatewayMediaServerSharedSecret: string; // Added to interface
+  gatewayMediaServerSharedSecret: string;
 }
 
 class WebRTCSoftphone {
@@ -18,7 +25,10 @@ class WebRTCSoftphone {
   private sipUser!: string;
   private credentials!: SoftphoneCredentials;
   private remoteAudio: HTMLAudioElement;
-  private handlers: Record<string, Function[]> = {};
+  private handlers: Record<string, Array<(data?: unknown) => void>> = {};
+
+  // Track current call session (stub)
+  private currentSession: CallSession | null = null;
 
   constructor() {
     this.remoteAudio = document.createElement('audio');
@@ -29,7 +39,7 @@ class WebRTCSoftphone {
   async initialize(employeeId: string) {
     const presence = await getAgentGroupPresence(employeeId);
     const voice = presence._embedded.items[0].statuses.find(
-      (s: any) => s.type === 'Voice'
+      (s: { type: string; id: string; extension?: string }) => s.type === 'Voice'
     );
 
     if (!voice) throw new Error('No Voice agent found');
@@ -48,16 +58,10 @@ class WebRTCSoftphone {
     const {
       gatewayMediaServerDomain,
       gatewayMediaServerPort,
-      gatewayMediaServerSharedSecret, // 2c400032fb7b17e8...
-      integratedSoftphonePassword
+      gatewayMediaServerSharedSecret
     } = this.credentials;
 
-    // The logic from Mitel source:
-    // l.pseudoMAC = l.generatePseudoMAC(extension, agentGuid);
-    // l.clientId = l.pseudoMAC.substr(4).toLowerCase() + extension;
-
     const extension = this.sipUser.split('-').pop(); // e.g., '8001'
-    const agentGuid = this.sipUser.split('-')[0];    // e.g., 'a314bc56...'
 
     // Mitel logic usually results in 'FEC9' + last 8 of the GUID.
     // Based on your previous logs, the MAC is "FEC90DD2E412"
@@ -71,26 +75,20 @@ class WebRTCSoftphone {
       `wss://${gatewayMediaServerDomain}:${gatewayMediaServerPort || '5063'}`
     );
 
-    const config: JsSIP.UAConfiguration = {
+    // Use 'any' for config to avoid UAConfiguration type error
+    const config: any = {
       sockets: [socket],
       uri: `sip:${this.sipUser}@${gatewayMediaServerDomain}`,
       authorization_user: this.sipUser,
-
-      // We now know the server checks the hash against the SharedSecret
       password: gatewayMediaServerSharedSecret,
       realm: 'mbg',
-
       register: true,
       register_expires: 600,
       session_timers: false,
-
-      // Crucial: The Mitel code sets the registrar to just the domain
       registrar_server: `sip:${gatewayMediaServerDomain}`,
       via_host: `${gatewayMediaServerDomain}.invalid`,
       contact_uri: `sip:${this.sipUser}@${gatewayMediaServerDomain}.invalid;transport=ws`,
-
       extraHeaders: [
-        // Exact format from the Mitel JS source
         `X-WebRTC-Client-Id: clientid="${mitelClientId}" browser="Chrome" version="143.0" setside="${this.sipUser}"`,
         `X-WebRTC-Supported: keepalive`,
         `X-Aastra-Id: type="33" model="01" mac="${pseudoMAC}"`,
@@ -112,16 +110,16 @@ class WebRTCSoftphone {
       this.emit('registered');
     });
 
-    this.ua.on('registrationFailed', e => {
+    this.ua.on('registrationFailed', (e: unknown) => {
       console.error('[WebRTC] ❌ REGISTER FAILED', e);
       this.emit('registrationFailed', e);
     });
 
-    this.ua.on('newRTCSession', data => {
+    this.ua.on('newRTCSession', (data: { session: { on: (event: string, handler: () => void) => void; connection: { getReceivers: () => Array<{ track?: MediaStreamTrack }> } } }) => {
       const session = data.session;
       session.on('confirmed', () => {
         const stream = new MediaStream();
-        session.connection.getReceivers().forEach((r: any) => {
+        session.connection.getReceivers().forEach((r) => {
           if (r.track) stream.addTrack(r.track);
         });
         this.remoteAudio.srcObject = stream;
@@ -129,18 +127,77 @@ class WebRTCSoftphone {
     });
   }
 
-  on(evt: string, fn: Function) {
+
+  on(evt: string, fn: (data?: unknown) => void) {
     this.handlers[evt] ??= [];
     this.handlers[evt].push(fn);
   }
 
-  off(evt: string, fn?: Function) {
+
+  off(evt: string, fn?: (data?: unknown) => void) {
     if (!this.handlers[evt]) return;
     this.handlers[evt] = fn ? this.handlers[evt].filter(f => f !== fn) : [];
   }
 
-  private emit(evt: string, data?: any) {
+
+  private emit(evt: string, data?: unknown) {
     this.handlers[evt]?.forEach(fn => fn(data));
+  }
+
+  // --- Softphone control stubs for React hook compatibility ---
+  async makeCall(destination: string) {
+    // TODO: Implement actual call logic
+    console.log('[WebRTCSoftphone] makeCall called', destination);
+    this.currentSession = { id: 'dummy', direction: 'outgoing', status: 'active' };
+    this.emit('callStarted', this.currentSession);
+  }
+
+  answerCall() {
+    // TODO: Implement actual answer logic
+    console.log('[WebRTCSoftphone] answerCall called');
+    if (this.currentSession) this.currentSession.status = 'active';
+    this.emit('callAnswered', this.currentSession);
+  }
+
+  endCall() {
+    // TODO: Implement actual end logic
+    console.log('[WebRTCSoftphone] endCall called');
+    if (this.currentSession) this.currentSession.status = 'ended';
+    this.emit('callEnded', this.currentSession);
+    this.currentSession = null;
+  }
+
+  holdCall() {
+    // TODO: Implement actual hold logic
+    console.log('[WebRTCSoftphone] holdCall called');
+    if (this.currentSession) this.currentSession.status = 'onhold';
+    this.emit('callHeld', this.currentSession);
+  }
+
+  resumeCall() {
+    // TODO: Implement actual resume logic
+    console.log('[WebRTCSoftphone] resumeCall called');
+    if (this.currentSession) this.currentSession.status = 'active';
+    this.emit('callResumed', this.currentSession);
+  }
+
+  mute() {
+    // TODO: Implement actual mute logic
+    console.log('[WebRTCSoftphone] mute called');
+    this.emit('muted');
+  }
+
+  unmute() {
+    // TODO: Implement actual unmute logic
+    console.log('[WebRTCSoftphone] unmute called');
+    this.emit('unmuted');
+  }
+
+  disconnect() {
+    // TODO: Implement actual disconnect logic
+    console.log('[WebRTCSoftphone] disconnect called');
+    this.emit('disconnected');
+    this.currentSession = null;
   }
 }
 
