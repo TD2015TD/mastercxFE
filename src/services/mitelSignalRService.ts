@@ -212,7 +212,10 @@ class MitelSignalRService {
   /**
    * Check if connected
    */
+
   isConnected(): boolean {
+    return !!this.connection && this.connection.state === signalR.HubConnectionState.Connected;
+  }
 }
 
 // Export singleton instance

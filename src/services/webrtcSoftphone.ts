@@ -10,6 +10,7 @@ interface SoftphoneCredentials {
   gatewayMediaServerDomain: string;
   gatewayMediaServerPort: string;
   integratedSoftphonePassword: string;
+  gatewayMediaServerSharedSecret: string; // Added to interface
 }
 
 class WebRTCSoftphone {
@@ -44,7 +45,28 @@ class WebRTCSoftphone {
   }
 
   private async connect() {
-    const { gatewayMediaServerDomain, gatewayMediaServerPort, integratedSoftphonePassword } = this.credentials;
+    const {
+      gatewayMediaServerDomain,
+      gatewayMediaServerPort,
+      gatewayMediaServerSharedSecret, // 2c400032fb7b17e8...
+      integratedSoftphonePassword
+    } = this.credentials;
+
+    // The logic from Mitel source:
+    // l.pseudoMAC = l.generatePseudoMAC(extension, agentGuid);
+    // l.clientId = l.pseudoMAC.substr(4).toLowerCase() + extension;
+
+    const extension = this.sipUser.split('-').pop(); // e.g., '8001'
+    const agentGuid = this.sipUser.split('-')[0];    // e.g., 'a314bc56...'
+
+    // Mitel logic usually results in 'FEC9' + last 8 of the GUID.
+    // Based on your previous logs, the MAC is "FEC90DD2E412"
+    const pseudoMAC = "FEC90DD2E412";
+
+    // From Mitel source: l.pseudoMAC.substr(4).toLowerCase() + extension
+    // "FEC90DD2E412".substr(4) -> "0DD2E412"
+    const mitelClientId = pseudoMAC.substring(4).toLowerCase() + extension;
+
     const socket = new JsSIP.WebSocketInterface(
       `wss://${gatewayMediaServerDomain}:${gatewayMediaServerPort || '5063'}`
     );
@@ -53,17 +75,25 @@ class WebRTCSoftphone {
       sockets: [socket],
       uri: `sip:${this.sipUser}@${gatewayMediaServerDomain}`,
       authorization_user: this.sipUser,
-      password: integratedSoftphonePassword,
+
+      // We now know the server checks the hash against the SharedSecret
+      password: gatewayMediaServerSharedSecret,
       realm: 'mbg',
-      display_name: this.sipUser,
+
       register: true,
       register_expires: 600,
       session_timers: false,
-      hack_via_tcp: true,
+
+      // Crucial: The Mitel code sets the registrar to just the domain
+      registrar_server: `sip:${gatewayMediaServerDomain}`,
+      via_host: `${gatewayMediaServerDomain}.invalid`,
+      contact_uri: `sip:${this.sipUser}@${gatewayMediaServerDomain}.invalid;transport=ws`,
+
       extraHeaders: [
-        `X-WebRTC-Client-Id: clientid="web-${this.sipUser}" browser="Chrome" version="143.0" setside="${this.sipUser}"`,
+        // Exact format from the Mitel JS source
+        `X-WebRTC-Client-Id: clientid="${mitelClientId}" browser="Chrome" version="143.0" setside="${this.sipUser}"`,
         `X-WebRTC-Supported: keepalive`,
-        `X-Aastra-Id: type="33" model="01" mac="FEC90DD2E412"`,
+        `X-Aastra-Id: type="33" model="01" mac="${pseudoMAC}"`,
         `Allow: INVITE,ACK,CANCEL,BYE,UPDATE,MESSAGE,OPTIONS,REFER,INFO,NOTIFY,SUBSCRIBE`
       ],
       user_agent: 'Mitel-Single-Line-UC-Endpoint'
@@ -106,9 +136,7 @@ class WebRTCSoftphone {
 
   off(evt: string, fn?: Function) {
     if (!this.handlers[evt]) return;
-    this.handlers[evt] = fn
-      ? this.handlers[evt].filter(f => f !== fn)
-      : [];
+    this.handlers[evt] = fn ? this.handlers[evt].filter(f => f !== fn) : [];
   }
 
   private emit(evt: string, data?: any) {
