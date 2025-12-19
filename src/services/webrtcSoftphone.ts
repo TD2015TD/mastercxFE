@@ -115,13 +115,15 @@ class WebRTCSoftphone {
       this.emit('registrationFailed', e);
     });
 
-    this.ua.on('newRTCSession', (data: { session: { on: (event: string, handler: () => void) => void; connection: { getReceivers: () => Array<{ track?: MediaStreamTrack }> } } }) => {
-      const session = data.session;
+    this.ua.on('newRTCSession', (event: { session: any }) => {
+      const session = event.session;
       session.on('confirmed', () => {
         const stream = new MediaStream();
-        session.connection.getReceivers().forEach((r) => {
-          if (r.track) stream.addTrack(r.track);
-        });
+        if (session.connection && typeof session.connection.getReceivers === 'function') {
+          session.connection.getReceivers().forEach((r: { track?: MediaStreamTrack }) => {
+            if (r.track) stream.addTrack(r.track);
+          });
+        }
         this.remoteAudio.srcObject = stream;
       });
     });

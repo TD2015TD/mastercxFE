@@ -221,8 +221,8 @@ export const useWebRTCSoftphone = () => {
     softphone.on('registered', handleRegistered);
     softphone.on('unregistered', handleUnregistered);
     softphone.on('registrationFailed', handleRegistrationFailed);
-    softphone.on('incomingCall', handleIncomingCall);
-    softphone.on('outgoingCall', handleOutgoingCall);
+    softphone.on('incomingCall', (data) => handleIncomingCall(data as CallSession));
+    softphone.on('outgoingCall', (data) => handleOutgoingCall(data as CallSession));
     softphone.on('callAccepted', handleCallAccepted);
     softphone.on('callConfirmed', handleCallConfirmed);
     softphone.on('callEnded', handleCallEnded);
@@ -237,8 +237,8 @@ export const useWebRTCSoftphone = () => {
       softphone.off('registered', handleRegistered);
       softphone.off('unregistered', handleUnregistered);
       softphone.off('registrationFailed', handleRegistrationFailed);
-      softphone.off('incomingCall', handleIncomingCall);
-      softphone.off('outgoingCall', handleOutgoingCall);
+      softphone.off('incomingCall', (data) => handleIncomingCall(data as CallSession));
+      softphone.off('outgoingCall', (data) => handleOutgoingCall(data as CallSession));
       softphone.off('callAccepted', handleCallAccepted);
       softphone.off('callConfirmed', handleCallConfirmed);
       softphone.off('callEnded', handleCallEnded);

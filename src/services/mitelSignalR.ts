@@ -6,12 +6,14 @@ export interface SignalRConfig {
     hubs: string[];
 }
 
-export enum ConnectionState {
-    Connecting = "connecting",
-    Connected = "connected",
-    Reconnecting = "reconnecting",
-    Disconnected = "disconnected"
-}
+
+export const ConnectionState = {
+    Connecting: "connecting",
+    Connected: "connected",
+    Reconnecting: "reconnecting",
+    Disconnected: "disconnected"
+} as const;
+export type ConnectionState = typeof ConnectionState[keyof typeof ConnectionState];
 
 type MessageHandler = (hub: string, method: string, ...args: any[]) => void;
 type ErrorHandler = (error: Error) => void;

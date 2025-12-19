@@ -6,7 +6,7 @@ import { SignalRService, ConnectionState } from '../services/mitelSignalR';
 export interface SignalRConfig {
   baseUrl: string;
   hubs: string[];
-  token?: string | null;
+  token?: string;
 }
 
 export interface UseMitelSignalROptions {
@@ -52,26 +52,29 @@ export function useMitelSignalR(
 
   // Listen for connection state updates
   useEffect(() => {
-    return service.onStateChange((s) => setState(s));
+    const cleanup = service.onStateChange((s) => setState(s));
+    return () => { cleanup && cleanup(); };
   }, []);
 
   // Listen for errors
   useEffect(() => {
-    return service.onError((err) => {
+    const cleanup = service.onError((err) => {
       console.error("❌ SignalR Error:", err);
       setError(err);
     });
+    return () => { cleanup && cleanup(); };
   }, []);
 
   // Listen for ALL messages + log them
   useEffect(() => {
-    return service.onMessage((hub, method, ...args) => {
+    const cleanup = service.onMessage((hub, method, ...args) => {
       console.groupCollapsed(`🔵 SignalR Message → ${hub}.${method}`);
       console.log("Arguments:", args);
       console.groupEnd();
 
       setLastMessage({ hub, method, args });
     });
+    return () => { cleanup && cleanup(); };
   }, []);
 
   // Invoke a server method

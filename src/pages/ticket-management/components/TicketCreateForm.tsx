@@ -117,7 +117,11 @@ const TicketCreateForm: React.FC<{
       if (user) {
         console.log('Current user loaded:', user);
         console.log('User role:', user.role);
-        setCurrentUser(user);
+        setCurrentUser({
+          id: user.id,
+          role: typeof user.role === 'string' ? user.role : user.role?.slug ?? '',
+          agent: user.agent ? { id: user.agent.id, mitel_agent_id: user.agent.mitel_agent_id } : undefined
+        });
       }
     } catch (err) {
       console.error('Error loading current user:', err);
