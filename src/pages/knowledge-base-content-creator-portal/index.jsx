@@ -115,11 +115,7 @@ const KnowledgeBaseContentCreatorPortal = () => {
       </Helmet>
 
       <div className="min-h-screen bg-background">
-        <TelephonyBar />
-        
         <main className="container mx-auto px-6 py-8 max-w-7xl">
-          <BreadcrumbNavigation />
-
           {/* Header */}
           <div className="mb-8">
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">

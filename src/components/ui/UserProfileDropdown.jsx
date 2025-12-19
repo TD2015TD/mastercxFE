@@ -16,6 +16,7 @@ const UserProfileDropdown = ({ user = null }) => {
   const [pendingStatus, setPendingStatus] = useState(null);
   const [pendingStatusType, setPendingStatusType] = useState(null);
   const [isLoadingInitialStatus, setIsLoadingInitialStatus] = useState(true);
+  const [isAgent, setIsAgent] = useState(false);
   const dropdownRef = useRef(null);
 
   // WebRTC Softphone hook
@@ -36,6 +37,23 @@ const UserProfileDropdown = ({ user = null }) => {
     setCurrentLanguage(savedLanguage);
   }, []);
 
+  // Check if user is an agent
+  useEffect(() => {
+    try {
+      const userSession = JSON.parse(localStorage.getItem('user-session') || '{}');
+      const authData = authService.getCurrentUser();
+      const role = userSession?.role?.slug || authData?.role?.slug || currentUser?.role || '';
+      const agentRoles = ['agent', 'supervisor', 'super-admin', 'admin'];
+      const isAgentUser = agentRoles.includes(role.toLowerCase());
+
+      setIsAgent(isAgentUser);
+      console.log('👤 UserProfileDropdown - User role:', role, 'Is Agent:', isAgentUser);
+    } catch (error) {
+      console.error('Error checking user role:', error);
+      setIsAgent(false);
+    }
+  }, [currentUser]);
+
   // Fetch initial Mitel status on mount
   useEffect(() => {
     const fetchInitialStatus = async () => {
@@ -45,6 +63,20 @@ const UserProfileDropdown = ({ user = null }) => {
         // Get employee_id from user object (from localStorage or props)
         const authData = authService.getCurrentUser();
         console.log(authData);
+
+        // Check if user is an agent
+        const userSession = JSON.parse(localStorage.getItem('user-session') || '{}');
+        const role = userSession?.role?.slug || authData?.role?.slug || currentUser?.role || '';
+        const agentRoles = ['agent', 'supervisor', 'super-admin', 'admin'];
+        const isAgent = agentRoles.includes(role.toLowerCase());
+
+        if (!isAgent) {
+          console.log('⚠️ User is not an agent, skipping Mitel status fetch');
+          setAvailability('Offline');
+          setIsLoadingInitialStatus(false);
+          return;
+        }
+
         const employeeId = currentUser?.agent?.employee_id || authData?.agent?.employee_id;
 
         if (!employeeId) {
@@ -132,6 +164,18 @@ const UserProfileDropdown = ({ user = null }) => {
   };
 
   const handleAvailabilityChange = async (status) => {
+    // Check if user is an agent
+    const userSession = JSON.parse(localStorage.getItem('user-session') || '{}');
+    const authData = authService.getCurrentUser();
+    const role = userSession?.role?.slug || authData?.role?.slug || currentUser?.role || '';
+    const agentRoles = ['agent', 'supervisor', 'super-admin', 'admin'];
+    const isAgent = agentRoles.includes(role.toLowerCase());
+
+    if (!isAgent) {
+      toast.error('Status changes are only available for agents');
+      return;
+    }
+
     // Check if status requires reason code
     if (status === 'Busy' || status === 'Do Not Disturb') {
       // Show BusyReasonModal
@@ -350,18 +394,25 @@ const UserProfileDropdown = ({ user = null }) => {
                 {isUpdatingStatus && (
                   <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-primary"></div>
                 )}
+                {!isAgent && (
+                  <span className="text-xs text-amber-600 flex items-center gap-1">
+                    <Icon name="Lock" size={10} />
+                    <span>Agent only</span>
+                  </span>
+                )}
               </div>
               <div className="space-y-1">
                 {['Available', 'Busy', 'Do Not Disturb', 'Offline'].map((status) => (
                   <button
                     key={status}
                     onClick={() => handleAvailabilityChange(status)}
-                    disabled={isUpdatingStatus}
+                    disabled={isUpdatingStatus || !isAgent}
+                    title={!isAgent ? 'Status changes are only available for agents' : ''}
                     className={`w-full flex items-center space-x-3 px-2 py-1 rounded text-sm transition-colors duration-200 ${
                       availability === status
                         ? 'bg-primary text-primary-foreground'
                         : 'text-popover-foreground hover:bg-muted'
-                    } ${isUpdatingStatus ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    } ${(isUpdatingStatus || !isAgent) ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
                     <span>{status}</span>
                     {availability === status && (
@@ -370,6 +421,11 @@ const UserProfileDropdown = ({ user = null }) => {
                   </button>
                 ))}
               </div>
+              {!isAgent && (
+                <div className="mt-2 text-xs text-muted-foreground italic">
+                  Status management is available for agent roles only
+                </div>
+              )}
             </div>
 
             {/* Divider */}

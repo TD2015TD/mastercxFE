@@ -16,7 +16,7 @@ import Customer360Profile from './pages/customer-360-profile';
 import CustomerDetailPage from './pages/customer-360-profile/CustomerDetailPage';
 import SupervisorDashboard from './pages/dashboard/supervisor';
 import GlobalNavigationSystem from './pages/global-navigation-system';
-import KnowledgeBaseContentCreatorPortal from './pages/knowledge-base-content-creator-portal';
+import KnowledgeBaseContentCreatorPortal from './pages/system-administration/knowledge-base';
 import DirectorySearchAndBrowsing from './pages/directory-search-and-browsing';
 import AgentManagement from './pages/agent-management';
 import UserForm from './pages/system-administration/user-management/UserForm';

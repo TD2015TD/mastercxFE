@@ -7,6 +7,7 @@ export interface SignalRConfig {
   baseUrl: string;
   hubs: string[];
   token?: string;
+  enabled?: boolean; // Allow disabling the connection
 }
 
 export interface UseMitelSignalROptions {
@@ -36,6 +37,13 @@ export function useMitelSignalR(
 
   // Auto-connect once
   useEffect(() => {
+    // Skip connection if disabled
+    if (config.enabled === false) {
+      console.log('🔗 SignalR connection disabled (non-agent user)');
+      setState(ConnectionState.Disconnected);
+      return;
+    }
+
     if (!options.autoConnect) return;
 
     let isMounted = true;
@@ -48,7 +56,7 @@ export function useMitelSignalR(
       isMounted = false;
       service.disconnect();
     };
-  }, []);
+  }, [config.enabled]);
 
   // Listen for connection state updates
   useEffect(() => {

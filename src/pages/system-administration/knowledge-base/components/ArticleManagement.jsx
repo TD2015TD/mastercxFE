@@ -42,14 +42,34 @@ const ArticleManagement = () => {
       setIsLoading(true);
       const params = {};
       if (filters.status) params.status = filters.status;
-      if (filters.category) params.category = filters.category;
-      params.page = filters.page;
-      params.per_page = filters.per_page;
+      if (filters.category) params.category_code = filters.category; // Use category_code for file-based articles
+      if (filters.page) params.page = filters.page;
 
-      const response = await knowledgeBaseService.getArticles(params);
+      // Use getArticlesWithFiles for file-based articles from database
+      const response = await knowledgeBaseService.getArticlesWithFiles(params);
       if (response.success) {
-        setArticles(response.data || []);
-        setPagination(response.pagination || null);
+        // Handle Laravel pagination structure
+        const paginatedData = response.data;
+
+        if (paginatedData && typeof paginatedData === 'object' && paginatedData.data) {
+          // Laravel paginated response
+          setArticles(paginatedData.data || []);
+          setPagination({
+            current_page: paginatedData.current_page,
+            last_page: paginatedData.last_page,
+            per_page: paginatedData.per_page,
+            total: paginatedData.total,
+            from: paginatedData.from,
+            to: paginatedData.to
+          });
+        } else if (Array.isArray(paginatedData)) {
+          // Direct array response
+          setArticles(paginatedData);
+          setPagination(null);
+        } else {
+          setArticles([]);
+          setPagination(null);
+        }
       }
     } catch (err) {
       console.error('Error fetching articles:', err);
@@ -75,13 +95,34 @@ const ArticleManagement = () => {
   const handleSaveArticle = async (data) => {
     try {
       setIsLoading(true);
-      if (editingArticle) {
-        await knowledgeBaseService.updateArticle(editingArticle.id, data);
-        setSuccess('Article updated successfully');
+
+      // Determine if this is a file-based article
+      // - If creating new article: check if data has file
+      // - If editing: check if original article has file_path OR if new file is provided
+      const isFileBased = editingArticle
+        ? (editingArticle.file_path || data.file)
+        : data.file;
+
+      if (isFileBased) {
+        // Use file-based endpoint with FormData
+        if (editingArticle) {
+          await knowledgeBaseService.updateArticleWithFile(editingArticle.id, data);
+          setSuccess('Article updated successfully');
+        } else {
+          await knowledgeBaseService.createArticleWithFile(data);
+          setSuccess('Article created successfully');
+        }
       } else {
-        await knowledgeBaseService.createArticle(data);
-        setSuccess('Article created successfully');
+        // Use OpenSearch endpoint for text-only articles
+        if (editingArticle) {
+          await knowledgeBaseService.updateArticle(editingArticle.id, data);
+          setSuccess('Article updated successfully');
+        } else {
+          await knowledgeBaseService.createArticle(data);
+          setSuccess('Article created successfully');
+        }
       }
+
       await fetchArticles();
       setTimeout(() => {
         handleCloseModal();
@@ -117,15 +158,19 @@ const ArticleManagement = () => {
 
   const getStatusBadge = (status) => {
     const statusConfig = {
-      draft: { color: 'bg-muted text-muted-foreground', icon: 'FileText' },
-      published: { color: 'bg-success/10 text-success', icon: 'CheckCircle' },
-      archived: { color: 'bg-warning/10 text-warning', icon: 'Archive' }
+      draft: { color: 'bg-muted text-muted-foreground', icon: 'FileText', label: 'Draft' },
+      published: { color: 'bg-success/10 text-success', icon: 'CheckCircle', label: 'Published' },
+      archived: { color: 'bg-warning/10 text-warning', icon: 'Archive', label: 'Archived' }
     };
-    const config = statusConfig[status] || statusConfig.draft;
+
+    // Default to 'published' if status is undefined (file-based articles default to published)
+    const normalizedStatus = status || 'published';
+    const config = statusConfig[normalizedStatus] || statusConfig.published;
+
     return (
       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.color}`}>
         <Icon name={config.icon} size={12} className="mr-1" />
-        {status.charAt(0).toUpperCase() + status.slice(1)}
+        {config.label}
       </span>
     );
   };
@@ -282,7 +327,7 @@ const ArticleManagement = () => {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="text-sm text-foreground">{getCategoryName(article.category)}</span>
+                    <span className="text-sm text-foreground">{getCategoryName(article.category_code || article.category)}</span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     {getStatusBadge(article.status)}
@@ -392,7 +437,7 @@ const ArticleManagement = () => {
               <div className="grid grid-cols-2 gap-4 p-4 bg-muted/30 rounded-lg">
                 <div>
                   <p className="text-xs text-muted-foreground">Category</p>
-                  <p className="text-sm font-medium text-foreground">{getCategoryName(viewingArticle.category)}</p>
+                  <p className="text-sm font-medium text-foreground">{getCategoryName(viewingArticle.category_code || viewingArticle.category)}</p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Author</p>

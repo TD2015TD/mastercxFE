@@ -6,9 +6,31 @@ import { useMitelSignalR } from '../hooks/useMitelSignalR';
 import mitelService from '../services/mitelService';
 import customerInteractionService from '../services/customerInteractionService';
 import { toast } from 'react-toastify';
+import { authService } from '../services/authService';
 
 const TelephonyBar = ({ className = '', onCallEvent }) => {
   const navigate = useNavigate();
+
+  // Check if user is an agent
+  const [isAgent, setIsAgent] = useState(false);
+
+  useEffect(() => {
+    try {
+      const userSession = JSON.parse(localStorage.getItem('user-session') || '{}');
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      const role = userSession?.role?.slug || user?.role?.slug || '';
+
+      // Only enable telephony for agent roles
+      const agentRoles = ['agent', 'supervisor', 'super-admin', 'admin'];
+      setIsAgent(agentRoles.includes(role.toLowerCase()));
+
+      console.log('📞 TelephonyBar - User role:', role, 'Is Agent:', agentRoles.includes(role.toLowerCase()));
+    } catch (error) {
+      console.error('Error checking user role:', error);
+      setIsAgent(false);
+    }
+  }, []);
+
   // FSM state
   const [status, setStatus] = useState('IDLE');
   const [caller, setCaller] = useState(null);
@@ -39,7 +61,7 @@ const TelephonyBar = ({ className = '', onCallEvent }) => {
   const logInteractionAsync = useCallback(async (interactionData) => {
     try {
       // Get agent info from localStorage or auth context
-      const authData = JSON.parse(localStorage.getItem('user') || '{}');
+      const authData = authService.getCurrentUser();
       const agentId = authData?.agent?.id;
 
       const payload = {
@@ -101,15 +123,18 @@ const TelephonyBar = ({ className = '', onCallEvent }) => {
     pendingInteractionIdsRef.current = [];
   }, []);
 
-  // ---- Mitel SignalR Hook ----
+  // ---- Mitel SignalR Hook (only for agents) ----
   const { state: connState, on, invoke, error } = useMitelSignalR({
     baseUrl: `${import.meta.env.VITE_MITEL_BASE_URL || 'https://micc.telediant.com.my'}/MiccSdk/signalr`,
     hubs: ['queueHub', 'employeeHub', 'agentHub'],
-    token: localStorage.getItem('mitel_token')
+    token: localStorage.getItem('mitel_token'),
+    enabled: isAgent // Only connect if user is an agent
   });
 
   // Subscribe to employee and queue monitoring when connected
   useEffect(() => {
+    if (!isAgent) return; // Skip if not an agent
+
     if (connState === 'connected') {
       console.log('🔗 SignalR Connected - No subscription needed, listening for events directly');
 
@@ -117,10 +142,15 @@ const TelephonyBar = ({ className = '', onCallEvent }) => {
       // Events should be pushed automatically once connected
       // If you find the correct subscription method name, add it here
     }
-  }, [connState, invoke]);
+  }, [connState, invoke, isAgent]);
 
   // ---- Map Mitel events → FSM ----
   useEffect(() => {
+    if (!isAgent) {
+      console.log('🔗 Skipping Mitel event listeners - User is not an agent');
+      return;
+    }
+
     console.log('🔗 Setting up Mitel event listeners...');
 
     // Media Stats Updated - This event is fired when call media stats are updated
@@ -349,7 +379,7 @@ const TelephonyBar = ({ className = '', onCallEvent }) => {
       offQueueConversationChanged();
       offQueueConversationRemoved();
     };
-  }, [on, onCallEvent]);
+  }, [on, onCallEvent, isAgent]);
 
   // ---- Timer management ----
   useEffect(() => {
@@ -775,6 +805,11 @@ const TelephonyBar = ({ className = '', onCallEvent }) => {
   }[connState] || '⚪';
 
   // ---- Render ----
+  // Don't render telephony bar for non-agents
+  if (!isAgent) {
+    return null;
+  }
+
   return (
     <>
       <div className={`h-12 w-full bg-card border border-border rounded-lg shadow-sm flex items-center justify-between px-4 ${className}`}>

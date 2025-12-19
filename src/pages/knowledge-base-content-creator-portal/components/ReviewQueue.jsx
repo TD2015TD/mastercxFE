@@ -1,14 +1,40 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Icon from '../../../components/AppIcon';
+import { knowledgeBaseService } from '../../../services/knowledgeBaseService';
 
 const ReviewQueue = ({ userRole, onArticleSelect, onWorkflowAction }) => {
   const [filterDepartment, setFilterDepartment] = useState('all');
   const [filterCategory, setFilterCategory] = useState('all');
   const [sortBy, setSortBy] = useState('submitted_desc');
   const [selectedArticles, setSelectedArticles] = useState([]);
+  const [pendingReviews, setPendingReviews] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Mock articles pending review
-  const pendingReviews = [
+  // Fetch pending reviews from API
+  useEffect(() => {
+    fetchPendingReviews();
+  }, []);
+
+  const fetchPendingReviews = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await knowledgeBaseService.getPendingReviews({ per_page: 100 });
+      if (response.success) {
+        setPendingReviews(response.data || []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch pending reviews:', err);
+      setError('Failed to load pending reviews');
+      setPendingReviews([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Mock articles pending review (fallback for demo)
+  const mockPendingReviews = [
     {
       id: 'art-002',
       title: 'Customs Declaration Form Submission Process',
@@ -73,7 +99,9 @@ const ReviewQueue = ({ userRole, onArticleSelect, onWorkflowAction }) => {
   ];
 
   const getFilteredArticles = () => {
-    let filtered = [...pendingReviews];
+    // Use real data if available, otherwise use mock data for demo
+    const articlesToFilter = pendingReviews.length > 0 ? pendingReviews : mockPendingReviews;
+    let filtered = [...articlesToFilter];
 
     // Department filter
     if (filterDepartment !== 'all') {
@@ -110,16 +138,8 @@ const ReviewQueue = ({ userRole, onArticleSelect, onWorkflowAction }) => {
   };
 
   const getPriorityColor = (priority) => {
-    switch (priority) {
-      case 'high':
-        return 'bg-red-100 text-red-700 border-red-200';
-      case 'medium':
-        return 'bg-yellow-100 text-yellow-700 border-yellow-200';
-      case 'low':
-        return 'bg-green-100 text-green-700 border-green-200';
-      default:
-        return 'bg-gray-100 text-gray-700 border-gray-200';
-    }
+    if (!priority) return 'bg-gray-100 text-gray-700 border-gray-200';
+    return knowledgeBaseService.getPriorityColor(priority);
   };
 
   const getTimeAgo = (timestamp) => {
@@ -161,22 +181,51 @@ const ReviewQueue = ({ userRole, onArticleSelect, onWorkflowAction }) => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-semibold text-foreground">Review Queue</h2>
-          <p className="text-muted-foreground mt-1">
-            {filteredArticles?.length} article{filteredArticles?.length !== 1 ? 's' : ''} pending review
-          </p>
+      {/* Loading State */}
+      {isLoading && (
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <Icon name="Loader2" size={48} className="mx-auto text-primary animate-spin mb-4" />
+            <p className="text-muted-foreground">Loading pending reviews...</p>
+          </div>
         </div>
-        
-        <div className="flex items-center space-x-2">
-          <span className="text-sm text-muted-foreground">
-            Est. total review time: {filteredArticles?.reduce((acc, article) => acc + article?.estimated_review_time, 0)} min
-          </span>
+      )}
+
+      {/* Error State */}
+      {error && !isLoading && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="flex items-center space-x-2">
+            <Icon name="AlertCircle" size={20} className="text-red-600" />
+            <p className="text-red-700">{error}</p>
+          </div>
+          <button
+            onClick={fetchPendingReviews}
+            className="mt-3 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-200"
+          >
+            Retry
+          </button>
         </div>
-      </div>
-      {/* Filters */}
+      )}
+
+      {/* Main Content */}
+      {!isLoading && !error && (
+        <>
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-semibold text-foreground">Review Queue</h2>
+              <p className="text-muted-foreground mt-1">
+                {filteredArticles?.length} article{filteredArticles?.length !== 1 ? 's' : ''} pending review
+              </p>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <span className="text-sm text-muted-foreground">
+                Est. total review time: {filteredArticles?.reduce((acc, article) => acc + (article?.estimated_review_time || 0), 0)} min
+              </span>
+            </div>
+          </div>
+          {/* Filters */}
       <div className="bg-card border border-border rounded-lg p-4">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {/* Department Filter */}
@@ -413,7 +462,9 @@ const ReviewQueue = ({ userRole, onArticleSelect, onWorkflowAction }) => {
             </p>
           </div>
         )}
-      </div>
+        </div>
+        </>
+      )}
     </div>
   );
 };
