@@ -570,105 +570,45 @@ export const createPresenceStatePayload = (status: string, reasonCodeId?: string
 };
 
 // ========================================================================
-// EXPORTS
-// ========================================================================
-
-export default {
-  // Existing
-  getMitelAgents,
-  getMitelAgent,
-  getMitelAgentState,
-  updateEmployeeState,
-
-  // Employee Endpoints
-  getMitelEmployees,
-  getMitelEmployeeDetails,
-  getMitelEmployeeState,
-  updateMitelEmployeeState,
-  updateEmployeeStateDirect,
-  getMitelEmployeeStats,
-
-  // Conversation Actions
-  performConversationAction,
-  acceptConversation,
-  endConversation,
-  holdConversation,
-  resumeConversation,
-
-  // Reason Code Endpoints
-  getMitelReasonCodes,
-  getMitelReasonCodeById,
-
-  // Case Endpoints
-  getMitelCases,
-  getMitelCaseById,
-
-  // Queue Endpoints
-  getMitelQueueGroups,
-  getMitelQueueGroupState,
-
-  // Agent Group Endpoints
-  getMitelAgentGroups,
-  getMitelAgentGroupById,
-  getMitelAgentGroupStates,
-
-  // Extensions Endpoints
-  getMitelExtensions,
-  getMitelExtensionById,
-
-  // DNIS Endpoints
-  getMitelDnis,
-  getMitelDnisById,
-
-  // Global Reply Template Endpoints
-  getMitelGlobalReplyTemplates,
-  getMitelGlobalReplyTemplateById,
-
-  // Warning Reason Endpoints
-  getMitelWarningReasons,
-  getMitelWarningReasonById,
-
-  // Chat & Email Endpoints
-  getChatReplyTemplateFolders,
-  getEmailReusableCase,
-
-  // Helpers
-  mapStatusToMitelState,
-  createPresenceStatePayload,
-};
-
-// ========================================================================
 // CALL TRANSFER FUNCTIONS
 // ========================================================================
 
 /**
  * Perform a blind transfer (immediate transfer without consultation)
- * DIRECT Mitel API call
- * Note: ticketId and destinationAgentId are kept for compatibility but not used by Mitel API
+ * DIRECT Mitel API call using EnhancedTransfer
  */
 export const blindTransferCall = async (
   agentId: string,
   conversationId: string,
   destination: string,
   _ticketId?: number,
-  _destinationAgentId?: number
+  transferDestinationId?: string,
+  transferDestinationType?: string,
+  mediaType: string = 'Voice',
+  mediaServerType: string = 'ICP3300withMiTAI'
 ) => {
   const mitelToken = authService.getMitelToken();
 
-  // Mitel API expects a specific payload structure for blind transfer
+  // Mitel API expects EnhancedTransfer payload structure
   const payload = {
-    conversationId: conversationId,
-    destination: destination,
-    transferType: 'Blind'
+    conversationAction: 'EnhancedTransfer',
+    id: conversationId,
+    transferDestination: transferDestinationId || destination,
+    transferDestinationType: transferDestinationType || 'Employee',
+    actualTransferDestinationType: transferDestinationType || 'Employee',
+    mediaType: mediaType,
+    mediaServerType: mediaServerType,
+    transferType: 0 // 0 = Blind transfer
   };
 
+  const timestamp = Date.now();
   const response = await fetch(
-    `${mitelBaseUrl}/MiccSdk/api/v1/employees/${agentId}/conversations/${conversationId}/transfer`,
+    `${mitelBaseUrl}/MiccSdk/api/v1/employees/${agentId}/conversations/${conversationId}?${timestamp}&dialAsIs=false`,
     {
-      method: 'POST',
+      method: 'PUT',
       headers: {
         'Authorization': `Bearer ${mitelToken}`,
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/json;charset=UTF-8',
         'Accept': 'application/json'
       },
       body: JSON.stringify(payload)
@@ -687,29 +627,39 @@ export const blindTransferCall = async (
 
 /**
  * Initiate a consultation transfer (talk to destination before completing transfer)
- * DIRECT Mitel API call
+ * DIRECT Mitel API call using EnhancedTransfer
  */
 export const initiateConsultTransfer = async (
   agentId: string,
   conversationId: string,
-  destination: string
+  destination: string,
+  transferDestinationId?: string,
+  transferDestinationType?: string,
+  mediaType: string = 'Voice',
+  mediaServerType: string = 'ICP3300withMiTAI'
 ) => {
   const mitelToken = authService.getMitelToken();
 
-  // Mitel API expects a specific payload structure for consult transfer
+  // Mitel API expects EnhancedTransfer payload structure for consult transfer
   const payload = {
-    conversationId: conversationId,
-    destination: destination,
-    transferType: 'Consult'
+    conversationAction: 'EnhancedTransfer',
+    id: conversationId,
+    transferDestination: transferDestinationId || destination,
+    transferDestinationType: transferDestinationType || 'Employee',
+    actualTransferDestinationType: transferDestinationType || 'Employee',
+    mediaType: mediaType,
+    mediaServerType: mediaServerType,
+    transferType: 1 // 1 = Consult transfer
   };
 
+  const timestamp = Date.now();
   const response = await fetch(
-    `${mitelBaseUrl}/MiccSdk/api/v1/employees/${agentId}/conversations/${conversationId}/transfer`,
+    `${mitelBaseUrl}/MiccSdk/api/v1/employees/${agentId}/conversations/${conversationId}?${timestamp}&dialAsIs=false`,
     {
-      method: 'POST',
+      method: 'PUT',
       headers: {
         'Authorization': `Bearer ${mitelToken}`,
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/json;charset=UTF-8',
         'Accept': 'application/json'
       },
       body: JSON.stringify(payload)
@@ -723,8 +673,8 @@ export const initiateConsultTransfer = async (
     );
   }
 
-  const data = await response.json();
-  return { success: true, data };
+  // Response may be empty for successful transfer initiation
+  return { success: true, status: response.status };
 };
 
 /**
@@ -991,4 +941,86 @@ export const makeOutboundCall = async (
   }
 
   return await response.json();
+};
+
+// ========================================================================
+// EXPORTS
+// ========================================================================
+
+export default {
+  // Existing
+  getMitelAgents,
+  getMitelAgent,
+  getMitelAgentState,
+  updateEmployeeState,
+
+  // Employee Endpoints
+  getMitelEmployees,
+  getMitelEmployeeDetails,
+  getMitelEmployeeState,
+  updateMitelEmployeeState,
+  updateEmployeeStateDirect,
+  getMitelEmployeeStats,
+
+  // Conversation Actions
+  performConversationAction,
+  acceptConversation,
+  endConversation,
+  holdConversation,
+  resumeConversation,
+
+  // Reason Code Endpoints
+  getMitelReasonCodes,
+  getMitelReasonCodeById,
+
+  // Case Endpoints
+  getMitelCases,
+  getMitelCaseById,
+
+  // Queue Endpoints
+  getMitelQueueGroups,
+  getMitelQueueGroupState,
+
+  // Agent Group Endpoints
+  getMitelAgentGroups,
+  getMitelAgentGroupById,
+  getMitelAgentGroupStates,
+
+  // Extensions Endpoints
+  getMitelExtensions,
+  getMitelExtensionById,
+
+  // DNIS Endpoints
+  getMitelDnis,
+  getMitelDnisById,
+
+  // Global Reply Template Endpoints
+  getMitelGlobalReplyTemplates,
+  getMitelGlobalReplyTemplateById,
+
+  // Warning Reason Endpoints
+  getMitelWarningReasons,
+  getMitelWarningReasonById,
+
+  // Chat & Email Endpoints
+  getChatReplyTemplateFolders,
+  getEmailReusableCase,
+
+  // Call Transfer Functions
+  blindTransferCall,
+  initiateConsultTransfer,
+  completeConsultTransfer,
+  cancelConsultTransfer,
+
+  // Integrated Softphone Functions
+  getAgentGroupPresence,
+  getIntegratedSoftphoneCredentials,
+  getBusyReasonCodes,
+  searchDirectory,
+  makeOutboundCall,
+
+  // Helpers
+  mapStatusToMitelState,
+  createPresenceStatePayload,
+  getMe,
 };

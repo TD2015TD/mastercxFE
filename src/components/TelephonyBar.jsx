@@ -7,6 +7,7 @@ import mitelService from '../services/mitelService';
 import customerInteractionService from '../services/customerInteractionService';
 import { toast } from 'react-toastify';
 import { authService } from '../services/authService';
+import VoiceContactsModal from './VoiceContactsModal';
 
 const TelephonyBar = ({ className = '', onCallEvent }) => {
   const navigate = useNavigate();
@@ -37,11 +38,14 @@ const TelephonyBar = ({ className = '', onCallEvent }) => {
   const [timer, setTimer] = useState(0);
   const [muted, setMuted] = useState(false);
   const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
+  const [isVoiceContactsModalOpen, setIsVoiceContactsModalOpen] = useState(false);
   const [transferTarget, setTransferTarget] = useState('');
   const [transferType, setTransferType] = useState('blind'); // 'blind' or 'consult'
   const [transferDestinationAgentId, setTransferDestinationAgentId] = useState(null);
+  const [selectedContact, setSelectedContact] = useState(null);
   const [isInConsultation, setIsInConsultation] = useState(false);
   const [consultationConversationId, setConsultationConversationId] = useState(null);
+  const [currentExtension, setCurrentExtension] = useState('8002');
   const [showWrapUp, setShowWrapUp] = useState(false);
   const [wrapUpCode, setWrapUpCode] = useState('');
   const [wrapUpNotes, setWrapUpNotes] = useState('');
@@ -137,6 +141,18 @@ const TelephonyBar = ({ className = '', onCallEvent }) => {
 
     if (connState === 'connected') {
       console.log('🔗 SignalR Connected - No subscription needed, listening for events directly');
+
+      // Get current employee details to retrieve extension
+      mitelService.getMe()
+        .then(employeeData => {
+          console.log('📞 Employee data:', employeeData);
+          if (employeeData?.extension) {
+            setCurrentExtension(employeeData.extension);
+          }
+        })
+        .catch(err => {
+          console.error('Failed to fetch employee details:', err);
+        });
 
       // NOTE: Mitel may not require explicit subscription if you're already authenticated
       // Events should be pushed automatically once connected
@@ -530,13 +546,14 @@ const TelephonyBar = ({ className = '', onCallEvent }) => {
         ? Math.floor((new Date() - callStartTimeRef.current) / 1000 / 60)
         : timer ? Math.floor(timer / 60) : 0;
 
-      // Call the blind transfer API
+      // Call the blind transfer API with enhanced transfer
       await mitelService.blindTransferCall(
         'me',
         currentConversationId,
         transferTarget,
         ticketIdRef.current,
-        transferDestinationAgentId
+        selectedContact?.id || transferDestinationAgentId,
+        selectedContact?.type || 'Employee'
       );
 
       toast.success(`Call transferred to ${transferTarget}`);
@@ -576,7 +593,7 @@ const TelephonyBar = ({ className = '', onCallEvent }) => {
       console.error('❌ Blind transfer failed:', err);
       toast.error(`Failed to transfer call: ${err.message}`);
     }
-  }, [transferTarget, transferDestinationAgentId, caller, timer, currentConversationId, onCallEvent, logInteractionAsync]);
+  }, [transferTarget, transferDestinationAgentId, selectedContact, caller, timer, currentConversationId, onCallEvent, logInteractionAsync]);
 
   const initiateConsultation = useCallback(async () => {
     if (!transferTarget.trim()) {
@@ -589,15 +606,17 @@ const TelephonyBar = ({ className = '', onCallEvent }) => {
     try {
       console.log(`📞 Initiating consultation transfer to: ${transferTarget}`);
 
-      // Call the initiate consult transfer API
-      const response = await mitelService.initiateConsultTransfer(
+      // Call the initiate consult transfer API with enhanced transfer
+      await mitelService.initiateConsultTransfer(
         'me',
         currentConversationId,
-        transferTarget
+        transferTarget,
+        selectedContact?.id || transferDestinationAgentId,
+        selectedContact?.type || 'Employee'
       );
 
       setIsInConsultation(true);
-      setConsultationConversationId(response.data?.consultationConversationId || currentConversationId);
+      setConsultationConversationId(currentConversationId);
       setStatus('CONSULTING');
       toast.info(`Consultation call initiated with ${transferTarget}`);
 
@@ -606,7 +625,7 @@ const TelephonyBar = ({ className = '', onCallEvent }) => {
       console.error('❌ Consultation initiation failed:', err);
       toast.error(`Failed to initiate consultation: ${err.message}`);
     }
-  }, [transferTarget, currentConversationId]);
+  }, [transferTarget, currentConversationId, selectedContact, transferDestinationAgentId]);
 
   const completeConsultTransfer = useCallback(async () => {
     try {
@@ -725,6 +744,14 @@ const TelephonyBar = ({ className = '', onCallEvent }) => {
     customerIdRef.current = null;
     ticketIdRef.current = null;
   }, [caller, timer, wrapUpCode, wrapUpNotes, currentConversationId, onCallEvent, logInteractionAsync]);
+
+  const handleContactSelect = useCallback((destination, contact) => {
+    setTransferTarget(destination);
+    setSelectedContact(contact);
+    if (contact?.agentId) {
+      setTransferDestinationAgentId(contact.agentId);
+    }
+  }, []);
 
   // ---- Listen for Ticket Created Events ----
   useEffect(() => {
@@ -892,22 +919,33 @@ const TelephonyBar = ({ className = '', onCallEvent }) => {
             {/* Transfer Destination */}
             <div className="mb-4">
               <label className="block text-sm font-medium mb-2">Destination</label>
-              <input
-                type="text"
-                value={transferTarget}
-                onChange={e=>setTransferTarget(e.target.value)}
-                placeholder="Extension or phone number"
-                className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground"
-                onKeyPress={e => {
-                  if (e.key === 'Enter' && transferTarget.trim()) {
-                    if (transferType === 'blind') {
-                      executeBlindTransfer();
-                    } else {
-                      initiateConsultation();
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={transferTarget}
+                  onChange={e=>setTransferTarget(e.target.value)}
+                  placeholder="Extension or phone number"
+                  className="flex-1 px-3 py-2 border border-border rounded-md bg-background text-foreground"
+                  onKeyPress={e => {
+                    if (e.key === 'Enter' && transferTarget.trim()) {
+                      if (transferType === 'blind') {
+                        executeBlindTransfer();
+                      } else {
+                        initiateConsultation();
+                      }
                     }
-                  }
-                }}
-              />
+                  }}
+                />
+                <Button
+                  variant="outline"
+                  onClick={() => setIsVoiceContactsModalOpen(true)}
+                  className="flex items-center"
+                  iconName="Search"
+                  title="Search Directory"
+                >
+                  Search
+                </Button>
+              </div>
             </div>
 
             {/* Ticket Info */}
@@ -1034,6 +1072,14 @@ const TelephonyBar = ({ className = '', onCallEvent }) => {
           </div>
         </div>
       )}
+
+      {/* Voice Contacts Modal */}
+      <VoiceContactsModal
+        isOpen={isVoiceContactsModalOpen}
+        onClose={() => setIsVoiceContactsModalOpen(false)}
+        onSelect={handleContactSelect}
+        currentExtension={currentExtension}
+      />
     </>
   );
 };
