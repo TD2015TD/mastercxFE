@@ -1,66 +1,279 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 import Icon from '../../components/AppIcon';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
+import api from '../../services/api';
+import { toast } from 'react-toastify';
 
 const KnowledgeBasePortal = () => {
   const [activeTab, setActiveTab] = useState('browse');
   const [searchTerm, setSearchTerm] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [stats, setStats] = useState({
+    total_articles: 0,
+    total_categories: 0,
+    recently_updated: 0
+  });
+  const [categories, setCategories] = useState([]);
+  const [articles, setArticles] = useState([]);
+  const [recentViews, setRecentViews] = useState([]);
 
-  const stats = [
+  // Fetch stats from knowledge-base-articles
+  const fetchStats = async () => {
+    try {
+      const [articlesResponse, lookupsResponse] = await Promise.all([
+        api.get('/knowledge-base-articles'),
+        api.get('/lookups', { params: { type: 'knowledge_base_category' } })
+      ]);
+
+      let totalArticles = 0;
+      let recentlyUpdated = 0;
+
+      if (articlesResponse.data.success) {
+        const articlesData = articlesResponse.data.data.data || articlesResponse.data.data || [];
+        totalArticles = articlesData.length;
+
+        // Count articles updated in the last 7 days
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+        recentlyUpdated = articlesData.filter(article => {
+          const updatedDate = new Date(article.updated_at || article.published_at);
+          return updatedDate >= sevenDaysAgo;
+        }).length;
+      }
+
+      const totalCategories = lookupsResponse.data.success
+        ? (lookupsResponse.data.data || []).length
+        : 0;
+
+      setStats({
+        total_articles: totalArticles,
+        total_categories: totalCategories,
+        recently_updated: recentlyUpdated
+      });
+    } catch (error) {
+      console.error('Failed to fetch stats:', error);
+    }
+  };
+
+  // Fetch categories from lookups
+  const fetchCategories = async () => {
+    try {
+      const [articlesResponse, lookupsResponse] = await Promise.all([
+        api.get('/knowledge-base-articles'),
+        api.get('/lookups', { params: { type: 'knowledge_base_category' } })
+      ]);
+
+      if (articlesResponse.data.success && lookupsResponse.data.success) {
+        const articlesData = articlesResponse.data.data.data || articlesResponse.data.data || [];
+        const lookupCategories = lookupsResponse.data.data || [];
+
+        // Count articles per category from actual articles
+        const countMap = {};
+        articlesData.forEach(article => {
+          const categoryCode = article.category_code;
+          if (categoryCode) {
+            countMap[categoryCode] = (countMap[categoryCode] || 0) + 1;
+          }
+        });
+
+        // Map lookups to categories with counts (show all categories)
+        const formattedCategories = lookupCategories.map(lookup => ({
+          code: lookup.code,
+          name: lookup.name,
+          count: countMap[lookup.code] || 0,
+          icon: getCategoryIcon(lookup.name)
+        }));
+
+        setCategories(formattedCategories);
+      }
+    } catch (error) {
+      console.error('Failed to fetch categories:', error);
+    }
+  };
+
+  // Fetch articles
+  const fetchArticles = async () => {
+    setLoading(true);
+    try {
+      const response = await api.get('/knowledge-base-articles');
+      if (response.data.success) {
+        const articlesData = response.data.data.data || response.data.data || [];
+        setArticles(articlesData);
+      }
+    } catch (error) {
+      console.error('Failed to fetch articles:', error);
+      toast.error('Failed to load articles');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch recent views (using regular articles sorted by updated_at)
+  const fetchRecentViews = async () => {
+    setLoading(true);
+    try {
+      const response = await api.get('/knowledge-base-articles');
+      if (response.data.success) {
+        const articlesData = response.data.data.data || response.data.data || [];
+        // Sort by updated_at descending
+        const sortedArticles = articlesData.sort((a, b) =>
+          new Date(b.updated_at) - new Date(a.updated_at)
+        ).slice(0, 10);
+        setRecentViews(sortedArticles);
+      }
+    } catch (error) {
+      console.error('Failed to fetch recent views:', error);
+      toast.error('Failed to load recent views');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Search articles
+  const handleSearch = async () => {
+    if (!searchTerm.trim()) {
+      toast.warning('Please enter a search term');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await api.get('/knowledge-base-articles/search', {
+        params: {
+          q: searchTerm
+        }
+      });
+      if (response.data.success) {
+        const searchResults = response.data.data || [];
+        // Transform OpenSearch results
+        const transformedArticles = searchResults.map(hit => ({
+          id: hit._id,
+          title: hit._source.title,
+          content: hit._source.content,
+          category_code: hit._source.category_code,
+          author: hit._source.author,
+          published_at: hit._source.published_at,
+          updated_at: hit._source.published_at
+        }));
+        setArticles(transformedArticles);
+      }
+    } catch (error) {
+      console.error('Failed to search articles:', error);
+      toast.error('Failed to search articles');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Filter by category
+  const handleCategoryClick = async (categoryCode) => {
+    setLoading(true);
+    try {
+      const response = await api.get('/knowledge-base-articles', {
+        params: { category_code: categoryCode }
+      });
+      if (response.data.success) {
+        const articlesData = response.data.data.data || response.data.data || [];
+        setArticles(articlesData);
+        setActiveTab('browse');
+      }
+    } catch (error) {
+      console.error('Failed to fetch category articles:', error);
+      toast.error('Failed to load category articles');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Get category icon based on name
+  const getCategoryIcon = (categoryName) => {
+    const iconMap = {
+      'Customs Declaration': 'FileText',
+      'Tax & Duties': 'DollarSign',
+      'Import/Export': 'Package',
+      'Regulations & Policies': 'Shield',
+      'FAQs': 'HelpCircle',
+      'User Guides': 'BookOpen'
+    };
+    return iconMap[categoryName] || 'Folder';
+  };
+
+  // Get category name from code
+  const getCategoryName = (categoryCode) => {
+    const category = categories.find(cat => cat.code === categoryCode);
+    return category ? category.name : categoryCode;
+  };
+
+  // Format relative time
+  const getRelativeTime = (dateString) => {
+    if (!dateString) return 'Unknown';
+
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`;
+    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+    if (diffDays < 30) return `${Math.floor(diffDays / 7)} week${Math.floor(diffDays / 7) > 1 ? 's' : ''} ago`;
+    return `${Math.floor(diffDays / 30)} month${Math.floor(diffDays / 30) > 1 ? 's' : ''} ago`;
+  };
+
+  // Initial data fetch
+  useEffect(() => {
+    fetchStats();
+    fetchCategories();
+    fetchArticles();
+  }, []);
+
+  // Fetch data when tab changes
+  useEffect(() => {
+    if (activeTab === 'recent') {
+      fetchRecentViews();
+    } else if (activeTab === 'browse') {
+      fetchArticles();
+    } else if (activeTab === 'categories') {
+      fetchCategories();
+    }
+  }, [activeTab]);
+
+  const statsDisplay = [
     {
       label: 'Total Articles',
-      value: '1,248',
-      subtext: '142 this month',
+      value: stats.total_articles.toLocaleString(),
+      subtext: 'All articles',
       icon: 'FileText',
       color: 'text-blue-600'
     },
     {
       label: 'Categories',
-      value: '24',
-      subtext: '8 departments',
+      value: stats.total_categories.toString(),
+      subtext: 'Organized topics',
       icon: 'Folder',
       color: 'text-green-600'
     },
     {
-      label: 'Recent Views',
-      value: '3,456',
-      subtext: 'This week',
-      icon: 'Eye',
+      label: 'Recent Updates',
+      value: stats.recently_updated.toLocaleString(),
+      subtext: 'Last 7 days',
+      icon: 'Clock',
       color: 'text-purple-600'
-    },
-    {
-      label: 'My Favorites',
-      value: '18',
-      subtext: 'Saved articles',
-      icon: 'Star',
-      color: 'text-yellow-600'
     }
   ];
 
   const tabs = [
     { id: 'browse', label: 'Browse Articles', icon: 'List' },
     { id: 'search', label: 'Search', icon: 'Search' },
-    { id: 'favorites', label: 'Favorites', icon: 'Star' },
-    { id: 'recent', label: 'Recently Viewed', icon: 'Clock' },
+    { id: 'recent', label: 'Recently Updated', icon: 'Clock' },
     { id: 'categories', label: 'Categories', icon: 'Folder' }
-  ];
-
-  const mockCategories = [
-    { name: 'Customs Declaration', count: 186, icon: 'FileText' },
-    { name: 'Tax & Duties', count: 142, icon: 'DollarSign' },
-    { name: 'Import/Export', count: 224, icon: 'Package' },
-    { name: 'Technical Support', count: 98, icon: 'Wrench' },
-    { name: 'General Inquiry', count: 312, icon: 'HelpCircle' },
-    { name: 'Compliance', count: 156, icon: 'Shield' }
-  ];
-
-  const mockArticles = [
-    { id: 1, title: 'How to Submit Customs Declaration', category: 'Customs Declaration', views: 1234, updated: '2 days ago' },
-    { id: 2, title: 'GST Calculation Guidelines', category: 'Tax & Duties', views: 892, updated: '1 week ago' },
-    { id: 3, title: 'Import License Requirements', category: 'Import/Export', views: 756, updated: '3 days ago' },
-    { id: 4, title: 'Export Documentation Checklist', category: 'Import/Export', views: 645, updated: '5 days ago' }
   ];
 
   const renderTabContent = () => {
@@ -69,86 +282,159 @@ const KnowledgeBasePortal = () => {
         return (
           <div className="space-y-6">
             <div className="bg-card rounded-lg border border-border p-6">
-              <h3 className="text-lg font-semibold text-foreground mb-4">Popular Articles</h3>
-              <div className="space-y-3">
-                {mockArticles.map((article) => (
-                  <div key={article.id} className="flex items-center justify-between p-4 bg-muted/30 rounded-lg hover:bg-muted/50 cursor-pointer">
-                    <div className="flex items-center space-x-3">
-                      <Icon name="FileText" size={20} className="text-primary" />
-                      <div>
-                        <p className="font-medium text-foreground">{article.title}</p>
-                        <p className="text-sm text-muted-foreground">{article.category} • {article.views} views</p>
+              <h3 className="text-lg font-semibold text-foreground mb-4">All Articles</h3>
+              {loading ? (
+                <div className="text-center py-8 text-muted-foreground">Loading...</div>
+              ) : articles.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">No articles found</div>
+              ) : (
+                <div className="space-y-3">
+                  {articles.map((article) => (
+                    <div key={article.id} className="flex items-center justify-between p-4 bg-muted/30 rounded-lg hover:bg-muted/50 cursor-pointer">
+                      <div className="flex items-center space-x-3 flex-1">
+                        <Icon name="FileText" size={20} className="text-primary" />
+                        <div className="flex-1">
+                          <p className="font-medium text-foreground">{article.title}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {getCategoryName(article.category_code)} • By {article.author}
+                          </p>
+                        </div>
                       </div>
+                      <span className="text-sm text-muted-foreground">
+                        {getRelativeTime(article.updated_at || article.published_at)}
+                      </span>
                     </div>
-                    <span className="text-sm text-muted-foreground">{article.updated}</span>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         );
-      
+
       case 'search':
         return (
           <div className="bg-card rounded-lg border border-border p-12 text-center">
             <Icon name="Search" size={48} className="mx-auto mb-4 text-muted-foreground" />
             <h3 className="text-lg font-semibold text-foreground mb-2">Search Knowledge Base</h3>
             <p className="text-muted-foreground mb-6">
-              Search through all articles using keywords, categories, or tags.
+              Search through all articles using keywords and content.
             </p>
             <div className="max-w-2xl mx-auto">
-              <Input
-                type="text"
-                placeholder="Search articles..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                icon="Search"
-              />
+              <div className="flex gap-2">
+                <Input
+                  type="text"
+                  placeholder="Search articles..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                  icon="Search"
+                  className="flex-1"
+                />
+                <Button onClick={handleSearch} disabled={loading}>
+                  {loading ? 'Searching...' : 'Search'}
+                </Button>
+              </div>
             </div>
+
+            {articles.length > 0 && (
+              <div className="mt-8">
+                <h4 className="text-left font-semibold mb-4">Search Results ({articles.length})</h4>
+                <div className="space-y-3">
+                  {articles.map((article) => (
+                    <div key={article.id} className="flex items-center justify-between p-4 bg-muted/30 rounded-lg hover:bg-muted/50 cursor-pointer text-left">
+                      <div className="flex items-center space-x-3 flex-1">
+                        <Icon name="FileText" size={20} className="text-primary" />
+                        <div className="flex-1">
+                          <p className="font-medium text-foreground">{article.title}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {getCategoryName(article.category_code)} • By {article.author}
+                          </p>
+                        </div>
+                      </div>
+                      <span className="text-sm text-muted-foreground">
+                        {getRelativeTime(article.updated_at || article.published_at)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         );
-      
-      case 'favorites':
-        return (
-          <div className="bg-card rounded-lg border border-border p-12 text-center">
-            <Icon name="Star" size={48} className="mx-auto mb-4 text-muted-foreground" />
-            <h3 className="text-lg font-semibold text-foreground mb-2">Favorite Articles</h3>
-            <p className="text-muted-foreground mb-6">
-              Quick access to your saved and bookmarked articles.
-            </p>
-          </div>
-        );
-      
+
       case 'recent':
         return (
-          <div className="bg-card rounded-lg border border-border p-12 text-center">
-            <Icon name="Clock" size={48} className="mx-auto mb-4 text-muted-foreground" />
-            <h3 className="text-lg font-semibold text-foreground mb-2">Recently Viewed</h3>
-            <p className="text-muted-foreground mb-6">
-              Articles you've recently accessed for quick reference.
-            </p>
+          <div className="bg-card rounded-lg border border-border p-6">
+            <h3 className="text-lg font-semibold text-foreground mb-4">Recently Updated Articles</h3>
+            {loading ? (
+              <div className="text-center py-8 text-muted-foreground">Loading...</div>
+            ) : recentViews.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Icon name="Clock" size={48} className="mx-auto mb-4 text-muted-foreground" />
+                <p>No recently updated articles found</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {recentViews.map((article) => (
+                  <div key={article.id} className="flex items-center justify-between p-4 bg-muted/30 rounded-lg hover:bg-muted/50 cursor-pointer">
+                    <div className="flex items-center space-x-3 flex-1">
+                      <Icon name="FileText" size={20} className="text-primary" />
+                      <div className="flex-1">
+                        <p className="font-medium text-foreground">{article.title}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {getCategoryName(article.category_code)} • By {article.author}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-sm text-muted-foreground">
+                      {getRelativeTime(article.updated_at || article.published_at)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         );
-      
+
       case 'categories':
         return (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {mockCategories.map((category, index) => (
-              <div key={index} className="bg-card rounded-lg border border-border p-6 hover:shadow-lg cursor-pointer transition-shadow">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <Icon name={category.icon} size={24} className="text-primary" />
-                  </div>
-                  <span className="text-sm text-muted-foreground">{category.count} articles</span>
-                </div>
-                <h3 className="font-semibold text-foreground">{category.name}</h3>
+            {categories.length === 0 ? (
+              <div className="col-span-full text-center py-8 text-muted-foreground">
+                No categories found
               </div>
-            ))}
+            ) : (
+              categories.map((category, index) => (
+                <div
+                  key={index}
+                  className="bg-card rounded-lg border border-border p-6 hover:shadow-lg cursor-pointer transition-shadow"
+                  onClick={() => handleCategoryClick(category.code)}
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <Icon name={category.icon} size={24} className="text-primary" />
+                    </div>
+                    <span className="text-sm text-muted-foreground">{category.count} articles</span>
+                  </div>
+                  <h3 className="font-semibold text-foreground">{category.name}</h3>
+                </div>
+              ))
+            )}
           </div>
         );
-      
+
       default:
         return null;
+    }
+  };
+
+  const handleRefresh = () => {
+    fetchStats();
+    fetchCategories();
+    if (activeTab === 'browse') {
+      fetchArticles();
+    } else if (activeTab === 'recent') {
+      fetchRecentViews();
     }
   };
 
@@ -173,9 +459,9 @@ const KnowledgeBasePortal = () => {
                   Search and browse the knowledge base for information and solutions
                 </p>
               </div>
-              
+
               <div className="flex items-center space-x-3">
-                <Button variant="outline" iconName="RefreshCw" iconPosition="left">
+                <Button variant="outline" iconName="RefreshCw" iconPosition="left" onClick={handleRefresh}>
                   Refresh
                 </Button>
                 <Button variant="outline" iconName="Plus" iconPosition="left">
@@ -186,8 +472,8 @@ const KnowledgeBasePortal = () => {
           </div>
 
           {/* Stats Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            {stats.map((stat, index) => (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+            {statsDisplay.map((stat, index) => (
               <div key={index} className="bg-card rounded-lg border border-border p-6">
                 <div className="flex items-start justify-between">
                   <div>
@@ -228,10 +514,9 @@ const KnowledgeBasePortal = () => {
           {/* Tab Description */}
           <div className="bg-muted/30 rounded-lg p-4 mb-6 border border-border">
             <p className="text-sm text-muted-foreground">
-              {activeTab === 'browse' && 'Browse through popular and recent articles across all categories.'}
-              {activeTab === 'search' && 'Search for specific articles using keywords, categories, or tags.'}
-              {activeTab === 'favorites' && 'Access your bookmarked articles for quick reference.'}
-              {activeTab === 'recent' && 'View articles you have recently accessed.'}
+              {activeTab === 'browse' && 'Browse through all published articles across all categories.'}
+              {activeTab === 'search' && 'Search for specific articles using keywords and content.'}
+              {activeTab === 'recent' && 'View articles that have been recently updated.'}
               {activeTab === 'categories' && 'Browse articles organized by department and category.'}
             </p>
           </div>
@@ -248,14 +533,32 @@ const KnowledgeBasePortal = () => {
               Quick Actions
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <Button variant="outline" className="justify-start" iconName="Search" iconPosition="left">
+              <Button
+                variant="outline"
+                className="justify-start"
+                iconName="Search"
+                iconPosition="left"
+                onClick={() => setActiveTab('search')}
+              >
                 Search KB
               </Button>
-              <Button variant="outline" className="justify-start" iconName="Folder" iconPosition="left">
+              <Button
+                variant="outline"
+                className="justify-start"
+                iconName="Folder"
+                iconPosition="left"
+                onClick={() => setActiveTab('categories')}
+              >
                 Browse Categories
               </Button>
-              <Button variant="outline" className="justify-start" iconName="Star" iconPosition="left">
-                View Favorites
+              <Button
+                variant="outline"
+                className="justify-start"
+                iconName="Clock"
+                iconPosition="left"
+                onClick={() => setActiveTab('recent')}
+              >
+                Recent Updates
               </Button>
               <Button variant="outline" className="justify-start" iconName="Plus" iconPosition="left">
                 Request Article
