@@ -5,6 +5,7 @@ import Button from './ui/Button';
 import { useMitelSignalR } from '../hooks/useMitelSignalR';
 import mitelService from '../services/mitelService';
 import customerInteractionService from '../services/customerInteractionService';
+import { ticketService } from '../services/ticketService';
 import { toast } from 'react-toastify';
 import { authService } from '../services/authService';
 import VoiceContactsModal from './VoiceContactsModal';
@@ -126,6 +127,42 @@ const TelephonyBar = ({ className = '', onCallEvent }) => {
     // Clear pending interactions list
     pendingInteractionIdsRef.current = [];
   }, []);
+
+  // ---- Helper: Check for existing ticket and navigate appropriately ----
+  const checkExistingTicketAndNavigate = useCallback(async (conversationId, callerNumber) => {
+    try {
+      console.log(`🔍 Checking for existing ticket with conversationId: ${conversationId}`);
+
+      const response = await ticketService.findByConversationId(conversationId);
+
+      if (response?.success && response?.data?.data && response.data.data.length > 0) {
+        // Found existing ticket - this is likely a transferred call
+        const existingTicket = response.data.data[0];
+        console.log(`✅ Found existing ticket #${existingTicket.ticket_number} (ID: ${existingTicket.id}) for conversation ${conversationId}`);
+
+        // Update refs with existing ticket info
+        if (existingTicket.customer_id) {
+          customerIdRef.current = existingTicket.customer_id;
+        }
+        ticketIdRef.current = existingTicket.id;
+
+        // Navigate to existing ticket details page
+        navigate(`/ticket-management/${existingTicket.id}`);
+
+        toast.info(`Transferred call - Ticket #${existingTicket.ticket_number} loaded`, {
+          autoClose: 3000,
+        });
+      } else {
+        // No existing ticket found - new call, navigate to create page
+        console.log(`📝 No existing ticket found for conversation ${conversationId}, navigating to create new ticket`);
+        navigate(`/ticket-management/create?callId=${encodeURIComponent(callerNumber)}&source=call&conversationId=${conversationId}`);
+      }
+    } catch (error) {
+      console.error('❌ Error checking for existing ticket:', error);
+      // On error, fallback to create page
+      navigate(`/ticket-management/create?callId=${encodeURIComponent(callerNumber)}&source=call&conversationId=${conversationId}`);
+    }
+  }, [navigate]);
 
   // ---- Mitel SignalR Hook (only for agents) ----
   const { state: connState, on, invoke, error } = useMitelSignalR({
@@ -276,9 +313,9 @@ const TelephonyBar = ({ className = '', onCallEvent }) => {
           },
         });
 
-        // Navigate to ticket creation form with callId as identifier and conversationId
-        // This will auto-populate customer if they exist in the system
-        navigate(`/ticket-management/create?callId=${encodeURIComponent(callerInfo.number)}&source=call&conversationId=${conversation.conversationId}`);
+        // Check for existing ticket with this conversationId (for transferred calls)
+        // If found, navigate to ticket details; otherwise, navigate to create page
+        checkExistingTicketAndNavigate(conversation.conversationId, callerInfo.number);
       } else if (state === 'Connected' || state === 'Active' || state === 'Established') {
         console.log('✅ Call connected/active');
         setCurrentConversationId(conversation.conversationId);

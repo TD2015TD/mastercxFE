@@ -180,6 +180,17 @@ export const ticketService = {
     return response.data;
   },
 
+  // Find ticket by conversation ID
+  findByConversationId: async (conversationId: string) => {
+    const response = await api.get('/tickets', {
+      params: {
+        conversation_id: conversationId,
+        per_page: 1
+      }
+    });
+    return response.data;
+  },
+
   // Add comment/note to ticket (creates history entry)
   addComment: async (id: number, comment: string, isInternal: boolean = false) => {
     const response = await api.post(`/tickets/${id}/comments`, { 
