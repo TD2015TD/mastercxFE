@@ -100,6 +100,14 @@ const VoiceContactsModal = ({ isOpen, onClose, onSelect, currentExtension }) => 
 
   const handleSelect = (contact) => {
     const destination = contact.phoneDialable || contact.phone || contact.mobilePhoneDialable || contact.mobilePhone || contact.name;
+
+    // For employees, extract the agent ID from presence.voice[0].deviceId
+    let agentId = null;
+    if (contact.type === 'Employee' && contact.presence?.voice?.length > 0) {
+      agentId = contact.presence.voice[0].deviceId;
+      console.log('📞 Extracted agent ID from presence.voice for employee:', contact.name, agentId);
+    }
+
     // Pass the full contact object with id, type, and other metadata
     const contactInfo = {
       destination,
@@ -108,8 +116,7 @@ const VoiceContactsModal = ({ isOpen, onClose, onSelect, currentExtension }) => 
       type: contact.type,
       phone: contact.phone || contact.phoneDialable,
       mobilePhone: contact.mobilePhone || contact.mobilePhoneDialable,
-      // For employees, the id is the agentId
-      agentId: contact.type === 'Employee' ? contact.id : null
+      agentId: agentId
     };
     onSelect(destination, contactInfo);
     onClose();

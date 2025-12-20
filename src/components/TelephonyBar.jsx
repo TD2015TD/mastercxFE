@@ -547,12 +547,15 @@ const TelephonyBar = ({ className = '', onCallEvent }) => {
         : timer ? Math.floor(timer / 60) : 0;
 
       // Call the blind transfer API with enhanced transfer
+      // Use agentId if available, otherwise fall back to id or transferDestinationAgentId
+      const transferDestId = selectedContact?.agentId || selectedContact?.id || transferDestinationAgentId || transferTarget;
+
       await mitelService.blindTransferCall(
         'me',
         currentConversationId,
         transferTarget,
         ticketIdRef.current,
-        selectedContact?.id || transferDestinationAgentId,
+        transferDestId,
         selectedContact?.type || 'Employee'
       );
 
@@ -607,11 +610,14 @@ const TelephonyBar = ({ className = '', onCallEvent }) => {
       console.log(`📞 Initiating consultation transfer to: ${transferTarget}`);
 
       // Call the initiate consult transfer API with enhanced transfer
+      // Use agentId if available, otherwise fall back to id or transferDestinationAgentId
+      const transferDestId = selectedContact?.agentId || selectedContact?.id || transferDestinationAgentId || transferTarget;
+
       await mitelService.initiateConsultTransfer(
         'me',
         currentConversationId,
         transferTarget,
-        selectedContact?.id || transferDestinationAgentId,
+        transferDestId,
         selectedContact?.type || 'Employee'
       );
 
