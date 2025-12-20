@@ -334,14 +334,23 @@ const SystemConfigurationPanel = () => {
                             {lookup.color && (
                               <div className="w-3 h-3 rounded-full" style={{ backgroundColor: lookup.color }}></div>
                             )}
-                            <span className="text-sm font-medium text-foreground">{lookup.name}</span>
+                            <div>
+                              <div className="text-sm font-medium text-foreground">{lookup.name_en || lookup.name}</div>
+                              {lookup.name_ms && lookup.name_ms !== lookup.name_en && (
+                                <div className="text-xs text-muted-foreground italic">{lookup.name_ms}</div>
+                              )}
+                            </div>
                           </div>
                           <p className="text-xs text-muted-foreground font-mono">{lookup.code}</p>
                         </div>
                         {getStatusBadge(lookup.is_active)}
                       </div>
-                      {lookup.description && (
-                        <p className="text-xs text-muted-foreground mb-2">{lookup.description}</p>
+                      {(lookup.description_en || lookup.description_ms || lookup.description) && (
+                        <div className="text-xs text-muted-foreground mb-2">
+                          {lookup.description_en && <div className="mb-1">EN: {lookup.description_en}</div>}
+                          {lookup.description_ms && <div>MS: {lookup.description_ms}</div>}
+                          {!lookup.description_en && !lookup.description_ms && lookup.description && <div>{lookup.description}</div>}
+                        </div>
                       )}
                       <div className="flex items-center space-x-1 mt-2">
                         <Button variant="outline" size="sm" iconName="Edit" onClick={() => {

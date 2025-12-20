@@ -10,9 +10,11 @@ const CategoryManagement = () => {
   const [editingCategory, setEditingCategory] = useState(null);
   const [formData, setFormData] = useState({
     code: '',
-    value: '',
-    description: '',
-    display_order: 0
+    name_en: '',
+    name_ms: '',
+    description_en: '',
+    description_ms: '',
+    sort_order: 0
   });
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
@@ -41,17 +43,21 @@ const CategoryManagement = () => {
       setEditingCategory(category);
       setFormData({
         code: category.code,
-        value: category.value,
-        description: category.description || '',
-        display_order: category.display_order || 0
+        name_en: category.name_en || category.name || category.value || '',
+        name_ms: category.name_ms || '',
+        description_en: category.description_en || category.description || '',
+        description_ms: category.description_ms || '',
+        sort_order: category.sort_order || category.display_order || 0
       });
     } else {
       setEditingCategory(null);
       setFormData({
         code: '',
-        value: '',
-        description: '',
-        display_order: 0
+        name_en: '',
+        name_ms: '',
+        description_en: '',
+        description_ms: '',
+        sort_order: 0
       });
     }
     setShowModal(true);
@@ -64,9 +70,11 @@ const CategoryManagement = () => {
     setEditingCategory(null);
     setFormData({
       code: '',
-      value: '',
-      description: '',
-      display_order: 0
+      name_en: '',
+      name_ms: '',
+      description_en: '',
+      description_ms: '',
+      sort_order: 0
     });
     setError(null);
   };
@@ -99,7 +107,8 @@ const CategoryManagement = () => {
   };
 
   const handleDelete = async (category) => {
-    if (!window.confirm(`Are you sure you want to delete the category "${category.value}"?`)) {
+    const categoryName = category.name_en || category.name || category.value;
+    if (!window.confirm(`Are you sure you want to delete the category "${categoryName}"?`)) {
       return;
     }
 
@@ -161,10 +170,16 @@ const CategoryManagement = () => {
                 Code
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Name
+                Name (EN)
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Description
+                Name (MS)
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Description (EN)
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Description (MS)
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                 Order
@@ -180,7 +195,7 @@ const CategoryManagement = () => {
           <tbody className="bg-card divide-y divide-border">
             {isLoading && categories.length === 0 ? (
               <tr>
-                <td colSpan="6" className="px-6 py-12 text-center">
+                <td colSpan="8" className="px-6 py-12 text-center">
                   <div className="flex flex-col items-center">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                     <p className="mt-2 text-sm text-muted-foreground">Loading categories...</p>
@@ -189,7 +204,7 @@ const CategoryManagement = () => {
               </tr>
             ) : categories.length === 0 ? (
               <tr>
-                <td colSpan="6" className="px-6 py-12 text-center">
+                <td colSpan="8" className="px-6 py-12 text-center">
                   <Icon name="FolderOpen" size={48} className="mx-auto text-muted-foreground mb-2" />
                   <p className="text-sm text-muted-foreground">No categories found</p>
                   <Button
@@ -209,14 +224,20 @@ const CategoryManagement = () => {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="text-sm font-mono text-foreground">{category.code}</span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="text-sm font-medium text-foreground">{category.value}</span>
+                  <td className="px-6 py-4">
+                    <span className="text-sm font-medium text-foreground">{category.name_en || category.name || category.value || '-'}</span>
                   </td>
                   <td className="px-6 py-4">
-                    <span className="text-sm text-muted-foreground">{category.description || '-'}</span>
+                    <span className="text-sm font-medium text-foreground">{category.name_ms || '-'}</span>
+                  </td>
+                  <td className="px-6 py-4 max-w-xs">
+                    <span className="text-sm text-muted-foreground">{category.description_en || category.description || '-'}</span>
+                  </td>
+                  <td className="px-6 py-4 max-w-xs">
+                    <span className="text-sm text-muted-foreground">{category.description_ms || '-'}</span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="text-sm text-muted-foreground">{category.display_order || 0}</span>
+                    <span className="text-sm text-muted-foreground">{category.sort_order || category.display_order || 0}</span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     {category.is_active ? (
@@ -262,7 +283,7 @@ const CategoryManagement = () => {
       {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-card rounded-lg shadow-xl max-w-md w-full">
+          <div className="bg-card rounded-lg shadow-xl max-w-4xl w-full">
             <div className="flex items-center justify-between p-6 border-b border-border">
               <h3 className="text-lg font-semibold text-foreground">
                 {editingCategory ? 'Edit Category' : 'Add New Category'}
@@ -275,7 +296,7 @@ const CategoryManagement = () => {
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+            <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[calc(90vh-120px)] overflow-y-auto">
               <div>
                 <label className="block text-sm font-medium text-foreground mb-2">
                   Category Code *
@@ -287,54 +308,83 @@ const CategoryManagement = () => {
                   value={formData.code}
                   onChange={(e) => setFormData({ ...formData, code: e.target.value })}
                   className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground focus:ring-2 focus:ring-primary focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
-                  placeholder="e.g., FAQ, GUIDE, TUTORIAL"
+                  placeholder="e.g., customs_declaration, faqs"
                 />
                 {editingCategory && (
                   <p className="text-xs text-muted-foreground mt-1">Code cannot be changed after creation</p>
                 )}
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  Category Name *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={formData.value}
-                  onChange={(e) => setFormData({ ...formData, value: e.target.value })}
-                  className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground focus:ring-2 focus:ring-primary focus:border-transparent"
-                  placeholder="e.g., Frequently Asked Questions"
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    Category Name (English) *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.name_en}
+                    onChange={(e) => setFormData({ ...formData, name_en: e.target.value })}
+                    className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground focus:ring-2 focus:ring-primary focus:border-transparent"
+                    placeholder="e.g., Customs Declaration"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    Category Name (Malay) *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.name_ms}
+                    onChange={(e) => setFormData({ ...formData, name_ms: e.target.value })}
+                    className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground focus:ring-2 focus:ring-primary focus:border-transparent"
+                    placeholder="e.g., Deklarasi Kastam"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    Description (English)
+                  </label>
+                  <textarea
+                    value={formData.description_en}
+                    onChange={(e) => setFormData({ ...formData, description_en: e.target.value })}
+                    rows={3}
+                    className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground focus:ring-2 focus:ring-primary focus:border-transparent"
+                    placeholder="English description for this category"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    Description (Malay)
+                  </label>
+                  <textarea
+                    value={formData.description_ms}
+                    onChange={(e) => setFormData({ ...formData, description_ms: e.target.value })}
+                    rows={3}
+                    className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground focus:ring-2 focus:ring-primary focus:border-transparent"
+                    placeholder="Malay description for this category"
+                  />
+                </div>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-foreground mb-2">
-                  Description
-                </label>
-                <textarea
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  rows={3}
-                  className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground focus:ring-2 focus:ring-primary focus:border-transparent"
-                  placeholder="Optional description for this category"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  Display Order
+                  Sort Order
                 </label>
                 <input
                   type="number"
-                  value={formData.display_order}
-                  onChange={(e) => setFormData({ ...formData, display_order: parseInt(e.target.value) || 0 })}
+                  value={formData.sort_order}
+                  onChange={(e) => setFormData({ ...formData, sort_order: parseInt(e.target.value) || 0 })}
                   className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground focus:ring-2 focus:ring-primary focus:border-transparent"
                   placeholder="0"
                 />
               </div>
 
-              <div className="flex items-center justify-end space-x-3 pt-4">
+              <div className="flex items-center justify-end space-x-3 pt-4 border-t border-border">
                 <Button
                   type="button"
                   variant="outline"
