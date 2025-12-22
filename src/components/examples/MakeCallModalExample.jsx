@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import MakeCallModal from '../MakeCallModal';
 import { useWebRTCSoftphone } from '../../hooks/useWebRTCSoftphone';
 import { getAgentGroupPresence, makeOutboundCall } from '../../services/mitelService';
+import { authService } from '../../services/authService';
 import { toast } from 'react-toastify';
 import Icon from '../AppIcon';
 import Button from '../ui/Button';
@@ -22,6 +23,7 @@ const MakeCallModalExample = () => {
   const [isCallModalOpen, setIsCallModalOpen] = useState(false);
   const [agentExtension, setAgentExtension] = useState('');
   const [isLoadingExtension, setIsLoadingExtension] = useState(false);
+  const [employeeId, setEmployeeId] = useState(null);
 
   // WebRTC softphone hook (optional - can fallback to Mitel API)
   const {
@@ -38,18 +40,30 @@ const MakeCallModalExample = () => {
 
   // Initialize WebRTC softphone when agent becomes available
   useEffect(() => {
-    if (agentExtension && !softphoneReady) {
-      initSoftphone().catch(error => {
+    if (employeeId && !softphoneReady) {
+      initSoftphone(employeeId).catch(error => {
         console.error('Failed to initialize WebRTC softphone:', error);
         // Fallback to Mitel API will be used
       });
     }
-  }, [agentExtension, softphoneReady]);
+  }, [employeeId, softphoneReady, initSoftphone]);
 
   const fetchAgentExtension = async () => {
     setIsLoadingExtension(true);
     try {
-      const response = await getAgentGroupPresence('me');
+      // Get employee ID from authenticated user
+      const authData = authService.getCurrentUser();
+      const empId = authData?.agent?.employee_id;
+
+      if (!empId) {
+        toast.error('Employee ID not found');
+        setIsLoadingExtension(false);
+        return;
+      }
+
+      setEmployeeId(empId);
+
+      const response = await getAgentGroupPresence(empId);
 
       if (response.success && response.data?.agentGroups) {
         // Find Voice agent group
@@ -88,7 +102,12 @@ const MakeCallModalExample = () => {
         // Use Mitel API
         console.log('WebRTC not ready, using Mitel API');
 
-        const response = await makeOutboundCall('me', destination, {
+        if (!employeeId) {
+          toast.error('Employee ID not found. Cannot make call.');
+          return;
+        }
+
+        const response = await makeOutboundCall(employeeId, destination, {
           from: '',
           type: 'Voice',
           dialAsIs: options.dialAsIs,
