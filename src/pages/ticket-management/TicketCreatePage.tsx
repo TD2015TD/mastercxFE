@@ -9,6 +9,7 @@ const TicketCreatePage: React.FC = () => {
 
   // Extract query parameters that can be passed from MiTel
   const callId = searchParams.get('call_id') || searchParams.get('callId');
+  const caseId = searchParams.get('case_id') || searchParams.get('caseId');
   const queryParams = {
     customerId: searchParams.get('customer_id') || searchParams.get('customerId'),
     customerName: searchParams.get('customer_name') || searchParams.get('customerName'),
@@ -16,6 +17,7 @@ const TicketCreatePage: React.FC = () => {
     customerEmail: searchParams.get('customer_email') || searchParams.get('customerEmail'),
     channel: searchParams.get('channel') || 'phone', // Default to phone for MiTel calls
     callId: callId,
+    caseId: caseId,
     conversationId: searchParams.get('conversation_id') || searchParams.get('conversationId'),
     agentId: searchParams.get('agent_id') || searchParams.get('agentId'),
     queueId: searchParams.get('queue_id') || searchParams.get('queueId'),
@@ -72,6 +74,11 @@ const TicketCreatePage: React.FC = () => {
               {queryParams.callId && (
                 <p className="mt-1 text-sm text-gray-600">
                   Call ID: {queryParams.callId}
+                </p>
+              )}
+              {queryParams.caseId && (
+                <p className="mt-1 text-sm text-gray-600">
+                  Case ID: {queryParams.caseId}
                 </p>
               )}
             </div>

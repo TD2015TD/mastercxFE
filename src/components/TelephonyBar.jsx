@@ -53,6 +53,7 @@ const TelephonyBar = ({ className = '', onCallEvent }) => {
   const [agentStatus, setAgentStatus] = useState('Offline');
   const [isReadyForCalls, setIsReadyForCalls] = useState(false);
   const [currentConversationId, setCurrentConversationId] = useState(null);
+  const [caseId, setCaseId] = useState(null);
 
   const intervalRef = useRef(null);
   const autoResetTimeoutRef = useRef(null);
@@ -155,14 +156,30 @@ const TelephonyBar = ({ className = '', onCallEvent }) => {
       } else {
         // No existing ticket found - new call, navigate to create page
         console.log(`📝 No existing ticket found for conversation ${conversationId}, navigating to create new ticket`);
-        navigate(`/ticket-management/create?callId=${encodeURIComponent(callerNumber)}&source=call&conversationId=${conversationId}`);
+        const params = new URLSearchParams({
+          callId: callerNumber,
+          source: 'call',
+          conversationId: conversationId
+        });
+        if (caseId) {
+          params.append('caseId', caseId);
+        }
+        navigate(`/ticket-management/create?${params.toString()}`);
       }
     } catch (error) {
       console.error('❌ Error checking for existing ticket:', error);
       // On error, fallback to create page
-      navigate(`/ticket-management/create?callId=${encodeURIComponent(callerNumber)}&source=call&conversationId=${conversationId}`);
+      const params = new URLSearchParams({
+        callId: callerNumber,
+        source: 'call',
+        conversationId: conversationId
+      });
+      if (caseId) {
+        params.append('caseId', caseId);
+      }
+      navigate(`/ticket-management/create?${params.toString()}`);
     }
-  }, [navigate]);
+  }, [navigate, caseId]);
 
   // ---- Mitel SignalR Hook (only for agents) ----
   const { state: connState, on, invoke, error } = useMitelSignalR({

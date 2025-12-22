@@ -194,6 +194,7 @@ const TicketCreateForm: React.FC<{
         // Store MiTel-specific data in custom_fields
         custom_fields: {
           ...(initialData.callId && { call_id: initialData.callId }),
+          ...(initialData.caseId && { case_id: initialData.caseId }),
           ...(initialData.agentId && { agent_id: initialData.agentId }),
           ...(initialData.queueId && { queue_id: initialData.queueId }),
         }
@@ -549,6 +550,7 @@ const TicketCreateForm: React.FC<{
       const ticketData = {
         customer_id: customerId,
         conversation_id: initialData?.conversationId || null,
+        call_id: initialData?.caseId || initialData?.callId || null,
 
         // Ticket classification
         priority: formData.priority,
@@ -557,16 +559,16 @@ const TicketCreateForm: React.FC<{
         sub_category: formData.sub_category,
         urgency: formData.urgency,
         impact: formData.impact,
-        
+
         // Ticket details
         subject: formData.subject,
         description: formData.description,
         channel: formData.channel,
         source: formData.source,
-        
+
         // Assignment (if specified)
         assigned_to: formData.assigned_to,
-        
+
         // Additional fields
         tags: formData.tags,
         custom_fields: formData.custom_fields,

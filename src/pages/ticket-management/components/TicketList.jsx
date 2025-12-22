@@ -65,6 +65,7 @@ const TicketList = ({ filter = 'all' }) => {
     const search = searchTerm.toLowerCase();
     return (
       ticket.ticket_number?.toLowerCase().includes(search) ||
+      ticket.call_id?.toLowerCase().includes(search) ||
       ticket.subject?.toLowerCase().includes(search) ||
       ticket.customer?.name?.toLowerCase().includes(search)
     );
@@ -95,7 +96,7 @@ const TicketList = ({ filter = 'all' }) => {
         <div className="flex-1">
           <Input
             type="text"
-            placeholder="Search tickets by ID, subject, or customer..."
+            placeholder="Search tickets by Ticket ID, Case ID, subject, or customer..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             icon="Search"
@@ -103,28 +104,28 @@ const TicketList = ({ filter = 'all' }) => {
         </div>
         <Select
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
+          onChange={(value) => setStatusFilter(value)}
+          options={[
+            { value: 'all', label: 'All Status' },
+            ...statusOptions.map(status => ({
+              value: status.code,
+              label: status.name
+            }))
+          ]}
           className="w-full md:w-48"
-        >
-          <option value="all">All Status</option>
-          {statusOptions.map((status) => (
-            <option key={status.code} value={status.code}>
-              {status.name}
-            </option>
-          ))}
-        </Select>
+        />
         <Select
           value={priorityFilter}
-          onChange={(e) => setPriorityFilter(e.target.value)}
+          onChange={(value) => setPriorityFilter(value)}
+          options={[
+            { value: 'all', label: 'All Priority' },
+            ...priorityOptions.map(priority => ({
+              value: priority.code,
+              label: priority.name
+            }))
+          ]}
           className="w-full md:w-48"
-        >
-          <option value="all">All Priority</option>
-          {priorityOptions.map((priority) => (
-            <option key={priority.code} value={priority.code}>
-              {priority.name}
-            </option>
-          ))}
-        </Select>
+        />
       </div>
 
       {/* Ticket List */}
@@ -140,6 +141,7 @@ const TicketList = ({ filter = 'all' }) => {
               <thead className="bg-muted/30 border-b border-border">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Ticket ID</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Case ID</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Subject</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Customer</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Priority</th>
@@ -151,13 +153,20 @@ const TicketList = ({ filter = 'all' }) => {
               </thead>
               <tbody className="divide-y divide-border">
                 {filteredTickets.map((ticket) => (
-                  <tr 
-                    key={ticket.id} 
+                  <tr
+                    key={ticket.id}
                     className="hover:bg-muted/30 cursor-pointer"
                     onClick={() => navigate(`/ticket-management/${ticket.id}`)}
                   >
                     <td className="px-6 py-4">
                       <span className="font-mono text-sm text-foreground">{ticket.ticket_number}</span>
+                    </td>
+                    <td className="px-6 py-4">
+                      {ticket.call_id ? (
+                        <span className="font-mono text-sm text-foreground">{ticket.call_id}</span>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">-</span>
+                      )}
                     </td>
                     <td className="px-6 py-4">
                       <p className="font-medium text-foreground max-w-xs truncate">{ticket.subject}</p>
