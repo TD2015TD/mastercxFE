@@ -99,15 +99,15 @@ const SupersetDashboardList: React.FC = () => {
             <div className="md:w-64">
               <Select
                 value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-              >
-                <option value="">All Categories</option>
-                {categories.map((category) => (
-                  <option key={category} value={category}>
-                    {category}
-                  </option>
-                ))}
-              </Select>
+                onChange={(value) => setSelectedCategory(value as string)}
+                options={[
+                  { value: '', label: 'All Categories' },
+                  ...categories.map(category => ({
+                    value: category,
+                    label: category
+                  }))
+                ]}
+              />
             </div>
 
             {/* Refresh Button */}
