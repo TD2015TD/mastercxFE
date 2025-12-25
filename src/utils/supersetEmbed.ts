@@ -43,6 +43,16 @@ export async function embedSupersetDashboard(
         },
       },
     });
+
+    // Force the iframe to fill the container
+    setTimeout(() => {
+      const iframe = container.querySelector('iframe');
+      if (iframe) {
+        iframe.style.width = '100%';
+        iframe.style.height = '100%';
+        iframe.style.border = 'none';
+      }
+    }, 100);
   } catch (error) {
     console.error('Error embedding Superset dashboard:', error);
 

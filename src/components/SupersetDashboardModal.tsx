@@ -130,6 +130,12 @@ const SupersetDashboardModal: React.FC<SupersetDashboardModalProps> = ({
             id={containerId}
             ref={containerRef}
             className="w-full h-full"
+            style={{
+              width: '100%',
+              height: '100%',
+              display: 'flex',
+              flexDirection: 'column'
+            }}
           />
         </div>
 
