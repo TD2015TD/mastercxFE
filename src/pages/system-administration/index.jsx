@@ -12,6 +12,7 @@ import SystemHealthMonitor from './components/SystemHealthMonitor';
 import SlaConfigurationTable from './sla-configuration/components/SlaConfigurationTable';
 import SlaPerformanceMetrics from './sla-configuration/components/SlaPerformanceMetrics';
 import SlaRulesEngine from './sla-configuration/components/SlaRulesEngine';
+import ReportConfigurationPanel from './report-configuration';
 import { getUsers } from '../../services/userService';
 import { getSystemHealth } from '../../services/systemService';
 import { languageService } from '../../services/languageService';
@@ -89,7 +90,7 @@ const SystemAdministration = () => {
   const tabs = [
     { id: 'users', label: t('systemAdmin.tabs.users'), icon: 'Users', description: t('systemAdmin.tabs.usersDesc') },
     { id: 'sla', label: 'SLA Management', icon: 'Clock', description: 'Configure and monitor Service Level Agreements' },
-    { id: 'knowledge-base', label: 'Knowledge Base', icon: 'BookOpen', description: 'Manage knowledge base articles and categories' },
+    { id: 'reports', label: 'Report Configuration', icon: 'BarChart', description: 'Configure dashboards and assign role-based access to reports' },
     { id: 'system', label: t('systemAdmin.tabs.system'), icon: 'Settings', description: t('systemAdmin.tabs.systemDesc') },
     { id: 'audit', label: t('systemAdmin.tabs.audit'), icon: 'FileText', description: t('systemAdmin.tabs.auditDesc') },
     { id: 'compliance', label: t('systemAdmin.tabs.compliance'), icon: 'Shield', description: t('systemAdmin.tabs.complianceDesc') },
@@ -131,21 +132,14 @@ const SystemAdministration = () => {
     }
   ];
 
-  // Lazy import to avoid circular dependency
-  const KnowledgeBaseAdmin = React.lazy(() => import('./knowledge-base'));
-
   const renderTabContent = () => {
     switch (activeTab) {
       case 'users':
         return <UserManagementPanel />;
       case 'sla':
         return renderSlaManagement();
-      case 'knowledge-base':
-        return (
-          <React.Suspense fallback={<div>Loading Knowledge Base...</div>}>
-            <KnowledgeBaseAdmin />
-          </React.Suspense>
-        );
+      case 'reports':
+        return <ReportConfigurationPanel />;
       case 'system':
         return <SystemConfigurationPanel />;
       case 'audit':

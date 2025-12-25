@@ -64,11 +64,11 @@ const SupersetDashboardModal: React.FC<SupersetDashboardModalProps> = ({
       onClick={onClose}
     >
       <div
-        className="bg-card rounded-lg shadow-xl w-full max-w-[95vw] max-h-[90vh] flex flex-col"
+        className="bg-card rounded-lg shadow-xl w-full h-full max-w-[95vw] max-h-[90vh] flex flex-col overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border flex-shrink-0">
           <div className="flex items-center space-x-3">
             {dashboard.icon && (
               <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -97,7 +97,7 @@ const SupersetDashboardModal: React.FC<SupersetDashboardModalProps> = ({
         </div>
 
         {/* Dashboard Container */}
-        <div className="flex-1 overflow-hidden relative">
+        <div className="flex-1 min-h-0 overflow-hidden relative">
           {/* Loading State */}
           {loading && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm z-10">
@@ -130,12 +130,11 @@ const SupersetDashboardModal: React.FC<SupersetDashboardModalProps> = ({
             id={containerId}
             ref={containerRef}
             className="w-full h-full"
-            style={{ minHeight: '600px' }}
           />
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between px-6 py-3 border-t border-border bg-muted/30">
+        <div className="flex items-center justify-between px-6 py-3 border-t border-border bg-muted/30 flex-shrink-0">
           <div className="flex items-center space-x-4 text-sm text-muted-foreground">
             {dashboard.category && (
               <div className="flex items-center space-x-1">
