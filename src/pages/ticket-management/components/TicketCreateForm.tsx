@@ -53,6 +53,7 @@ const TicketCreateForm: React.FC<{
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sequencePreview, setSequencePreview] = useState<string>('');
+  const [reservedTicketNumber, setReservedTicketNumber] = useState<string>('');
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [createdTicket, setCreatedTicket] = useState<{ id: number; ticket_number: string } | null>(null);
   
@@ -262,27 +263,44 @@ const TicketCreateForm: React.FC<{
     setShowAgentModal(false);
   };
 
-  const previewTicketNumber = useCallback(async () => {
+  const reserveOrPreviewTicketNumber = useCallback(async () => {
     try {
+      // If we have both case_id and phone_number, reserve a ticket number to guarantee no duplicates
+      if (initialData?.caseId && formData.customer_phone) {
+        const response = await ticketService.reserveTicketNumber({
+          case_id: initialData.caseId,
+          phone_number: formData.customer_phone,
+          channel: formData.channel
+        });
+
+        if (response.success && response.data?.ticket_number) {
+          setReservedTicketNumber(response.data.ticket_number);
+          setSequencePreview(''); // Clear preview since we have a reserved number
+          return;
+        }
+      }
+
+      // Otherwise, just show a preview
       const channelSequences = await ticketSequenceService.getChannelSequences();
       const channelKey = formData.channel === 'walk-in' ? 'walkIn' : formData.channel;
       const sequence = (channelSequences as Record<string, unknown>)[channelKey] || channelSequences.default;
-      
+
       if (sequence) {
         const preview = await ticketSequenceService.previewSequence(sequence.id);
         if (preview.success) {
           setSequencePreview(preview.data.sample_output);
+          setReservedTicketNumber(''); // Clear reserved number
         }
       }
     } catch (err) {
-      console.error('Error previewing ticket number:', err);
+      console.error('Error reserving/previewing ticket number:', err);
     }
-  }, [formData.channel]);
+  }, [formData.channel, formData.customer_phone, initialData?.caseId]);
 
-  // Update sequence preview when channel changes
+  // Reserve or preview ticket number when channel or phone changes
   useEffect(() => {
-    previewTicketNumber();
-  }, [previewTicketNumber]);
+    reserveOrPreviewTicketNumber();
+  }, [reserveOrPreviewTicketNumber]);
       
   // Debounced phone number search
   const searchCustomerByPhone = useCallback(
@@ -550,7 +568,8 @@ const TicketCreateForm: React.FC<{
       const ticketData = {
         customer_id: customerId,
         conversation_id: initialData?.conversationId || null,
-        call_id: initialData?.caseId || initialData?.callId || null,
+        call_id: initialData?.callId || null,
+        case_id: initialData?.caseId || null,
 
         // Ticket classification
         priority: formData.priority,
@@ -569,6 +588,9 @@ const TicketCreateForm: React.FC<{
         // Assignment (if specified)
         assigned_to: formData.assigned_to,
 
+        // Reserved ticket number (if available)
+        ...(reservedTicketNumber && { ticket_number: reservedTicketNumber }),
+
         // Additional fields
         tags: formData.tags,
         custom_fields: formData.custom_fields,
@@ -580,7 +602,7 @@ const TicketCreateForm: React.FC<{
         // Show success modal with ticket number
         setCreatedTicket({
           id: response.data.id,
-          ticket_number: response.data.ticket_number || sequencePreview
+          ticket_number: response.data.ticket_number || reservedTicketNumber || sequencePreview
         });
         setShowSuccessModal(true);
 
@@ -622,16 +644,18 @@ const TicketCreateForm: React.FC<{
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Header */}
       <div className="bg-card rounded-lg border border-border p-6">
-        {sequencePreview && (
+        {(reservedTicketNumber || sequencePreview) && (
           <div className="mb-4">
             <div className="bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border-2 border-primary/20 rounded-xl p-6 shadow-lg">
               <div className="flex items-center justify-center gap-3">
                 <div className="flex-1 text-center">
-                  <p className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-2">Next Ticket Number</p>
-                  <p className="text-4xl md:text-5xl font-mono font-bold text-primary tracking-tight select-all">{sequencePreview}</p>
+                  <p className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-2">Ticket Number</p>
+                  <p className="text-4xl md:text-5xl font-mono font-bold text-primary tracking-tight select-all">
+                    {reservedTicketNumber || sequencePreview}
+                  </p>
                   <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground mt-2">
                     <Icon name="Hash" size={12} />
-                    <span>Auto-generated on submission</span>
+                    <span>Auto-generated</span>
                   </div>
                 </div>
               </div>

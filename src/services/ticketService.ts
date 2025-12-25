@@ -243,4 +243,15 @@ export const ticketService = {
     const response = await api.delete(`/tickets/${id}/attachments/${attachmentId}`);
     return response.data;
   },
+
+  // Reserve/get ticket number based on case_id and phone_number
+  // This ensures no duplicates when both parameters are provided
+  reserveTicketNumber: async (params: {
+    case_id: string;
+    phone_number: string;
+    channel?: string;
+  }) => {
+    const response = await api.post('/tickets/reserve-number', params);
+    return response.data;
+  },
 };

@@ -113,8 +113,24 @@ const LoginForm = () => {
       }
     } catch (error) {
       console.error('Login error:', error);
-      setErrors({ 
-        general: error?.response?.data?.message || t?.invalidCredentials 
+
+      let errorMessage;
+
+      // Network error or can't connect to backend
+      if (!error?.response) {
+        errorMessage = currentLanguage === 'ms'
+          ? 'Tidak dapat menyambung ke pelayan. Sila semak sambungan internet anda dan cuba lagi.'
+          : 'Unable to connect to server. Please check your internet connection and try again.';
+      }
+      // Server returned an error response
+      else {
+        errorMessage = error?.response?.data?.message
+          || t?.invalidCredentials
+          || 'Invalid username or password. Please try again.';
+      }
+
+      setErrors({
+        general: errorMessage
       });
     } finally {
       setIsLoading(false);

@@ -75,22 +75,27 @@ const getRoleFromRoleId = (roleId: number): string => {
 export const authService = {
   // Login
   login: async (credentials: LoginCredentials): Promise<{ jwtToken: string; user: AuthResponse['data']['user'] }> => {
-    const response = await api.post('/auth/login', credentials);
-    const data = response.data;
+    try {
+      const response = await api.post('/auth/login', credentials);
+      const data = response.data;
 
-    if (data.success && data.data.user) {
-      const jwtToken = data.data.access_token; // Assuming MitelToken is used as JWT token
-      const mitelToken = data.data.MitelToken;
-      const user = data.data.user;
+      if (data.success && data.data.user) {
+        const jwtToken = data.data.access_token; // Assuming MitelToken is used as JWT token
+        const mitelToken = data.data.MitelToken;
+        const user = data.data.user;
 
-      localStorage.setItem('jwt_token', jwtToken);
-      localStorage.setItem('mitel_token', mitelToken);
-      authService.setCurrentUser(user);
+        localStorage.setItem('jwt_token', jwtToken);
+        localStorage.setItem('mitel_token', mitelToken);
+        authService.setCurrentUser(user);
 
-      return { jwtToken, user };
+        return { jwtToken, user };
+      }
+
+      throw new Error('Login failed');
+    } catch (error: any) {
+      // Preserve the axios error with response data so the UI can display proper error messages
+      throw error;
     }
-
-    throw new Error('Login failed');
   },
 
   // Logout

@@ -9,11 +9,13 @@ const TicketCreatePage: React.FC = () => {
 
   // Extract query parameters that can be passed from MiTel
   const callId = searchParams.get('call_id') || searchParams.get('callId');
-  const caseId = searchParams.get('case_id') || searchParams.get('caseId');
+  const caseId = searchParams.get('case_id') || searchParams.get('caseId') || searchParams.get('ID_Number');
+  const phoneNumber = searchParams.get('Phone_Number');
+
   const queryParams = {
     customerId: searchParams.get('customer_id') || searchParams.get('customerId'),
     customerName: searchParams.get('customer_name') || searchParams.get('customerName'),
-    customerPhone: searchParams.get('customer_phone') || searchParams.get('customerPhone') || callId, // Use callId as phone number if customerPhone not provided
+    customerPhone: phoneNumber || searchParams.get('customer_phone') || searchParams.get('customerPhone') || callId, // Use Phone_Number, then callId as fallback
     customerEmail: searchParams.get('customer_email') || searchParams.get('customerEmail'),
     channel: searchParams.get('channel') || 'phone', // Default to phone for MiTel calls
     callId: callId,
