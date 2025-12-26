@@ -26,7 +26,17 @@ const MenuPermissionMatrix = () => {
         api.get('/roles/available/menu-items')
       ]);
 
-      const rolesData = rolesResponse.data.data || [];
+      // Handle both paginated and non-paginated responses for roles
+      let rolesData = [];
+      if (rolesResponse.data.data) {
+        if (Array.isArray(rolesResponse.data.data)) {
+          rolesData = rolesResponse.data.data;
+        } else if (rolesResponse.data.data.data && Array.isArray(rolesResponse.data.data.data)) {
+          rolesData = rolesResponse.data.data.data;
+        }
+      }
+
+      // Handle menu items response
       const menusData = menusResponse.data.data || [];
 
       setRoles(rolesData);

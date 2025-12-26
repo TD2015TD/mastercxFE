@@ -36,7 +36,20 @@ const RoleMenuManagement = () => {
           per_page: 100
         }
       });
-      setRoles(response.data.data || []);
+
+      // Handle both paginated and non-paginated responses
+      let rolesData = [];
+      if (response.data.data) {
+        // Check if it's paginated (has data array with pagination info) or direct array
+        if (Array.isArray(response.data.data)) {
+          rolesData = response.data.data;
+        } else if (response.data.data.data && Array.isArray(response.data.data.data)) {
+          // Paginated response
+          rolesData = response.data.data.data;
+        }
+      }
+
+      setRoles(rolesData);
     } catch (error) {
       toast.error('Failed to load roles');
       console.error('Error loading roles:', error);
