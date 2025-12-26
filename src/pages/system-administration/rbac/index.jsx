@@ -6,6 +6,8 @@ import BreadcrumbNavigation from '../../../components/ui/BreadcrumbNavigation';
 import RoleManagement from './components/RoleManagement';
 import PermissionMatrix from './components/PermissionMatrix';
 import UserRoleAssignment from './components/UserRoleAssignment';
+import RoleMenuManagement from './components/RoleMenuManagement';
+import MenuPermissionMatrix from './components/MenuPermissionMatrix';
 
 const RBACManagement = () => {
   const [activeTab, setActiveTab] = useState('roles');
@@ -17,23 +19,35 @@ const RBACManagement = () => {
   });
 
   const tabs = [
-    { 
-      id: 'roles', 
-      label: 'Roles', 
-      icon: 'Shield', 
-      description: 'Manage system roles and their configurations' 
+    {
+      id: 'roles',
+      label: 'Roles',
+      icon: 'Shield',
+      description: 'Manage system roles and their configurations'
     },
-    { 
-      id: 'permissions', 
-      label: 'Permission Matrix', 
-      icon: 'Grid', 
-      description: 'Configure role-based permissions across modules' 
+    {
+      id: 'role-menus',
+      label: 'Role & Menu',
+      icon: 'Menu',
+      description: 'Assign menu items and permissions to roles'
     },
-    { 
-      id: 'assignments', 
-      label: 'User Assignments', 
-      icon: 'Users', 
-      description: 'Assign roles to users and manage access' 
+    {
+      id: 'menu-matrix',
+      label: 'Menu Permission Matrix',
+      icon: 'Grid',
+      description: 'Configure all role-menu permissions in one view'
+    },
+    {
+      id: 'permissions',
+      label: 'Permission Matrix',
+      icon: 'Lock',
+      description: 'Configure role-based permissions across modules'
+    },
+    {
+      id: 'assignments',
+      label: 'User Assignments',
+      icon: 'Users',
+      description: 'Assign roles to users and manage access'
     }
   ];
 
@@ -41,6 +55,10 @@ const RBACManagement = () => {
     switch (activeTab) {
       case 'roles':
         return <RoleManagement />;
+      case 'role-menus':
+        return <RoleMenuManagement />;
+      case 'menu-matrix':
+        return <MenuPermissionMatrix />;
       case 'permissions':
         return <PermissionMatrix />;
       case 'assignments':
