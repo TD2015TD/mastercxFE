@@ -273,10 +273,20 @@ const TicketCreateForm: React.FC<{
           channel: formData.channel
         });
 
-        if (response.success && response.data?.ticket_number) {
-          setReservedTicketNumber(response.data.ticket_number);
-          setSequencePreview(''); // Clear preview since we have a reserved number
-          return;
+        if (response.success && response.data) {
+          // Check if ticket already exists - redirect if so
+          if (response.data.exists && response.data.ticket_id) {
+            console.log('Ticket already exists with case_id:', initialData.caseId, 'Redirecting to ticket:', response.data.ticket_id);
+            navigate(`/ticket-management/${response.data.ticket_id}`);
+            return;
+          }
+
+          // New ticket - set the reserved number
+          if (response.data.ticket_number) {
+            setReservedTicketNumber(response.data.ticket_number);
+            setSequencePreview(''); // Clear preview since we have a reserved number
+            return;
+          }
         }
       }
 
@@ -295,7 +305,7 @@ const TicketCreateForm: React.FC<{
     } catch (err) {
       console.error('Error reserving/previewing ticket number:', err);
     }
-  }, [formData.channel, formData.customer_phone, initialData?.caseId]);
+  }, [formData.channel, formData.customer_phone, initialData?.caseId, navigate]);
 
   // Reserve or preview ticket number when channel or phone changes
   useEffect(() => {
