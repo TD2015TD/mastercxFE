@@ -13,6 +13,11 @@ import SlaConfigurationTable from './sla-configuration/components/SlaConfigurati
 import SlaPerformanceMetrics from './sla-configuration/components/SlaPerformanceMetrics';
 import SlaRulesEngine from './sla-configuration/components/SlaRulesEngine';
 import ReportConfigurationPanel from './report-configuration';
+import RoleManagement from './rbac/components/RoleManagement';
+import RoleMenuManagement from './rbac/components/RoleMenuManagement';
+import MenuPermissionMatrix from './rbac/components/MenuPermissionMatrix';
+import PermissionMatrix from './rbac/components/PermissionMatrix';
+import UserRoleAssignment from './rbac/components/UserRoleAssignment';
 import { getUsers } from '../../services/userService';
 import { getSystemHealth } from '../../services/systemService';
 import { languageService } from '../../services/languageService';
@@ -23,6 +28,7 @@ const SystemAdministration = () => {
   const [translations, setTranslations] = useState({});
   const [activeTab, setActiveTab] = useState('users');
   const [slaTab, setSlaTab] = useState('configurations');
+  const [rbacTab, setRbacTab] = useState('roles');
   const [systemStats, setSystemStats] = useState({
     activeUsers: 0,
     systemUptime: '0%',
@@ -89,11 +95,12 @@ const SystemAdministration = () => {
 
   const tabs = [
     { id: 'users', label: t('systemAdmin.tabs.users'), icon: 'Users', description: t('systemAdmin.tabs.usersDesc') },
+    { id: 'rbac', label: 'RBAC Management', icon: 'Shield', description: 'Manage roles, permissions, and menu assignments' },
     { id: 'sla', label: 'SLA Management', icon: 'Clock', description: 'Configure and monitor Service Level Agreements' },
     { id: 'reports', label: 'Report Configuration', icon: 'BarChart', description: 'Configure dashboards and assign role-based access to reports' },
     { id: 'system', label: t('systemAdmin.tabs.system'), icon: 'Settings', description: t('systemAdmin.tabs.systemDesc') },
     { id: 'audit', label: t('systemAdmin.tabs.audit'), icon: 'FileText', description: t('systemAdmin.tabs.auditDesc') },
-    { id: 'compliance', label: t('systemAdmin.tabs.compliance'), icon: 'Shield', description: t('systemAdmin.tabs.complianceDesc') },
+    { id: 'compliance', label: t('systemAdmin.tabs.compliance'), icon: 'Lock', description: t('systemAdmin.tabs.complianceDesc') },
     { id: 'health', label: t('systemAdmin.tabs.health'), icon: 'Activity', description: t('systemAdmin.tabs.healthDesc') }
   ];
 
@@ -136,6 +143,8 @@ const SystemAdministration = () => {
     switch (activeTab) {
       case 'users':
         return <UserManagementPanel />;
+      case 'rbac':
+        return renderRbacManagement();
       case 'sla':
         return renderSlaManagement();
       case 'reports':
@@ -251,6 +260,129 @@ const SystemAdministration = () => {
         </div>
         <div className="p-6">
           {renderSlaSubTab()}
+        </div>
+      </div>
+    </div>
+  );
+
+  const rbacTabs = [
+    { id: 'roles', label: 'Roles', icon: 'Shield', description: 'Manage system roles and their configurations' },
+    { id: 'role-menus', label: 'Role & Menu', icon: 'Menu', description: 'Assign menu items and permissions to roles' },
+    { id: 'menu-matrix', label: 'Menu Permission Matrix', icon: 'Grid', description: 'Configure all role-menu permissions in one view' },
+    { id: 'permissions', label: 'Permission Matrix', icon: 'Lock', description: 'Configure role-based permissions across modules' },
+    { id: 'assignments', label: 'User Assignments', icon: 'Users', description: 'Assign roles to users and manage access' }
+  ];
+
+  const renderRbacSubTab = () => {
+    switch (rbacTab) {
+      case 'roles':
+        return <RoleManagement />;
+      case 'role-menus':
+        return <RoleMenuManagement />;
+      case 'menu-matrix':
+        return <MenuPermissionMatrix />;
+      case 'permissions':
+        return <PermissionMatrix />;
+      case 'assignments':
+        return <UserRoleAssignment />;
+      default:
+        return <RoleManagement />;
+    }
+  };
+
+  const renderRbacManagement = () => (
+    <div className="space-y-6">
+      {/* RBAC Header */}
+      <div className="bg-card rounded-lg border border-border p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-xl font-semibold text-foreground flex items-center">
+              <Icon name="Shield" className="mr-2" size={24} />
+              Role-Based Access Control
+            </h2>
+            <p className="text-sm text-muted-foreground mt-1">
+              Manage user roles, permissions, and menu access across the system
+            </p>
+          </div>
+        </div>
+
+        {/* RBAC Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="bg-primary/5 rounded-lg p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Total Roles</p>
+                <p className="text-2xl font-bold text-foreground mt-1">4</p>
+              </div>
+              <Icon name="Shield" size={32} className="text-primary" />
+            </div>
+          </div>
+          <div className="bg-success/5 rounded-lg p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Total Permissions</p>
+                <p className="text-2xl font-bold text-success mt-1">32</p>
+              </div>
+              <Icon name="Lock" size={32} className="text-success" />
+            </div>
+          </div>
+          <div className="bg-blue-500/5 rounded-lg p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Active Users</p>
+                <p className="text-2xl font-bold text-blue-600 mt-1">247</p>
+              </div>
+              <Icon name="Users" size={32} className="text-blue-600" />
+            </div>
+          </div>
+          <div className="bg-muted/50 rounded-lg p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Menu Items</p>
+                <p className="text-2xl font-bold text-foreground mt-1">9</p>
+              </div>
+              <Icon name="Menu" size={32} className="text-muted-foreground" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* RBAC Sub-tabs */}
+      <div className="bg-card rounded-lg border border-border">
+        <div className="border-b border-border">
+          <nav className="flex space-x-8 px-6" aria-label="RBAC Tabs">
+            {rbacTabs?.map((tab) => (
+              <button
+                key={tab?.id}
+                onClick={() => setRbacTab(tab?.id)}
+                className={`flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                  rbacTab === tab?.id
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground'
+                }`}
+              >
+                <Icon name={tab?.icon} size={18} />
+                <span>{tab?.label}</span>
+              </button>
+            ))}
+          </nav>
+        </div>
+        <div className="p-6">
+          {renderRbacSubTab()}
+        </div>
+      </div>
+
+      {/* Security Notice */}
+      <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+        <div className="flex items-start">
+          <Icon name="AlertTriangle" size={20} className="text-amber-600 dark:text-amber-400 mr-3 mt-0.5" />
+          <div>
+            <h4 className="text-sm font-semibold text-amber-900 dark:text-amber-100">Security Notice</h4>
+            <p className="text-sm text-amber-800 dark:text-amber-200 mt-1">
+              Changes to roles and permissions will take effect immediately. Ensure you review all changes before saving.
+              All modifications are logged in the audit trail for compliance purposes.
+            </p>
+          </div>
         </div>
       </div>
     </div>
