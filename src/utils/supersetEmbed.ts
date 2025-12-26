@@ -1,5 +1,5 @@
 import { embedDashboard } from '@superset-ui/embedded-sdk';
-import type { UIConfig } from '../types/superset';
+import type { UIConfig, RLSRule } from '../types/superset';
 import supersetService from '../services/supersetService';
 
 /**
@@ -8,12 +8,14 @@ import supersetService from '../services/supersetService';
  * @param containerId - ID of the container element
  * @param dashboardId - Superset dashboard ID (UUID)
  * @param options - UI configuration options
+ * @param rls - Optional Row-Level Security rules to filter data
  * @returns Promise that resolves when dashboard is loaded
  */
 export async function embedSupersetDashboard(
   containerId: string,
   dashboardId: string,
-  options: UIConfig = {}
+  options: UIConfig = {},
+  rls?: RLSRule[]
 ): Promise<void> {
   const container = document.getElementById(containerId);
 
@@ -30,8 +32,8 @@ export async function embedSupersetDashboard(
       supersetDomain: supersetService.getSupersetDomain(),
       mountPoint: container,
       fetchGuestToken: async () => {
-        // Fetch guest token from backend
-        return await supersetService.getGuestToken(dashboardId);
+        // Fetch guest token from backend with optional RLS rules
+        return await supersetService.getGuestToken(dashboardId, rls);
       },
       dashboardUiConfig: {
         hideTitle: options.hideTitle ?? false,

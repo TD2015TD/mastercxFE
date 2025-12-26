@@ -18,6 +18,7 @@ export type SupersetDashboard = {
   ui_config: UIConfig;
   default_filters: Record<string, any>;
   rls_config: RLSRule[];
+  dataset_ids: number[] | null;
   tags: string[];
   thumbnail_url: string | null;
   roles: DashboardRole[];

@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Icon from './AppIcon';
-import type { SupersetDashboard } from '../types/superset';
+import type { SupersetDashboard, RLSRule } from '../types/superset';
 import { embedSupersetDashboard, unmountSupersetDashboard } from '../utils/supersetEmbed';
+import { authService } from '../services/authService';
 
 interface SupersetDashboardModalProps {
   dashboard: SupersetDashboard;
@@ -32,10 +33,42 @@ const SupersetDashboardModal: React.FC<SupersetDashboardModalProps> = ({
         // Wait for container to be in DOM
         await new Promise(resolve => setTimeout(resolve, 100));
 
+        // Build RLS rules based on current user and dashboard's dataset_ids
+        const user = authService.getCurrentUser();
+        const rlsRules: RLSRule[] = [];
+
+        if (user && dashboard.dataset_ids && dashboard.dataset_ids.length > 0) {
+          // Apply RLS rules to all datasets configured for this dashboard
+          dashboard.dataset_ids.forEach((datasetId) => {
+            // Add agent ID filter if agent exists
+            if (user.agent?.id) {
+              rlsRules.push({
+                dataset: datasetId,
+                clause: `agent_id = ${user.agent.id}`
+              });
+            }
+
+            // Add role ID filter
+            if (user.role_id) {
+              rlsRules.push({
+                dataset: datasetId,
+                clause: `role_id = ${user.role_id}`
+              });
+            }
+
+            // Add user ID filter as fallback
+            rlsRules.push({
+              dataset: datasetId,
+              clause: `user_id = ${user.id}`
+            });
+          });
+        }
+
         await embedSupersetDashboard(
           containerId,
           dashboard.superset_id,
-          dashboard.ui_config || {}
+          dashboard.ui_config || {},
+          rlsRules.length > 0 ? rlsRules : undefined
         );
 
         setLoading(false);
@@ -52,7 +85,7 @@ const SupersetDashboardModal: React.FC<SupersetDashboardModalProps> = ({
     return () => {
       unmountSupersetDashboard(containerId);
     };
-  }, [isOpen, dashboard.id, dashboard.superset_id, dashboard.ui_config, containerId]);
+  }, [isOpen, dashboard.id, dashboard.superset_id, dashboard.ui_config, dashboard.dataset_ids, containerId]);
 
   if (!isOpen) {
     return null;

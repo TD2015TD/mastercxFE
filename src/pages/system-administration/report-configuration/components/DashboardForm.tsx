@@ -30,6 +30,7 @@ const DashboardForm: React.FC<DashboardFormProps> = ({ dashboard, onClose, onSuc
     order: 0,
     is_active: true,
     is_public: false,
+    dataset_ids: '',
     tags: '',
     thumbnail_url: '',
   });
@@ -48,6 +49,7 @@ const DashboardForm: React.FC<DashboardFormProps> = ({ dashboard, onClose, onSuc
         order: dashboard.order,
         is_active: dashboard.is_active,
         is_public: dashboard.is_public,
+        dataset_ids: dashboard.dataset_ids?.join(', ') || '',
         tags: dashboard.tags?.join(', ') || '',
         thumbnail_url: dashboard.thumbnail_url || '',
       });
@@ -209,6 +211,18 @@ const DashboardForm: React.FC<DashboardFormProps> = ({ dashboard, onClose, onSuc
             <div>
               <h3 className="text-lg font-medium text-foreground mb-4">Additional Settings</h3>
               <div className="space-y-4">
+                <div>
+                  <Input
+                    label="Dataset IDs (comma-separated)"
+                    type="text"
+                    value={formData.dataset_ids}
+                    onChange={(e) => handleInputChange('dataset_ids', e.target.value)}
+                    placeholder="e.g., 1, 2, 3"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Enter Superset dataset IDs for RLS filtering. Find these in Superset under Data → Datasets.
+                  </p>
+                </div>
                 <Input
                   label="Tags (comma-separated)"
                   type="text"

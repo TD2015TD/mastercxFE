@@ -18,6 +18,7 @@ export interface SupersetDashboard {
   ui_config?: Record<string, unknown>;
   default_filters?: Record<string, unknown>;
   rls_config?: Record<string, unknown>;
+  dataset_ids?: number[];
   tags?: string[];
   thumbnail_url?: string;
   roles?: Role[];
@@ -50,6 +51,7 @@ export interface DashboardFormData {
   ui_config?: Record<string, unknown>;
   default_filters?: Record<string, unknown>;
   rls_config?: Record<string, unknown>;
+  dataset_ids?: string;
   tags?: string;
   thumbnail_url?: string;
   roles?: Array<{
