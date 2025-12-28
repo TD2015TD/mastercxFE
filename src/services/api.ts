@@ -22,17 +22,51 @@ api.interceptors.request.use(
   }
 );
 
-// Response interceptor to handle errors
+// Response interceptor to handle auto-refresh and errors
 api.interceptors.response.use(
   (response) => {
+    // Check if the token was auto-refreshed by the backend middleware
+    if (response.headers['x-token-refreshed'] === 'true') {
+      const authHeader = response.headers['authorization'];
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        const newToken = authHeader.substring(7); // Remove 'Bearer ' prefix
+
+        // Store the new token
+        localStorage.setItem('jwt_token', newToken);
+
+        console.log('Token auto-refreshed successfully');
+
+        // Dispatch custom event for other parts of the app
+        window.dispatchEvent(new CustomEvent('token-refreshed', {
+          detail: { token: newToken }
+        }));
+      }
+    }
     return response;
   },
   (error) => {
     if (error.response?.status === 401) {
-      // Token expired or invalid, redirect to login
-      localStorage.removeItem('jwt_token');
-      localStorage.removeItem('user-session');
-      window.location.href = '/agent-login';
+      const message = error.response.data?.message || '';
+
+      // Check if token expired and cannot be refreshed
+      if (message.includes('expired and cannot be refreshed') ||
+          message.includes('Token is invalid')) {
+        console.log('Session expired. Redirecting to login...');
+
+        // Clear stored tokens
+        localStorage.removeItem('jwt_token');
+        localStorage.removeItem('mitel_token');
+        localStorage.removeItem('user-session');
+
+        // Redirect to login page
+        window.location.href = '/agent-login';
+      } else {
+        // Other 401 errors (invalid token, etc.)
+        localStorage.removeItem('jwt_token');
+        localStorage.removeItem('mitel_token');
+        localStorage.removeItem('user-session');
+        window.location.href = '/agent-login';
+      }
     }
     return Promise.reject(error);
   }

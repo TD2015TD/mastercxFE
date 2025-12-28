@@ -19,6 +19,37 @@ apiClient.interceptors.request.use((config) => {
   return config;
 });
 
+// Add response interceptor to handle auto-refresh
+apiClient.interceptors.response.use(
+  (response) => {
+    // Check if the token was auto-refreshed by the backend middleware
+    if (response.headers['x-token-refreshed'] === 'true') {
+      const authHeader = response.headers['authorization'];
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        const newToken = authHeader.substring(7); // Remove 'Bearer ' prefix
+        localStorage.setItem('jwt_token', newToken);
+        console.log('Token auto-refreshed successfully (menuService)');
+
+        // Dispatch custom event for other parts of the app
+        window.dispatchEvent(new CustomEvent('token-refreshed', {
+          detail: { token: newToken }
+        }));
+      }
+    }
+    return response;
+  },
+  (error) => {
+    if (error.response?.status === 401) {
+      // Clear tokens and redirect to login
+      localStorage.removeItem('jwt_token');
+      localStorage.removeItem('mitel_token');
+      localStorage.removeItem('user-session');
+      window.location.href = '/agent-login';
+    }
+    return Promise.reject(error);
+  }
+);
+
 export interface MenuItem {
   id: number;
   label: string;
