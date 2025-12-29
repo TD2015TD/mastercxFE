@@ -266,17 +266,20 @@ const TicketCreateForm: React.FC<{
   const reserveOrPreviewTicketNumber = useCallback(async () => {
     try {
       // If we have both case_id and phone_number, reserve a ticket number to guarantee no duplicates
+      // Also check by conversation_id for transferred calls
       if (initialData?.caseId && formData.customer_phone) {
         const response = await ticketService.reserveTicketNumber({
           case_id: initialData.caseId,
           phone_number: formData.customer_phone,
-          channel: formData.channel
+          channel: formData.channel,
+          conversation_id: initialData.conversationId || null
         });
 
         if (response.success && response.data) {
           // Check if ticket already exists - redirect if so
           if (response.data.exists && response.data.ticket_id) {
-            console.log('Ticket already exists with case_id:', initialData.caseId, 'Redirecting to ticket:', response.data.ticket_id);
+            console.log('Ticket already exists with case_id:', initialData.caseId, 'or conversation_id:', initialData.conversationId, 'Redirecting to ticket:', response.data.ticket_id);
+            toast.info(`Redirecting to existing ticket: ${response.data.ticket_number}`);
             navigate(`/ticket-management/${response.data.ticket_id}`);
             return;
           }
@@ -305,7 +308,7 @@ const TicketCreateForm: React.FC<{
     } catch (err) {
       console.error('Error reserving/previewing ticket number:', err);
     }
-  }, [formData.channel, formData.customer_phone, initialData?.caseId, navigate]);
+  }, [formData.channel, formData.customer_phone, initialData?.caseId, initialData?.conversationId, navigate]);
 
   // Reserve or preview ticket number when channel or phone changes
   useEffect(() => {

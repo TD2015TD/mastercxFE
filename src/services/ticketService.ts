@@ -246,10 +246,12 @@ export const ticketService = {
 
   // Reserve/get ticket number based on case_id and phone_number
   // This ensures no duplicates when both parameters are provided
+  // Also checks by conversation_id for transferred calls
   reserveTicketNumber: async (params: {
     case_id: string;
     phone_number: string;
     channel?: string;
+    conversation_id?: string | null;
   }) => {
     const response = await api.post('/tickets/reserve-number', params);
     return response.data;
