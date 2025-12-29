@@ -86,7 +86,7 @@ const LoginForm = () => {
     try {
       // Use authService to login
       const response = await authService.login({
-        email: formData.username,
+        username: formData.username,
         password: formData.password
       });
       

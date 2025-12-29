@@ -28,6 +28,7 @@ const CreateUser = () => {
   // Form state
   const [formData, setFormData] = useState({
     name: '',
+    username: '',
     email: '',
     password: '',
     password_confirmation: '',
@@ -104,6 +105,7 @@ const CreateUser = () => {
         const user = response.data;
         setFormData({
           name: user.name || '',
+          username: user.username || '',
           email: user.email || '',
           password: '',
           password_confirmation: '',
@@ -224,6 +226,10 @@ const CreateUser = () => {
       setError('Name is required');
       return false;
     }
+    if (!formData.username.trim()) {
+      setError('Username is required');
+      return false;
+    }
     if (!formData.email.trim()) {
       setError('Email is required');
       return false;
@@ -290,6 +296,7 @@ const CreateUser = () => {
 
       const payload = {
         name: formData.name.trim(),
+        username: formData.username.trim(),
         email: formData.email.trim(),
         role_id: parseInt(formData.role_id),
         status: formData.status,
@@ -436,6 +443,19 @@ const CreateUser = () => {
                     placeholder="Enter full name"
                     value={formData.name}
                     onChange={(e) => handleInputChange('name', e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    Username <span className="text-error">*</span>
+                  </label>
+                  <Input
+                    type="text"
+                    placeholder="Enter username"
+                    value={formData.username}
+                    onChange={(e) => handleInputChange('username', e.target.value)}
                     required
                   />
                 </div>
