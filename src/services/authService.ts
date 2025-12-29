@@ -103,8 +103,13 @@ export const authService = {
     try {
       await api.post('/auth/logout');
     } finally {
-      localStorage.removeItem('jwt_token');
-      localStorage.removeItem('user-session');
+      // Clear ALL localStorage items on logout
+      // This includes: jwt_token, mitel_token, user-session, menu_items_cache,
+      // menu_items_cache_timestamp, JsSIP:*, and any other cached data
+      localStorage.clear();
+
+      // Also clear sessionStorage if needed
+      sessionStorage.clear();
     }
   },
 

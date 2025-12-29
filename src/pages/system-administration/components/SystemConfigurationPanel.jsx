@@ -9,6 +9,7 @@ import LookupModal from './LookupModal';
 import EmailConfiguration from '../email-configuration/EmailConfiguration';
 import AuthenticationConfiguration from '../authentication-configuration/AuthenticationConfiguration';
 import LdapConfiguration from '../ldap-configuration/LdapConfiguration';
+import MitelConfiguration from '../mitel-configuration/MitelConfiguration';
 
 const SystemConfigurationPanel = () => {
   const [activeTab, setActiveTab] = useState('categories');
@@ -29,6 +30,7 @@ const SystemConfigurationPanel = () => {
     { id: 'categories', label: 'Categories & Sub-categories', icon: 'FolderTree' },
     { id: 'lookups', label: 'Lookup Configuration', icon: 'List' },
     { id: 'email', label: 'Email Configuration', icon: 'Mail' },
+    { id: 'mitel', label: 'Mitel Configuration', icon: 'Phone' },
     { id: 'authentication', label: 'Authentication', icon: 'Shield' },
     { id: 'ldap', label: 'LDAP Configuration', icon: 'Server' }
   ];
@@ -406,6 +408,7 @@ const SystemConfigurationPanel = () => {
         {activeTab === 'categories' && renderCategories()}
         {activeTab === 'lookups' && renderLookups()}
         {activeTab === 'email' && <EmailConfiguration />}
+        {activeTab === 'mitel' && <MitelConfiguration />}
         {activeTab === 'authentication' && <AuthenticationConfiguration />}
         {activeTab === 'ldap' && <LdapConfiguration />}
       </div>

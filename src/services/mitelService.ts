@@ -1,7 +1,6 @@
 import api from './api';
 import { authService } from './authService';
-
-const mitelBaseUrl = import.meta.env.VITE_MITEL_BASE_URL || 'https://micc.telediant.com.my';
+import mitelConfigService from './mitelConfigService';
 
 // ========================================================================
 // INTERFACES
@@ -87,7 +86,7 @@ export interface MitelStateUpdatePayload {
  */
 export const getMe = async () => {
   const mitelToken = authService.getMitelToken();
-  const mitelBaseUrl = import.meta.env.VITE_MITEL_BASE_URL || 'https://micc.telediant.com.my';
+  const mitelBaseUrl = await mitelConfigService.getBaseUrl();
 
   const response = await fetch(`${mitelBaseUrl}/MiccSdk/api/v1/employees/me`, {
     method: 'GET',
@@ -156,6 +155,7 @@ export const updateEmployeeStateDirect = async (
   payload: MitelStateUpdatePayload
 ): Promise<{ success: true }> => {
   const mitelToken = authService.getMitelToken();
+  const mitelBaseUrl = await mitelConfigService.getBaseUrl();
 
   const response = await fetch(
     `${mitelBaseUrl}/MiccSdk/api/v1/employees/${employeeId}/state`,
@@ -237,6 +237,7 @@ export const getMitelEmployeeStats = async (employeeId: string) => {
  */
 export const performConversationAction = async (conversationId: string, action: 'Accept' | 'End' | 'Hold' | 'Resume') => {
   const mitelToken = authService.getMitelToken();
+  const mitelBaseUrl = await mitelConfigService.getBaseUrl();
 
   const response = await fetch(`${mitelBaseUrl}/MiccSdk/api/v1/employees/me/conversations/${conversationId}`, {
     method: 'PUT',
@@ -588,6 +589,7 @@ export const blindTransferCall = async (
   mediaServerType: string = 'ICP3300withMiTAI'
 ) => {
   const mitelToken = authService.getMitelToken();
+  const mitelBaseUrl = await mitelConfigService.getBaseUrl();
 
   // Mitel API expects EnhancedTransfer payload structure
   const payload = {
@@ -639,6 +641,7 @@ export const initiateConsultTransfer = async (
   mediaServerType: string = 'ICP3300withMiTAI'
 ) => {
   const mitelToken = authService.getMitelToken();
+  const mitelBaseUrl = await mitelConfigService.getBaseUrl();
 
   // Mitel API expects EnhancedTransfer payload structure for consult transfer
   const payload = {
@@ -689,6 +692,7 @@ export const completeConsultTransfer = async (
   _destinationAgentId?: number
 ) => {
   const mitelToken = authService.getMitelToken();
+  const mitelBaseUrl = await mitelConfigService.getBaseUrl();
 
   // Mitel API expects a PUT request to complete the transfer
   const payload = {
@@ -728,6 +732,7 @@ export const cancelConsultTransfer = async (
   conversationId: string
 ) => {
   const mitelToken = authService.getMitelToken();
+  const mitelBaseUrl = await mitelConfigService.getBaseUrl();
 
   // Mitel API expects a PUT request to cancel the transfer
   const payload = {
@@ -769,6 +774,7 @@ export const cancelConsultTransfer = async (
  */
 export const getAgentGroupPresence = async (employeeId: string = 'me') => {
   const mitelToken = authService.getMitelToken();
+  const mitelBaseUrl = await mitelConfigService.getBaseUrl();
 
   const response = await fetch(
     `${mitelBaseUrl}/MiccSdk/api/v1/employees/${employeeId}/agentgrouppresence`,
@@ -805,6 +811,7 @@ export const getAgentGroupPresence = async (employeeId: string = 'me') => {
  */
 export const getIntegratedSoftphoneCredentials = async (agentId: string = 'me') => {
   const mitelToken = authService.getMitelToken();
+  const mitelBaseUrl = await mitelConfigService.getBaseUrl();
 
   const response = await fetch(
     `${mitelBaseUrl}/MiccSdk/api/v1/agents/${agentId}/integratedsoftphone`,
@@ -851,6 +858,7 @@ export const searchDirectory = async (
   _searchType: 'text' | 'id' = 'text'
 ) => {
   const mitelToken = authService.getMitelToken();
+  const mitelBaseUrl = await mitelConfigService.getBaseUrl();
 
   const params = new URLSearchParams();
   if (searchQuery) params.append('searchText', searchQuery);
@@ -909,6 +917,7 @@ export const makeOutboundCall = async (
   } = options;
 
   const mitelToken = authService.getMitelToken();
+  const mitelBaseUrl = await mitelConfigService.getBaseUrl();
 
   const params = new URLSearchParams();
   params.append('dialAsIs', dialAsIs.toString());
