@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { ticketService } from '../../../services/ticketService';
-import { ticketSequenceService } from '../../../services/ticketSequenceService';
 import lookupService from '../../../services/lookupService';
 import { agentService, type Agent } from '../../../services/agentService';
 import { customerService, type Customer, type CustomerNote } from '../../../services/customerService';
@@ -52,8 +51,6 @@ const TicketCreateForm: React.FC<{
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [sequencePreview, setSequencePreview] = useState<string>('');
-  const [reservedTicketNumber, setReservedTicketNumber] = useState<string>('');
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [createdTicket, setCreatedTicket] = useState<{ id: number; ticket_number: string } | null>(null);
   
@@ -263,10 +260,10 @@ const TicketCreateForm: React.FC<{
     setShowAgentModal(false);
   };
 
-  const reserveOrPreviewTicketNumber = useCallback(async () => {
+  const checkExistingTicket = useCallback(async () => {
     try {
-      // If we have both case_id and phone_number, reserve a ticket number to guarantee no duplicates
-      // Also check by conversation_id for transferred calls
+      // Only check for existing tickets if we have case_id and phone number
+      // Do NOT generate or reserve ticket numbers yet - that happens on submit
       if (initialData?.caseId && formData.customer_phone) {
         const response = await ticketService.reserveTicketNumber({
           case_id: initialData.caseId,
@@ -278,42 +275,23 @@ const TicketCreateForm: React.FC<{
         if (response.success && response.data) {
           // Check if ticket already exists - redirect if so
           if (response.data.exists && response.data.ticket_id) {
-            console.log('Ticket already exists with case_id:', initialData.caseId, 'or conversation_id:', initialData.conversationId, 'Redirecting to ticket:', response.data.ticket_id);
+            console.log('Ticket already exists with case_id:', initialData.caseId, 'Redirecting to ticket:', response.data.ticket_id);
             toast.info(`Redirecting to existing ticket: ${response.data.ticket_number}`);
             navigate(`/ticket-management/${response.data.ticket_id}`);
             return;
           }
-
-          // New ticket - set the reserved number
-          if (response.data.ticket_number) {
-            setReservedTicketNumber(response.data.ticket_number);
-            setSequencePreview(''); // Clear preview since we have a reserved number
-            return;
-          }
         }
       }
 
-      // Otherwise, just show a preview
-      const channelSequences = await ticketSequenceService.getChannelSequences();
-      const channelKey = formData.channel === 'walk-in' ? 'walkIn' : formData.channel;
-      const sequence = (channelSequences as Record<string, unknown>)[channelKey] || channelSequences.default;
-
-      if (sequence) {
-        const preview = await ticketSequenceService.previewSequence(sequence.id);
-        if (preview.success) {
-          setSequencePreview(preview.data.sample_output);
-          setReservedTicketNumber(''); // Clear reserved number
-        }
-      }
     } catch (err) {
-      console.error('Error reserving/previewing ticket number:', err);
+      console.error('Error checking for existing ticket:', err);
     }
   }, [formData.channel, formData.customer_phone, initialData?.caseId, initialData?.conversationId, navigate]);
 
-  // Reserve or preview ticket number when channel or phone changes
+  // Check for existing ticket when component loads
   useEffect(() => {
-    reserveOrPreviewTicketNumber();
-  }, [reserveOrPreviewTicketNumber]);
+    checkExistingTicket();
+  }, [checkExistingTicket]);
       
   // Debounced phone number search
   const searchCustomerByPhone = useCallback(
@@ -601,9 +579,6 @@ const TicketCreateForm: React.FC<{
         // Assignment (if specified)
         assigned_to: formData.assigned_to,
 
-        // Reserved ticket number (if available)
-        ...(reservedTicketNumber && { ticket_number: reservedTicketNumber }),
-
         // Additional fields
         tags: formData.tags,
         custom_fields: formData.custom_fields,
@@ -615,7 +590,7 @@ const TicketCreateForm: React.FC<{
         // Show success modal with ticket number
         setCreatedTicket({
           id: response.data.id,
-          ticket_number: response.data.ticket_number || reservedTicketNumber || sequencePreview
+          ticket_number: response.data.ticket_number
         });
         setShowSuccessModal(true);
 
@@ -624,7 +599,7 @@ const TicketCreateForm: React.FC<{
           detail: {
             ticketId: response.data.id,
             customerId: response.data.customer_id || selectedCustomer?.id,
-            ticketNumber: response.data.ticket_number || sequencePreview,
+            ticketNumber: response.data.ticket_number,
             conversationId: initialData?.conversationId,
           }
         });
@@ -657,24 +632,22 @@ const TicketCreateForm: React.FC<{
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Header */}
       <div className="bg-card rounded-lg border border-border p-6">
-        {(reservedTicketNumber || sequencePreview) && (
-          <div className="mb-4">
-            <div className="bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border-2 border-primary/20 rounded-xl p-6 shadow-lg">
-              <div className="flex items-center justify-center gap-3">
-                <div className="flex-1 text-center">
-                  <p className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-2">Ticket Number</p>
-                  <p className="text-4xl md:text-5xl font-mono font-bold text-primary tracking-tight select-all">
-                    {reservedTicketNumber || sequencePreview}
-                  </p>
-                  <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground mt-2">
-                    <Icon name="Hash" size={12} />
-                    <span>Auto-generated</span>
-                  </div>
+        <div className="mb-4">
+          <div className="bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border-2 border-dashed border-primary/20 rounded-xl p-6 shadow-lg">
+            <div className="flex items-center justify-center gap-3">
+              <div className="flex-1 text-center">
+                <p className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-2">Ticket Number</p>
+                <p className="text-3xl md:text-4xl font-mono font-bold text-muted-foreground/50 tracking-tight">
+                  Will be generated on submit
+                </p>
+                <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground mt-2">
+                  <Icon name="Info" size={12} />
+                  <span>Unique number assigned upon ticket creation</span>
                 </div>
               </div>
             </div>
           </div>
-        )}
+        </div>
 
         {error && (
           <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-4">
