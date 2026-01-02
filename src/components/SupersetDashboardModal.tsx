@@ -200,13 +200,6 @@ const SupersetDashboardModal: React.FC<SupersetDashboardModalProps> = ({
 
           <div className="flex items-center space-x-2">
             <button
-              onClick={() => window.open(`${import.meta.env.VITE_SUPERSET_URL}/superset/dashboard/${dashboard.superset_id}`, '_blank')}
-              className="px-4 py-2 text-sm border border-border rounded-md hover:bg-muted transition-colors flex items-center space-x-2"
-            >
-              <Icon name="ExternalLink" size={14} />
-              <span>Open in Superset</span>
-            </button>
-            <button
               onClick={onClose}
               className="px-4 py-2 text-sm bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
             >
