@@ -1,6 +1,7 @@
 import Routes from './Routes';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import ChatWidget from './components/ChatWidget';
 
 function App() {
   return (
@@ -13,11 +14,12 @@ function App() {
         newestOnTop={false}
         closeOnClick
         rtl={false}
-        pauseOnFocusLoss
+        pauseOnFocusLoss={true}
         draggable
         pauseOnHover
         theme="light"
       />
+      <ChatWidget />
     </>
   );
 }

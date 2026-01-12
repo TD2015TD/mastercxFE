@@ -11,11 +11,34 @@ const MitelConfiguration = () => {
   const [editingKey, setEditingKey] = useState(null);
   const [editValue, setEditValue] = useState('');
   const [testingConnection, setTestingConnection] = useState(false);
+  
+  // Database Connection Management State
+  const [activeTab, setActiveTab] = useState('api-config'); // 'api-config' or 'db-connections'
+  const [connections, setConnections] = useState([]);
+  const [loadingConnections, setLoadingConnections] = useState(false);
+  const [showConnectionModal, setShowConnectionModal] = useState(false);
+  const [editingConnection, setEditingConnection] = useState(null);
+  const [connectionForm, setConnectionForm] = useState({
+    name: '',
+    host: '',
+    port: '1433',
+    database: '',
+    username: '',
+    password: '',
+    is_active: true,
+    sync_schedule: '0 * * * *'
+  });
+  const [testingDbConnection, setTestingDbConnection] = useState(null);
+  const [syncingConnection, setSyncingConnection] = useState(null);
+  const [showLogsModal, setShowLogsModal] = useState(false);
+  const [selectedConnectionLogs, setSelectedConnectionLogs] = useState(null);
+  const [connectionLogs, setConnectionLogs] = useState([]);
 
   useEffect(() => {
     // Clear the mitel config cache when component mounts to ensure fresh data
     mitelConfigService.clearCache();
     loadConfigurations();
+    loadConnections();
   }, []);
 
   const loadConfigurations = async () => {
@@ -174,6 +197,187 @@ const MitelConfiguration = () => {
     }
   };
 
+  // Database Connection Management Functions
+  const loadConnections = async () => {
+    try {
+      setLoadingConnections(true);
+      const response = await api.get('/mitel-connections');
+      if (response.data.status === 'success') {
+        setConnections(response.data.data);
+      }
+    } catch (error) {
+      console.error('Error loading connections:', error);
+      toast.error('Failed to load database connections');
+    } finally {
+      setLoadingConnections(false);
+    }
+  };
+
+  const handleConnectionFormChange = (field, value) => {
+    setConnectionForm(prev => ({ ...prev, [field]: value }));
+  };
+
+  const openConnectionModal = (connection = null) => {
+    if (connection) {
+      setEditingConnection(connection);
+      setConnectionForm({
+        name: connection.name,
+        host: connection.host,
+        port: connection.port.toString(),
+        database: connection.database,
+        username: connection.username,
+        password: '', // Don't show existing password
+        is_active: connection.is_active,
+        sync_schedule: connection.sync_schedule || '0 * * * *'
+      });
+    } else {
+      setEditingConnection(null);
+      setConnectionForm({
+        name: '',
+        host: '',
+        port: '1433',
+        database: '',
+        username: '',
+        password: '',
+        is_active: true,
+        sync_schedule: '0 * * * *'
+      });
+    }
+    setShowConnectionModal(true);
+  };
+
+  const closeConnectionModal = () => {
+    setShowConnectionModal(false);
+    setEditingConnection(null);
+    setConnectionForm({
+      name: '',
+      host: '',
+      port: '1433',
+      database: '',
+      username: '',
+      password: '',
+      is_active: true,
+      sync_schedule: '0 * * * *'
+    });
+  };
+
+  const saveConnection = async () => {
+    try {
+      // Validation
+      if (!connectionForm.name || !connectionForm.host || !connectionForm.database || !connectionForm.username) {
+        toast.error('Please fill in all required fields');
+        return;
+      }
+
+      if (editingConnection) {
+        // Update existing connection
+        const payload = { ...connectionForm };
+        if (!payload.password) {
+          delete payload.password; // Don't update password if not provided
+        }
+        
+        const response = await api.put(`/mitel-connections/${editingConnection.id}`, payload);
+        if (response.data.status === 'success') {
+          toast.success('Connection updated successfully');
+          loadConnections();
+          closeConnectionModal();
+        }
+      } else {
+        // Create new connection
+        if (!connectionForm.password) {
+          toast.error('Password is required for new connections');
+          return;
+        }
+        
+        const response = await api.post('/mitel-connections', connectionForm);
+        if (response.data.status === 'success') {
+          toast.success('Connection created successfully');
+          loadConnections();
+          closeConnectionModal();
+        }
+      }
+    } catch (error) {
+      console.error('Error saving connection:', error);
+      toast.error(error.response?.data?.message || 'Failed to save connection');
+    }
+  };
+
+  const deleteConnection = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this connection? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      const response = await api.delete(`/mitel-connections/${id}`);
+      if (response.data.status === 'success') {
+        toast.success('Connection deleted successfully');
+        loadConnections();
+      }
+    } catch (error) {
+      console.error('Error deleting connection:', error);
+      toast.error(error.response?.data?.message || 'Failed to delete connection');
+    }
+  };
+
+  const testDbConnection = async (id) => {
+    try {
+      setTestingDbConnection(id);
+      const response = await api.post(`/mitel-connections/${id}/test`);
+      
+      if (response.data.status === 'success') {
+        toast.success('✓ Database connection successful!', { autoClose: 5000 });
+      } else {
+        toast.error(response.data.message || 'Connection test failed');
+      }
+    } catch (error) {
+      console.error('Error testing connection:', error);
+      toast.error(error.response?.data?.message || 'Failed to test connection');
+    } finally {
+      setTestingDbConnection(null);
+    }
+  };
+
+  const syncConnection = async (id) => {
+    try {
+      setSyncingConnection(id);
+      const response = await api.post(`/mitel-connections/${id}/sync`, {
+        type: 'full'
+      });
+      
+      if (response.data.status === 'success') {
+        toast.success('Sync started successfully! This may take a few minutes.', { autoClose: 5000 });
+        // Refresh connections to update sync status
+        setTimeout(() => loadConnections(), 2000);
+      }
+    } catch (error) {
+      console.error('Error syncing connection:', error);
+      toast.error(error.response?.data?.message || 'Failed to start sync');
+    } finally {
+      setSyncingConnection(null);
+    }
+  };
+
+  const viewConnectionLogs = async (connection) => {
+    try {
+      setSelectedConnectionLogs(connection);
+      const response = await api.get(`/mitel-connections/${connection.id}/logs`);
+      
+      if (response.data.status === 'success') {
+        setConnectionLogs(response.data.data);
+        setShowLogsModal(true);
+      }
+    } catch (error) {
+      console.error('Error loading logs:', error);
+      toast.error('Failed to load connection logs');
+    }
+  };
+
+  const closeLogsModal = () => {
+    setShowLogsModal(false);
+    setSelectedConnectionLogs(null);
+    setConnectionLogs([]);
+  };
+
   const renderConfigRow = (config) => {
     const isEditing = editingKey === config.key;
     const isSecret = config.key.includes('SECRET');
@@ -270,130 +474,523 @@ const MitelConfiguration = () => {
             Mitel Integration Configuration
           </h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Configure Mitel MiContact Center connection settings and credentials
+            Configure Mitel MiContact Center connection settings and data synchronization
           </p>
         </div>
-        <div className="flex items-center space-x-3">
-          <Button
-            variant="outline"
-            iconName="RefreshCw"
-            iconPosition="left"
-            onClick={loadConfigurations}
-            disabled={loading}
+      </div>
+
+      {/* Tabs */}
+      <div className="border-b border-border">
+        <div className="flex space-x-6">
+          <button
+            onClick={() => setActiveTab('api-config')}
+            className={`pb-3 px-2 font-medium text-sm transition-colors ${
+              activeTab === 'api-config'
+                ? 'text-primary border-b-2 border-primary'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
           >
-            Refresh
-          </Button>
-          <Button
-            variant="default"
-            iconName="Zap"
-            iconPosition="left"
-            onClick={testConnection}
-            disabled={testingConnection}
+            <Icon name="Link" size={16} className="inline mr-2" />
+            API Configuration
+          </button>
+          <button
+            onClick={() => setActiveTab('db-connections')}
+            className={`pb-3 px-2 font-medium text-sm transition-colors ${
+              activeTab === 'db-connections'
+                ? 'text-primary border-b-2 border-primary'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
           >
-            {testingConnection ? 'Testing...' : 'Test Connection'}
-          </Button>
+            <Icon name="Database" size={16} className="inline mr-2" />
+            Database Connections
+          </button>
         </div>
       </div>
 
-      {/* Info Banner */}
-      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-        <div className="flex items-start">
-          <Icon name="Info" size={20} className="text-blue-600 dark:text-blue-400 mr-3 mt-0.5 flex-shrink-0" />
-          <div className="flex-1">
-            <h4 className="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-1">
-              Configuration Management
-            </h4>
-            <p className="text-sm text-blue-800 dark:text-blue-200">
-              These settings control how the CRM system connects to your Mitel MiContact Center.
-              Changes are applied immediately to all connected agents. The frontend will automatically
-              fetch the latest configuration without requiring a rebuild or refresh.
-            </p>
+      {/* API Configuration Tab */}
+      {activeTab === 'api-config' && (
+        <div className="space-y-6">
+          <div className="flex items-center space-x-3">
+            <Button
+              variant="outline"
+              iconName="RefreshCw"
+              iconPosition="left"
+              onClick={loadConfigurations}
+              disabled={loading}
+            >
+              Refresh
+            </Button>
+            <Button
+              variant="default"
+              iconName="Zap"
+              iconPosition="left"
+              onClick={testConnection}
+              disabled={testingConnection}
+            >
+              {testingConnection ? 'Testing...' : 'Test Connection'}
+            </Button>
+          </div>
+
+          {/* Info Banner */}
+          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+            <div className="flex items-start">
+              <Icon name="Info" size={20} className="text-blue-600 dark:text-blue-400 mr-3 mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                <h4 className="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-1">
+                  Configuration Management
+                </h4>
+                <p className="text-sm text-blue-800 dark:text-blue-200">
+                  These settings control how the CRM system connects to your Mitel MiContact Center API.
+                  Changes are applied immediately to all connected agents.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="text-center">
+                <Icon name="Loader" size={40} className="text-primary animate-spin mx-auto mb-4" />
+                <p className="text-muted-foreground">Loading configurations...</p>
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* Configuration Cards */}
+              <div className="grid grid-cols-1 gap-4">
+                {configs.map(config => renderConfigRow(config))}
+              </div>
+
+              {/* Security Notice */}
+              <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+                <div className="flex items-start">
+                  <Icon name="AlertTriangle" size={20} className="text-amber-600 dark:text-amber-400 mr-3 mt-0.5 flex-shrink-0" />
+                  <div className="flex-1">
+                    <h4 className="text-sm font-semibold text-amber-900 dark:text-amber-100 mb-1">
+                      Security Notice
+                    </h4>
+                    <ul className="text-sm text-amber-800 dark:text-amber-200 space-y-1 list-disc list-inside">
+                      <li>Client credentials are stored securely in the database</li>
+                      <li>Only administrators can view and modify these settings</li>
+                      <li>All changes are logged in the system audit trail</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Database Connections Tab */}
+      {activeTab === 'db-connections' && (
+        <div className="space-y-6">
+          <div className="flex items-center space-x-3">
+            <Button
+              variant="default"
+              iconName="Plus"
+              iconPosition="left"
+              onClick={() => openConnectionModal()}
+            >
+              Add Connection
+            </Button>
+            <Button
+              variant="outline"
+              iconName="RefreshCw"
+              iconPosition="left"
+              onClick={loadConnections}
+              disabled={loadingConnections}
+            >
+              Refresh
+            </Button>
+          </div>
+
+          {/* Info Banner */}
+          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+            <div className="flex items-start">
+              <Icon name="Info" size={20} className="text-blue-600 dark:text-blue-400 mr-3 mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                <h4 className="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-1">
+                  Database Connection Management
+                </h4>
+                <p className="text-sm text-blue-800 dark:text-blue-200">
+                  Configure SQL Server connections to sync Mitel CCMData tables. Each connection can be scheduled
+                  to sync automatically using cron expressions.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {loadingConnections ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="text-center">
+                <Icon name="Loader" size={40} className="text-primary animate-spin mx-auto mb-4" />
+                <p className="text-muted-foreground">Loading connections...</p>
+              </div>
+            </div>
+          ) : connections.length === 0 ? (
+            <div className="text-center py-12 bg-card border border-border rounded-lg">
+              <Icon name="Database" size={48} className="text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-foreground mb-2">No Connections Configured</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Add a database connection to start syncing Mitel data
+              </p>
+              <Button
+                variant="default"
+                iconName="Plus"
+                iconPosition="left"
+                onClick={() => openConnectionModal()}
+              >
+                Add Connection
+              </Button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-4">
+              {connections.map(connection => (
+                <div
+                  key={connection.id}
+                  className="bg-card border border-border rounded-lg p-6 hover:shadow-md transition-shadow"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start space-x-4 flex-1">
+                      <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                        <Icon name="Database" size={24} className="text-primary" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <h3 className="text-lg font-semibold text-foreground">
+                            {connection.name}
+                          </h3>
+                          <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                            connection.is_active
+                              ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                              : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400'
+                          }`}>
+                            {connection.is_active ? 'Active' : 'Inactive'}
+                          </span>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-4 text-sm mb-3">
+                          <div>
+                            <span className="text-muted-foreground">Host:</span>
+                            <code className="ml-2 text-foreground">{connection.host}:{connection.port}</code>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Database:</span>
+                            <code className="ml-2 text-foreground">{connection.database}</code>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Username:</span>
+                            <code className="ml-2 text-foreground">{connection.username}</code>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Schedule:</span>
+                            <code className="ml-2 text-foreground">{connection.sync_schedule || 'Hourly'}</code>
+                          </div>
+                        </div>
+
+                        {connection.last_sync_at && (
+                          <div className="flex items-center space-x-4 text-xs text-muted-foreground">
+                            <div className="flex items-center space-x-1">
+                              <Icon name="Clock" size={14} />
+                              <span>Last sync: {new Date(connection.last_sync_at).toLocaleString()}</span>
+                            </div>
+                            {connection.sync_status && (
+                              <span className={`px-2 py-0.5 rounded font-medium ${
+                                connection.sync_status === 'completed'
+                                  ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                                  : connection.sync_status === 'in_progress'
+                                  ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
+                                  : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+                              }`}>
+                                {connection.sync_status}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center space-x-2 ml-4">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        iconName="Play"
+                        onClick={() => syncConnection(connection.id)}
+                        disabled={syncingConnection === connection.id || connection.sync_status === 'in_progress'}
+                        title="Start sync"
+                      >
+                        {syncingConnection === connection.id ? 'Syncing...' : ''}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        iconName="Zap"
+                        onClick={() => testDbConnection(connection.id)}
+                        disabled={testingDbConnection === connection.id}
+                        title="Test connection"
+                      />
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        iconName="FileText"
+                        onClick={() => viewConnectionLogs(connection)}
+                        title="View logs"
+                      />
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        iconName="Edit"
+                        onClick={() => openConnectionModal(connection)}
+                        title="Edit connection"
+                      />
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        iconName="Trash2"
+                        onClick={() => deleteConnection(connection.id)}
+                        title="Delete connection"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Connection Modal */}
+      {showConnectionModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-card border border-border rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-semibold text-foreground">
+                {editingConnection ? 'Edit Connection' : 'Add Connection'}
+              </h3>
+              <button onClick={closeConnectionModal} className="text-muted-foreground hover:text-foreground">
+                <Icon name="X" size={24} />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">
+                  Connection Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={connectionForm.name}
+                  onChange={(e) => handleConnectionFormChange('name', e.target.value)}
+                  className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground focus:ring-2 focus:ring-primary focus:border-transparent"
+                  placeholder="e.g., Production CCMData"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    Host <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={connectionForm.host}
+                    onChange={(e) => handleConnectionFormChange('host', e.target.value)}
+                    className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground focus:ring-2 focus:ring-primary focus:border-transparent"
+                    placeholder="e.g., 10.0.0.84"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    Port <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={connectionForm.port}
+                    onChange={(e) => handleConnectionFormChange('port', e.target.value)}
+                    className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground focus:ring-2 focus:ring-primary focus:border-transparent"
+                    placeholder="1433"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">
+                  Database <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={connectionForm.database}
+                  onChange={(e) => handleConnectionFormChange('database', e.target.value)}
+                  className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground focus:ring-2 focus:ring-primary focus:border-transparent"
+                  placeholder="e.g., CCMData"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">
+                  Username <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={connectionForm.username}
+                  onChange={(e) => handleConnectionFormChange('username', e.target.value)}
+                  className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground focus:ring-2 focus:ring-primary focus:border-transparent"
+                  placeholder="Database username"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">
+                  Password {!editingConnection && <span className="text-red-500">*</span>}
+                  {editingConnection && <span className="text-xs text-muted-foreground ml-2">(leave blank to keep current)</span>}
+                </label>
+                <input
+                  type="password"
+                  value={connectionForm.password}
+                  onChange={(e) => handleConnectionFormChange('password', e.target.value)}
+                  className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground focus:ring-2 focus:ring-primary focus:border-transparent"
+                  placeholder="Database password"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">
+                  Sync Schedule (Cron Expression)
+                </label>
+                <input
+                  type="text"
+                  value={connectionForm.sync_schedule}
+                  onChange={(e) => handleConnectionFormChange('sync_schedule', e.target.value)}
+                  className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground focus:ring-2 focus:ring-primary focus:border-transparent"
+                  placeholder="e.g., 0 * * * * (hourly)"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Examples: <code>0 * * * *</code> (hourly), <code>0 0 * * *</code> (daily), <code>*/15 * * * *</code> (every 15 min)
+                </p>
+              </div>
+
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="is_active"
+                  checked={connectionForm.is_active}
+                  onChange={(e) => handleConnectionFormChange('is_active', e.target.checked)}
+                  className="w-4 h-4 text-primary border-border rounded focus:ring-primary"
+                />
+                <label htmlFor="is_active" className="ml-2 text-sm text-foreground">
+                  Active (enable automatic syncing)
+                </label>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end space-x-3 mt-6 pt-6 border-t border-border">
+              <Button
+                variant="outline"
+                iconName="X"
+                iconPosition="left"
+                onClick={closeConnectionModal}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="default"
+                iconName="Check"
+                iconPosition="left"
+                onClick={saveConnection}
+              >
+                {editingConnection ? 'Update' : 'Create'} Connection
+              </Button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
-      {/* Configuration Cards */}
-      <div className="grid grid-cols-1 gap-4">
-        {configs.map(config => renderConfigRow(config))}
-      </div>
+      {/* Logs Modal */}
+      {showLogsModal && selectedConnectionLogs && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-card border border-border rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-semibold text-foreground">
+                Sync Logs: {selectedConnectionLogs.name}
+              </h3>
+              <button onClick={closeLogsModal} className="text-muted-foreground hover:text-foreground">
+                <Icon name="X" size={24} />
+              </button>
+            </div>
 
-      {/* Security Notice */}
-      <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
-        <div className="flex items-start">
-          <Icon name="AlertTriangle" size={20} className="text-amber-600 dark:text-amber-400 mr-3 mt-0.5 flex-shrink-0" />
-          <div className="flex-1">
-            <h4 className="text-sm font-semibold text-amber-900 dark:text-amber-100 mb-1">
-              Security Notice
-            </h4>
-            <ul className="text-sm text-amber-800 dark:text-amber-200 space-y-1 list-disc list-inside">
-              <li>Client credentials are stored securely in the database</li>
-              <li>Only administrators can view and modify these settings</li>
-              <li>All changes are logged in the system audit trail</li>
-              <li>Ensure HTTPS is used for the Mitel base URL in production</li>
-              <li>Never share client secrets publicly or in unsecured communications</li>
-            </ul>
+            {connectionLogs.length === 0 ? (
+              <div className="text-center py-12">
+                <Icon name="FileText" size={48} className="text-muted-foreground mx-auto mb-4" />
+                <p className="text-muted-foreground">No sync logs found</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {connectionLogs.map((log) => (
+                  <div
+                    key={log.id}
+                    className="bg-background border border-border rounded-lg p-4"
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex items-center space-x-2">
+                        <span className={`px-2 py-1 rounded text-xs font-medium ${
+                          log.status === 'completed'
+                            ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                            : log.status === 'in_progress'
+                            ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
+                            : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+                        }`}>
+                          {log.status}
+                        </span>
+                        <span className="text-sm text-muted-foreground">
+                          {new Date(log.started_at).toLocaleString()}
+                        </span>
+                      </div>
+                      {log.duration && (
+                        <span className="text-sm text-muted-foreground">
+                          {log.duration}
+                        </span>
+                      )}
+                    </div>
+
+                    {log.tables_synced && log.tables_synced.length > 0 && (
+                      <div className="text-sm mb-2">
+                        <span className="text-muted-foreground">Tables: </span>
+                        <span className="text-foreground">{log.tables_synced.join(', ')}</span>
+                      </div>
+                    )}
+
+                    {log.records_synced !== null && (
+                      <div className="text-sm">
+                        <span className="text-muted-foreground">Records synced: </span>
+                        <span className="text-foreground font-medium">{log.records_synced.toLocaleString()}</span>
+                      </div>
+                    )}
+
+                    {log.error_message && (
+                      <div className="mt-2 p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded text-sm text-red-800 dark:text-red-200">
+                        {log.error_message}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="flex justify-end mt-6 pt-6 border-t border-border">
+              <Button
+                variant="outline"
+                iconName="X"
+                iconPosition="left"
+                onClick={closeLogsModal}
+              >
+                Close
+              </Button>
+            </div>
           </div>
         </div>
-      </div>
-
-      {/* Configuration Guide */}
-      <div className="bg-card border border-border rounded-lg p-6">
-        <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center">
-          <Icon name="BookOpen" className="mr-2" size={20} />
-          Configuration Guide
-        </h3>
-        <div className="space-y-4 text-sm text-muted-foreground">
-          <div>
-            <strong className="text-foreground">MITEL_BASE_URL:</strong>
-            <p className="mt-1">
-              The base URL of your Mitel MiContact Center server. This should include the protocol (https://)
-              and domain name. Example: <code className="bg-muted px-2 py-0.5 rounded">https://micc.telediant.com.my</code>
-            </p>
-          </div>
-          <div>
-            <strong className="text-foreground">MITEL_API_PATH:</strong>
-            <p className="mt-1">
-              The API path for Mitel SDK endpoints. This is typically <code className="bg-muted px-2 py-0.5 rounded">/miccsdk</code> or
-              <code className="bg-muted px-2 py-0.5 rounded">/MiccSdk</code> (case-sensitive). The full API URL will be:
-              BASE_URL + API_PATH + /api/v1/...
-            </p>
-            <p className="mt-1 text-xs">
-              Example: <code className="bg-muted px-2 py-0.5 rounded">https://micc.telediant.com.my/miccsdk/api/v1/status</code>
-            </p>
-          </div>
-          <div>
-            <strong className="text-foreground">MITEL_SIGNALR_URL:</strong>
-            <p className="mt-1">
-              The SignalR endpoint for real-time notifications. This is typically the base URL followed by the
-              API path and <code className="bg-muted px-2 py-0.5 rounded">/signalr</code>
-            </p>
-            <p className="mt-1 text-xs">
-              Example: <code className="bg-muted px-2 py-0.5 rounded">https://micc.telediant.com.my/miccsdk/signalr</code>
-            </p>
-          </div>
-          <div>
-            <strong className="text-foreground">MITEL_CLIENT_ID:</strong>
-            <p className="mt-1">
-              The OAuth 2.0 client identifier provided by your Mitel administrator. This identifies your CRM
-              application to the Mitel system.
-            </p>
-          </div>
-          <div>
-            <strong className="text-foreground">MITEL_CLIENT_SECRET:</strong>
-            <p className="mt-1">
-              The OAuth 2.0 client secret that authenticates your application. Keep this value confidential
-              and never expose it in client-side code or public repositories.
-            </p>
-          </div>
-          <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded">
-            <p className="text-xs font-semibold text-blue-900 dark:text-blue-100 mb-1">Connection Test:</p>
-            <p className="text-xs text-blue-800 dark:text-blue-200">
-              The "Test Connection" button will verify connectivity by calling the Status API endpoint:
-              <code className="bg-muted px-1.5 py-0.5 rounded ml-1">BASE_URL + API_PATH + /api/v1/status</code>
-            </p>
-          </div>
-        </div>
-      </div>
+      )}
     </div>
   );
 };
