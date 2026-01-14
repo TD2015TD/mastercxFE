@@ -36,7 +36,7 @@ const AgentDashboard = () => {
 
   // Fetch Mitel agent state when mitelAgentId changes
   useEffect(() => {
-    if (currentUser) {
+    if (currentUser && currentUser.agent && currentUser.agent.employee_id) {
       setIsLoadingMitelState(true);
       mitelService.getMitelEmployeeState(currentUser.agent.employee_id)
         .then((state) => {
@@ -54,6 +54,10 @@ const AgentDashboard = () => {
         .finally(() => {
           setIsLoadingMitelState(false);
         });
+    } else {
+      console.log('⚠️ User is not an agent or missing employee_id, skipping Mitel state fetch');
+      setIsLoadingMitelState(false);
+      setUserStatus('offline');
     }
   }, [currentUser.id]);
 
