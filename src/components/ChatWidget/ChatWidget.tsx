@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Launcher } from 'popup-chat-react';
-import { useAuth } from '../../contexts/AuthContext';
+import { authService } from '../../services/authService';
 
 interface Message {
   author: string;
@@ -13,11 +13,11 @@ interface Message {
 const AI_CHAT_SERVICE_URL = import.meta.env.VITE_AI_CHAT_SERVICE_URL || 'ws://localhost:8000';
 
 export const ChatWidget = () => {
-  const { user } = useAuth();
+  const user = authService.getCurrentUser();
   const [messages, setMessages] = useState<Message[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const reconnectTimeoutRef = useRef<number | null>(null);
   const sessionIdRef = useRef<string>(`session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
   const isConnectedRef = useRef<boolean>(false);
 
