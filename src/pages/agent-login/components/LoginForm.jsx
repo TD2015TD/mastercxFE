@@ -84,10 +84,18 @@ const LoginForm = () => {
     setErrors({});
     
     try {
+      console.log('Login attempt starting:', { username: formData.username });
+      
       // Use authService to login
       const response = await authService.login({
         username: formData.username,
         password: formData.password
+      });
+      
+      console.log('Login response received:', { 
+        success: response?.success !== false, 
+        hasUser: !!response?.user,
+        statusCode: response?.status 
       });
       
       if (response?.user) {
@@ -100,6 +108,8 @@ const LoginForm = () => {
           localStorage.setItem('remember-user', formData.username);
         }
 
+        console.log('Login successful, navigating to dashboard:', { roleSlug });
+
         // Navigate based on role
         if (roleSlug === 'supervisor' || roleSlug === 'super_admin') {
           navigate('/supervisor-dashboard');
@@ -109,29 +119,62 @@ const LoginForm = () => {
           navigate('/agent-dashboard');
         }
       } else {
-        setErrors({ general: t?.invalidCredentials });
+        // Handle case where response is successful but no user data
+        console.error('Login response missing user data:', response);
+        const errorMessage = response?.message || t?.invalidCredentials || 'Login failed. Please try again.';
+        setErrors({ general: errorMessage });
+        toast.error(errorMessage);
       }
     } catch (error) {
-      console.error('Login error:', error);
+      console.error('Login error caught:', error);
 
       let errorMessage;
 
       // Network error or can't connect to backend
       if (!error?.response) {
+        console.error('Network error - no response from server');
         errorMessage = currentLanguage === 'ms'
           ? 'Tidak dapat menyambung ke pelayan. Sila semak sambungan internet anda dan cuba lagi.'
           : 'Unable to connect to server. Please check your internet connection and try again.';
       }
       // Server returned an error response
       else {
+        console.error('Server error response:', {
+          status: error.response?.status,
+          data: error.response?.data,
+          message: error.response?.data?.message
+        });
+
+        // Get error message from response
         errorMessage = error?.response?.data?.message
+          || error?.response?.data?.error
           || t?.invalidCredentials
           || 'Invalid username or password. Please try again.';
+
+        // Check for specific error codes
+        if (error.response?.status === 401) {
+          errorMessage = error.response.data?.message || (currentLanguage === 'ms'
+            ? 'Nama pengguna atau kata laluan tidak sah.'
+            : 'Invalid username or password.');
+        } else if (error.response?.status === 422) {
+          errorMessage = currentLanguage === 'ms'
+            ? 'Data yang dimasukkan tidak sah. Sila semak dan cuba lagi.'
+            : 'Invalid input. Please check your credentials and try again.';
+        } else if (error.response?.status === 500) {
+          errorMessage = currentLanguage === 'ms'
+            ? 'Ralat pelayan dalaman. Sila hubungi pentadbir sistem.'
+            : 'Internal server error. Please contact system administrator.';
+        }
       }
+
+      console.error('Displaying error to user:', errorMessage);
 
       setErrors({
         general: errorMessage
       });
+
+      // Also show toast notification for better visibility
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }

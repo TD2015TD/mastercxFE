@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes as RouterRoutes, Route } from "react-router-dom";
+import { BrowserRouter, Routes as RouterRoutes, Route, useLocation } from "react-router-dom";
 import ScrollToTop from "components/ScrollToTop";
 import ErrorBoundary from "components/ErrorBoundary";
 import Layout from "components/Layout";
@@ -21,6 +21,21 @@ import DirectorySearchAndBrowsing from './pages/directory-search-and-browsing';
 import AgentManagement from './pages/agent-management';
 import UserForm from './pages/system-administration/user-management/UserForm';
 import EmployeeInboxPage from './pages/employee-inbox';
+import { ChatWidget } from './components/ChatWidget';
+
+function ChatWidgetController() {
+  const location = useLocation();
+  
+  // Don't show chat widget on public/login pages
+  const publicPaths = ['/', '/agent-login', '/citizen-self-service-portal'];
+  const isPublicPage = publicPaths.includes(location.pathname);
+  
+  if (isPublicPage) {
+    return null;
+  }
+  
+  return <ChatWidget />;
+}
 
 const Routes = () => {
   return (
@@ -53,6 +68,7 @@ const Routes = () => {
         <Route path="/employee-inbox" element={<Layout><EmployeeInboxPage /></Layout>} />
         <Route path="*" element={<NotFound />} />
       </RouterRoutes>
+      <ChatWidgetController />
       </ErrorBoundary>
     </BrowserRouter>
   );
