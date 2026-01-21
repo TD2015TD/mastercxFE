@@ -173,8 +173,18 @@ const LoginForm = () => {
         general: errorMessage
       });
 
-      // Also show toast notification for better visibility
-      toast.error(errorMessage);
+      // Show toast notification for better visibility
+      toast.error(errorMessage, {
+        position: "top-center",
+        autoClose: 5000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
+
+      // Also show browser alert as a failsafe
+      console.log('Setting error state and showing toast');
     } finally {
       setIsLoading(false);
     }
@@ -247,10 +257,21 @@ const LoginForm = () => {
 
         {/* General Error */}
         {errors?.general && (
-          <div className="p-3 bg-error/10 border border-error/20 rounded-lg">
-            <div className="flex items-center space-x-2">
-              <Icon name="AlertCircle" size={16} className="text-error" />
-              <span className="text-sm text-error">{errors?.general}</span>
+          <div 
+            className="p-4 bg-red-50 border-2 border-red-500 rounded-lg shadow-md"
+            style={{ 
+              backgroundColor: '#fee2e2', 
+              borderColor: '#ef4444',
+              marginTop: '1rem',
+              marginBottom: '1rem'
+            }}
+          >
+            <div className="flex items-start space-x-3">
+              <Icon name="AlertCircle" size={20} className="text-red-600 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-red-800 mb-1">Login Failed</p>
+                <p className="text-sm text-red-700">{errors?.general}</p>
+              </div>
             </div>
           </div>
         )}

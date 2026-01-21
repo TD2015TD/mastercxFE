@@ -1,7 +1,8 @@
 import api from './api';
 
 export interface LoginCredentials {
-  email: string;
+  username?: string;
+  email?: string;
   password: string;
   mitel_agent_id?: string;
 }
@@ -76,14 +77,27 @@ export const authService = {
   // Login
   login: async (credentials: LoginCredentials): Promise<{ jwtToken: string; user: AuthResponse['data']['user'] }> => {
     try {
+      console.log('authService.login - Sending request:', { 
+        username: credentials.username,
+        email: credentials.email,
+        hasPassword: !!credentials.password 
+      });
+      
       const response = await api.post('/auth/login', credentials);
+      console.log('authService.login - Response received:', {
+        status: response.status,
+        success: response.data?.success,
+        hasUser: !!response.data?.data?.user
+      });
+      
       const data = response.data;
 
       if (data.success && data.data.user) {
-        const jwtToken = data.data.access_token; // Assuming MitelToken is used as JWT token
+        const jwtToken = data.data.access_token;
         const mitelToken = data.data.MitelToken;
         const user = data.data.user;
 
+        console.log('authService.login - Storing tokens and user data');
         localStorage.setItem('jwt_token', jwtToken);
         localStorage.setItem('mitel_token', mitelToken);
         authService.setCurrentUser(user);
@@ -91,8 +105,14 @@ export const authService = {
         return { jwtToken, user };
       }
 
+      console.error('authService.login - Login failed: No user data in response');
       throw new Error('Login failed');
     } catch (error: any) {
+      console.error('authService.login - Error caught:', {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data
+      });
       // Preserve the axios error with response data so the UI can display proper error messages
       throw error;
     }
