@@ -18,7 +18,6 @@ interface TicketFormData {
   // Customer Information
   customer_name: string;
   customer_email: string;
-  customer_phone: string;
   customer_id_type: string;
   customer_id_no: string;
   
@@ -76,7 +75,7 @@ const TicketCreateForm: React.FC<{
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
   const [isLoadingAgents, setIsLoadingAgents] = useState(false);
   
-  // Customer Phone Autocomplete
+  // Customer Autocomplete (via contacts)
   const [phoneSearchResults, setPhoneSearchResults] = useState<Customer[]>([]);
   const [showPhoneDropdown, setShowPhoneDropdown] = useState(false);
   const [isSearchingPhone, setIsSearchingPhone] = useState(false);
@@ -84,6 +83,7 @@ const TicketCreateForm: React.FC<{
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [pinnedNotes, setPinnedNotes] = useState<CustomerNote[]>([]);
   const [isLoadingNotes, setIsLoadingNotes] = useState(false);
+  const [lastPhoneSearchValue, setLastPhoneSearchValue] = useState<string>('');
   
   // Lookups
   const [priorities, setPriorities] = useState<Array<{ value: string; label: string; hours: number }>>([]);
@@ -106,7 +106,6 @@ const TicketCreateForm: React.FC<{
   const [formData, setFormData] = useState<TicketFormData>({
     customer_name: '',
     customer_email: '',
-    customer_phone: '',
     customer_id_type: 'MyKad',
     customer_id_no: '',
     priority: 'P3',
@@ -165,12 +164,23 @@ const TicketCreateForm: React.FC<{
           ...prev,
           customer_name: customer.name,
           customer_email: customer.email,
-          customer_phone: contact.value,
         }));
 
         if (customer.id) {
           await fetchCustomerNotes(customer.id);
           await loadCustomerContacts(customer.id);
+          
+          // Auto-populate phone contact if not already present
+          if (contactEntries.length === 0) {
+            const phoneTypeId = contactTypeLookups.find(t => t.code?.toLowerCase() === 'phone')?.id;
+            if (phoneTypeId && contact.value) {
+              setContactEntries([{
+                contact_type_id: String(phoneTypeId),
+                value: contact.value,
+                is_primary: true
+              }]);
+            }
+          }
         }
 
         return;
@@ -182,7 +192,6 @@ const TicketCreateForm: React.FC<{
     // On fallback, just populate with available data
     setFormData(prev => ({
       ...prev,
-      customer_phone: phoneNumber,
       ...(initialData?.customerName && { customer_name: initialData.customerName }),
       ...(initialData?.customerEmail && { customer_email: initialData.customerEmail })
     }));
@@ -271,12 +280,17 @@ const TicketCreateForm: React.FC<{
 
   const checkExistingTicket = useCallback(async () => {
     try {
-      // Only check for existing tickets if we have case_id and phone number
+      // Only check for existing tickets if we have case_id and a phone contact
       // Do NOT generate or reserve ticket numbers yet - that happens on submit
-      if (initialData?.caseId && formData.customer_phone) {
+      const phoneTypeIds = contactTypeLookups
+        .filter(t => t.code?.toLowerCase() === 'phone' || t.code?.toLowerCase() === 'mobile')
+        .map(t => String(t.id));
+      const phoneContact = contactEntries.find(e => phoneTypeIds.includes(e.contact_type_id));
+      
+      if (initialData?.caseId && phoneContact?.value) {
         const response = await ticketService.reserveTicketNumber({
           case_id: initialData.caseId,
-          phone_number: formData.customer_phone,
+          phone_number: phoneContact.value,
           channel: formData.channel,
           conversation_id: initialData.conversationId || null
         });
@@ -295,25 +309,32 @@ const TicketCreateForm: React.FC<{
     } catch (err) {
       console.error('Error checking for existing ticket:', err);
     }
-  }, [formData.channel, formData.customer_phone, initialData?.caseId, initialData?.conversationId, navigate]);
+  }, [formData.channel, contactEntries, contactTypeLookups, initialData?.caseId, initialData?.conversationId, navigate]);
 
   // Check for existing ticket when component loads
   useEffect(() => {
     checkExistingTicket();
   }, [checkExistingTicket]);
       
-  // Debounced phone number search
-  const searchCustomerByPhone = useCallback(
-    async (phoneNumber: string) => {
-      if (!phoneNumber || phoneNumber.length < 3) {
+  // Search customer by contact value (from Contacts section)
+  const searchCustomerByContact = useCallback(
+    async (contactValue: string) => {
+      if (!contactValue || contactValue.length < 3) {
         setPhoneSearchResults([]);
         setShowPhoneDropdown(false);
+        setLastPhoneSearchValue('');
         return;
       }
 
+      // Only update if the value actually changed
+      if (lastPhoneSearchValue === contactValue) {
+        return;
+      }
+
+      setLastPhoneSearchValue(contactValue);
       setIsSearchingPhone(true);
       try {
-        const response = await contactService.searchByValue(phoneNumber);
+        const response = await contactService.searchByValue(contactValue);
         const contacts = response?.data || [];
         const uniqueCustomers = new Map<number, Customer>();
 
@@ -327,12 +348,12 @@ const TicketCreateForm: React.FC<{
         setPhoneSearchResults(matchingCustomers);
         setShowPhoneDropdown(matchingCustomers.length > 0);
       } catch (err) {
-        console.error('Error searching customers by phone:', err);
+        console.error('Error searching customers by contact:', err);
       } finally {
         setIsSearchingPhone(false);
       }
     },
-    []
+    [lastPhoneSearchValue]
   );
 
   // Fetch customer notes
@@ -409,14 +430,27 @@ const TicketCreateForm: React.FC<{
     await Promise.all(contactsToCreate.map((entry) => contactService.createContact(entry)));
   };
 
-  // Debounce phone search
+  // Debounce contact value search when any phone-type contact entry changes
   useEffect(() => {
+    const phoneTypeIds = contactTypeLookups
+      .filter(t => t.code?.toLowerCase() === 'phone' || t.code?.toLowerCase() === 'mobile')
+      .map(t => String(t.id));
+
+    const phoneContacts = contactEntries.filter(entry => phoneTypeIds.includes(entry.contact_type_id));
+    const latestPhoneValue = phoneContacts.length > 0 ? phoneContacts[phoneContacts.length - 1].value : '';
+
     const timeoutId = setTimeout(() => {
-      searchCustomerByPhone(formData.customer_phone);
+      if (latestPhoneValue) {
+        searchCustomerByContact(latestPhoneValue);
+      } else {
+        setPhoneSearchResults([]);
+        setShowPhoneDropdown(false);
+        setLastPhoneSearchValue('');
+      }
     }, 500);
 
     return () => clearTimeout(timeoutId);
-  }, [formData.customer_phone, searchCustomerByPhone]);
+  }, [contactEntries, contactTypeLookups, searchCustomerByContact]);
 
   const handleSelectCustomerFromPhone = (customer: Customer) => {
     setSelectedCustomer(customer);
@@ -438,6 +472,27 @@ const TicketCreateForm: React.FC<{
         customer_id_type: selectedCustomer.id_type,
         customer_id_no: selectedCustomer.id_no
       }));
+      
+      // Auto-populate phone contact from existing contacts if not already present
+      if (contactEntries.length === 0 && existingContacts.length > 0) {
+        const phoneTypeIds = contactTypeLookups
+          .filter(t => t.code?.toLowerCase() === 'phone' || t.code?.toLowerCase() === 'mobile')
+          .map(t => t.id);
+        
+        const primaryPhone = existingContacts.find(c => c.is_primary && phoneTypeIds.includes(c.contact_type_id));
+        const anyPhone = existingContacts.find(c => phoneTypeIds.includes(c.contact_type_id));
+        const phoneContact = primaryPhone || anyPhone;
+        
+        if (phoneContact) {
+          setContactEntries([{
+            id: phoneContact.id,
+            contact_type_id: String(phoneContact.contact_type_id),
+            value: phoneContact.value,
+            is_primary: phoneContact.is_primary
+          }]);
+        }
+      }
+      
       setShowCustomerConfirmModal(false);
       // Keep selectedCustomer to maintain notes display
     }
@@ -621,7 +676,7 @@ const TicketCreateForm: React.FC<{
         const firstPhoneContact = contactEntries.find((entry) =>
           phoneTypeIds.includes(entry.contact_type_id) && entry.value?.trim()
         );
-        const fallbackPhone = formData.customer_phone || firstPhoneContact?.value || '0000000000';
+        const fallbackPhone = firstPhoneContact?.value || '0000000000';
 
         // Create new customer
         const customerData = {
@@ -778,59 +833,6 @@ const TicketCreateForm: React.FC<{
             placeholder="customer@example.com"
           />
           
-          <div className="relative">
-            <Input
-              label="Caller Phone (Optional)"
-              description="Used for call lookup and ticket matching."
-              type="tel"
-              value={formData.customer_phone}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                handleInputChange('customer_phone', e.target.value);
-              }}
-              onFocus={() => {
-                if (phoneSearchResults.length > 0) {
-                  setShowPhoneDropdown(true);
-                }
-              }}
-              onBlur={() => {
-                // Delay to allow click on dropdown item
-                setTimeout(() => setShowPhoneDropdown(false), 200);
-              }}
-              placeholder="+60 12-345-6789"
-            />
-            
-            {/* Autocomplete Dropdown */}
-            {showPhoneDropdown && phoneSearchResults.length > 0 && (
-              <div className="absolute z-10 w-full mt-1 bg-card border border-border rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                {isSearchingPhone && (
-                  <div className="px-4 py-3 text-sm text-muted-foreground flex items-center gap-2">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
-                    Searching...
-                  </div>
-                )}
-                {phoneSearchResults.map((customer) => (
-                  <button
-                    key={customer.id}
-                    type="button"
-                    onClick={() => handleSelectCustomerFromPhone(customer)}
-                    className="w-full px-4 py-3 text-left hover:bg-muted transition-colors border-b border-border last:border-b-0"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <p className="font-medium text-foreground">{customer.name}</p>
-                        <p className="text-sm text-muted-foreground">{customer.email}</p>
-                      </div>
-                      <div className="text-right">
-                        <span className="text-xs text-muted-foreground">{(customer as Customer).id_type}</span>
-                        <p className="text-xs text-muted-foreground">{(customer as Customer).id_no}</p>
-                      </div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-          
           <Select
             label="ID Type"
             value={formData.customer_id_type}
@@ -865,46 +867,92 @@ const TicketCreateForm: React.FC<{
           </div>
 
           <div className="space-y-3">
-            {contactEntries.map((entry, index) => (
-              <div key={`${entry.contact_type_id}-${index}`} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
-                <div className="md:col-span-4">
-                  <Select
-                    label={index === 0 ? 'Contact Type' : undefined}
-                    value={entry.contact_type_id}
-                    onChange={(value) => updateContactEntry(index, 'contact_type_id', value as string)}
-                    options={contactTypeLookups.map((type) => ({ value: String(type.id), label: type.name }))}
-                    placeholder="Select type"
-                  />
+            {contactEntries.map((entry, index) => {
+              const isPhoneType = contactTypeLookups
+                .filter(t => t.code?.toLowerCase() === 'phone' || t.code?.toLowerCase() === 'mobile')
+                .some(t => String(t.id) === entry.contact_type_id);
+              
+              return (
+                <div key={`${entry.contact_type_id}-${index}`} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end relative">
+                  <div className="md:col-span-4">
+                    <Select
+                      label={index === 0 ? 'Contact Type' : undefined}
+                      value={entry.contact_type_id}
+                      onChange={(value) => updateContactEntry(index, 'contact_type_id', value as string)}
+                      options={contactTypeLookups.map((type) => ({ value: String(type.id), label: type.name }))}
+                      placeholder="Select type"
+                    />
+                  </div>
+                  <div className="md:col-span-5 relative">
+                    <Input
+                      label={index === 0 ? 'Contact Value' : undefined}
+                      type="text"
+                      value={entry.value}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateContactEntry(index, 'value', e.target.value)}
+                      onFocus={() => {
+                        if (isPhoneType && phoneSearchResults.length > 0) {
+                          setShowPhoneDropdown(true);
+                        }
+                      }}
+                      onBlur={() => {
+                        // Delay to allow click on dropdown item
+                        setTimeout(() => setShowPhoneDropdown(false), 200);
+                      }}
+                      placeholder="e.g., +60 12-345-6789 or email@example.com"
+                    />
+                    
+                    {/* Autocomplete Dropdown for Phone Contacts */}
+                    {isPhoneType && showPhoneDropdown && phoneSearchResults.length > 0 && (
+                      <div className="absolute z-10 w-full mt-1 bg-card border border-border rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                        {isSearchingPhone && (
+                          <div className="px-4 py-3 text-sm text-muted-foreground flex items-center gap-2">
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                            Searching...
+                          </div>
+                        )}
+                        {phoneSearchResults.map((customer) => (
+                          <button
+                            key={customer.id}
+                            type="button"
+                            onClick={() => handleSelectCustomerFromPhone(customer)}
+                            className="w-full px-4 py-3 text-left hover:bg-muted transition-colors border-b border-border last:border-b-0"
+                          >
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <p className="font-medium text-foreground">{customer.name}</p>
+                                <p className="text-sm text-muted-foreground">{customer.email}</p>
+                              </div>
+                              <div className="text-right">
+                                <span className="text-xs text-muted-foreground">{(customer as Customer).id_type}</span>
+                                <p className="text-xs text-muted-foreground">{(customer as Customer).id_no}</p>
+                              </div>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <div className="md:col-span-2">
+                    <Checkbox
+                      checked={entry.is_primary}
+                      onChange={(e) => updateContactEntry(index, 'is_primary', e.target.checked)}
+                      label="Primary"
+                    />
+                  </div>
+                  <div className="md:col-span-1 flex md:justify-end">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      iconName="Trash2"
+                      iconPosition="left"
+                      onClick={() => removeContactEntry(index)}
+                    >
+                      Remove
+                    </Button>
+                  </div>
                 </div>
-                <div className="md:col-span-5">
-                  <Input
-                    label={index === 0 ? 'Contact Value' : undefined}
-                    type="text"
-                    value={entry.value}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateContactEntry(index, 'value', e.target.value)}
-                    placeholder="e.g., +60 12-345-6789 or email@example.com"
-                  />
-                </div>
-                <div className="md:col-span-2">
-                  <Checkbox
-                    checked={entry.is_primary}
-                    onChange={(e) => updateContactEntry(index, 'is_primary', e.target.checked)}
-                    label="Primary"
-                  />
-                </div>
-                <div className="md:col-span-1 flex md:justify-end">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    iconName="Trash2"
-                    iconPosition="left"
-                    onClick={() => removeContactEntry(index)}
-                  >
-                    Remove
-                  </Button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
 
             {contactEntries.length === 0 && (
               <p className="text-sm text-muted-foreground">No contact entries added yet.</p>
