@@ -153,24 +153,29 @@ const TicketCreateForm: React.FC<{
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialData?.customerPhone, contactTypeLookups.length]);
 
-  // Ensure phone contacts are populated once lookups are loaded
-  // This handles both successful and failed customer lookups
+  // Populate phone number into contact entries once lookups are loaded
+  // This handles the case where loadLookups already created an empty contact entry
   useEffect(() => {
     if (
       initialData?.customerPhone &&
       contactTypeLookups.length > 0 &&
-      contactEntries.length === 0
+      contactEntries.length > 0
     ) {
       const phoneTypeId = contactTypeLookups.find(t => t.code?.toLowerCase() === 'phone')?.id;
       if (phoneTypeId) {
-        setContactEntries([{
-          contact_type_id: String(phoneTypeId),
-          value: initialData.customerPhone,
-          is_primary: true
-        }]);
+        // Check if the first entry is a phone type with empty value
+        const firstEntry = contactEntries[0];
+        if (String(phoneTypeId) === firstEntry.contact_type_id && !firstEntry.value) {
+          // Update the existing empty phone entry with the phone number from URL
+          setContactEntries([{
+            ...firstEntry,
+            value: initialData.customerPhone,
+            is_primary: true
+          }]);
+        }
       }
     }
-  }, [contactTypeLookups, contactEntries.length, initialData?.customerPhone]);
+  }, [contactTypeLookups, initialData?.customerPhone]);
 
   const searchAndPopulateCustomer = async (phoneNumber: string) => {
     try {
