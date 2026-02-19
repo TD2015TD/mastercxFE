@@ -6,6 +6,7 @@ import { useMitelSignalR } from '../hooks/useMitelSignalR';
 import mitelService from '../services/mitelService';
 import mitelConfigService from '../services/mitelConfigService';
 import customerInteractionService from '../services/customerInteractionService';
+import { contactService } from '../services/contactService';
 import { ticketService } from '../services/ticketService';
 import { toast } from 'react-toastify';
 import { authService } from '../services/authService';
@@ -157,6 +158,45 @@ const TelephonyBar = ({ className = '', onCallEvent }) => {
     pendingInteractionIdsRef.current = [];
   }, []);
 
+  // ---- Helper: Find customer by phone number from contacts ----
+  const findCustomerByPhoneFromInteractions = useCallback(async (phoneNumber) => {
+    try {
+      if (!phoneNumber || phoneNumber === 'Unknown') {
+        console.log('⚠️ Invalid phone number for lookup');
+        return null;
+      }
+
+      console.log(`🔍 Searching for customer with phone number: ${phoneNumber} in contacts`);
+
+      // Search contacts table using the findByPhone endpoint
+      const response = await contactService.findByPhone(phoneNumber);
+
+      if (response?.success && response?.data) {
+        const { contact, customer } = response.data;
+        
+        if (customer && customer.id) {
+          console.log(`✅ Found matching contact with customer_id: ${customer.id}`);
+          return {
+            customerId: customer.id,
+            customerName: customer.name || 'Unknown',
+            customerEmail: customer.email || '',
+            phoneNumber: contact.value
+          };
+        } else {
+          console.log(`📝 Contact found but customer not linked: ${phoneNumber}`);
+          return null;
+        }
+      } else {
+        console.log(`📝 No contacts found with phone number: ${phoneNumber}`);
+        return null;
+      }
+    } catch (error) {
+      // If API call fails (404 or error), gracefully handle and return null
+      console.error('ℹ️ No customer found with this phone or API error:', error?.response?.status);
+      return null;
+    }
+  }, []);
+
   // ---- Helper: Check for existing ticket and navigate appropriately ----
   const checkExistingTicketAndNavigate = useCallback(async (conversationId, callerNumber) => {
     try {
@@ -182,17 +222,45 @@ const TelephonyBar = ({ className = '', onCallEvent }) => {
           autoClose: 3000,
         });
       } else {
-        // No existing ticket found - new call, navigate to create page
-        console.log(`📝 No existing ticket found for conversation ${conversationId}, navigating to create new ticket`);
-        const params = new URLSearchParams({
-          callId: callerNumber,
-          source: 'call',
-          conversationId: conversationId
-        });
-        if (caseId) {
-          params.append('caseId', caseId);
+        // No existing ticket found - try to find customer by phone number from interactions
+        console.log(`📝 No existing ticket found for conversation ${conversationId}, searching for customer by phone`);
+        
+        const customerInfo = await findCustomerByPhoneFromInteractions(callerNumber);
+        
+        if (customerInfo?.customerId) {
+          // Customer found from previous interactions
+          console.log(`✅ Found customer ${customerInfo.customerId} with this phone number`);
+          customerIdRef.current = customerInfo.customerId;
+          
+          const params = new URLSearchParams({
+            callId: callerNumber,
+            source: 'call',
+            conversationId: conversationId,
+            customerId: customerInfo.customerId,
+            customerName: customerInfo.customerName,
+            customerEmail: customerInfo.customerEmail
+          });
+          if (caseId) {
+            params.append('caseId', caseId);
+          }
+          navigate(`/ticket-management/create?${params.toString()}`);
+          
+          toast.info(`Customer ${customerInfo.customerName} identified from previous call`, {
+            autoClose: 3000,
+          });
+        } else {
+          // No customer found - create new call record
+          console.log(`🆕 New caller - no customer history found`);
+          const params = new URLSearchParams({
+            callId: callerNumber,
+            source: 'call',
+            conversationId: conversationId
+          });
+          if (caseId) {
+            params.append('caseId', caseId);
+          }
+          navigate(`/ticket-management/create?${params.toString()}`);
         }
-        navigate(`/ticket-management/create?${params.toString()}`);
       }
     } catch (error) {
       console.error('❌ Error checking for existing ticket:', error);
@@ -207,7 +275,7 @@ const TelephonyBar = ({ className = '', onCallEvent }) => {
       }
       navigate(`/ticket-management/create?${params.toString()}`);
     }
-  }, [navigate, caseId]);
+  }, [navigate, caseId, findCustomerByPhoneFromInteractions]);
 
   // ---- Mitel SignalR Hook (only for agents with telephony enabled) ----
   // Wait for SignalR URL to be fetched before connecting, or use fallback
