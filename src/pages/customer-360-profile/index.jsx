@@ -91,7 +91,8 @@ const CustomerListingPage = () => {
   };
 
   const handleCreateTicket = (customer) => {
-    navigate(`/ticket-management/create?customerPhone=${encodeURIComponent(customer.phone_number)}&customerName=${encodeURIComponent(customer.name)}&customerEmail=${encodeURIComponent(customer.email)}`);
+    // Phone number is now tracked in interactions, not on customer record
+    navigate(`/ticket-management/create?customerName=${encodeURIComponent(customer.name)}&customerEmail=${encodeURIComponent(customer.email)}&customerId=${customer.id}`);
   };
 
   const handleAddCustomer = () => {
@@ -363,7 +364,7 @@ const CustomerListingPage = () => {
                         <td className="px-6 py-4">
                           <div className="text-sm">
                             <p className="text-foreground">{customer.email}</p>
-                            <p className="text-muted-foreground">{customer.phone_number}</p>
+                            <p className="text-muted-foreground text-xs">See interactions for phone</p>
                           </div>
                         </td>
                         <td className="px-6 py-4">

@@ -11,7 +11,6 @@ const CustomerFormModal = ({ isOpen, onClose, onSave, customer = null, isLoading
   const [formData, setFormData] = useState({
     name: '',
     email: '',
-    phone_number: '',
     id_type: 'MyKad',
     id_no: '',
     company_name: '',
@@ -35,7 +34,6 @@ const CustomerFormModal = ({ isOpen, onClose, onSave, customer = null, isLoading
       setFormData({
         name: customer.name || '',
         email: customer.email || '',
-        phone_number: customer.phone_number || '',
         id_type: customer.id_type || 'MyKad',
         id_no: customer.id_no || '',
         company_name: customer.company_name || '',
@@ -73,10 +71,6 @@ const CustomerFormModal = ({ isOpen, onClose, onSave, customer = null, isLoading
       newErrors.email = 'Email is required';
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       newErrors.email = 'Invalid email format';
-    }
-
-    if (!formData.phone_number.trim()) {
-      newErrors.phone_number = 'Phone number is required';
     }
 
     if (!formData.id_no.trim()) {
@@ -173,16 +167,6 @@ const CustomerFormModal = ({ isOpen, onClose, onSave, customer = null, isLoading
                   onChange={(e) => handleChange('email', e.target.value)}
                   placeholder="email@example.com"
                   error={errors.email}
-                  disabled={isLoading}
-                />
-
-                <Input
-                  label="Phone Number *"
-                  type="tel"
-                  value={formData.phone_number}
-                  onChange={(e) => handleChange('phone_number', e.target.value)}
-                  placeholder="+60 12-345-6789"
-                  error={errors.phone_number}
                   disabled={isLoading}
                 />
 

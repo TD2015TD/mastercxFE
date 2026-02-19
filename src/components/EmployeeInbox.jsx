@@ -384,8 +384,8 @@ const EmployeeInbox = ({ className = '', onConversationEvent }) => {
             {connectionStatus}
           </span>
 
-          {/* Agent Status */}
-          {agentStatus && (
+          {/* Agent Status - Only show if telephony is enabled */}
+          {agentStatus && localStorage.getItem('telephony_enabled') === 'true' && (
             <div className="flex items-center px-2 py-1 rounded-md text-xs bg-muted text-muted-foreground border border-border">
               <Icon
                 name={agentStatus === 'Available' ? 'CheckCircle2' : agentStatus === 'Busy' ? 'AlertCircle' : 'Circle'}

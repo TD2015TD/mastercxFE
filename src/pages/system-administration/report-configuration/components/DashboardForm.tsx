@@ -248,7 +248,7 @@ const DashboardForm: React.FC<DashboardFormProps> = ({ dashboard, onClose, onSuc
                   <Checkbox
                     id="is_active"
                     checked={formData.is_active}
-                    onCheckedChange={(checked: boolean) => handleInputChange('is_active', checked)}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('is_active', e.target.checked)}
                   />
                   <label
                     htmlFor="is_active"
@@ -264,7 +264,7 @@ const DashboardForm: React.FC<DashboardFormProps> = ({ dashboard, onClose, onSuc
                   <Checkbox
                     id="is_public"
                     checked={formData.is_public}
-                    onCheckedChange={(checked: boolean) => handleInputChange('is_public', checked)}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('is_public', e.target.checked)}
                   />
                   <label
                     htmlFor="is_public"

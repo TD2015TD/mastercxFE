@@ -88,8 +88,8 @@ const CustomerProfileHeader = ({ customer, onEdit, onCreateTicket, onScheduleCal
                 <div className="flex items-center gap-3">
                   <Icon name="Phone" size={16} className="text-muted-foreground flex-shrink-0" />
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-foreground">{customer?.phone}</p>
-                    <p className="text-xs text-muted-foreground">Mobile</p>
+                    <p className="text-sm font-medium text-foreground">View in Interactions</p>
+                    <p className="text-xs text-muted-foreground">Phone numbers per interaction</p>
                   </div>
                 </div>
               </div>

@@ -6,7 +6,9 @@ export interface CustomerInteraction {
   ticket_id?: number;
   agent_id?: number;
   interaction_type: 'call' | 'email' | 'chat' | 'sms' | 'meeting' | 'note';
+  interaction_type_id?: number;
   channel: 'phone' | 'email' | 'chat' | 'web' | 'walk-in' | 'social_media';
+  phone_number?: string;
   subject: string;
   description?: string;
   duration_minutes?: number;
@@ -20,7 +22,14 @@ export interface CustomerInteraction {
     id: number;
     name: string;
     email: string;
-    phone_number: string;
+  };
+  interactionTypeLookup?: {
+    id: number;
+    type: string;
+    code: string;
+    name_en: string;
+    name_ms: string;
+    icon?: string;
   };
   ticket?: {
     id: number;

@@ -6,7 +6,6 @@ import lookupService from '../../../services/lookupService';
 import { agentService, type Agent } from '../../../services/agentService';
 import { customerService, type Customer, type CustomerNote } from '../../../services/customerService';
 import categoryService, { type Category } from '../../../services/categoryService';
-import { authService } from '../../../services/authService';
 import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
 import Input from '../../../components/ui/Input';
@@ -55,7 +54,7 @@ const TicketCreateForm: React.FC<{
   const [createdTicket, setCreatedTicket] = useState<{ id: number; ticket_number: string } | null>(null);
   
   // User and Agent Management
-  const [currentUser, setCurrentUser] = useState<{ id: number; role: string; agent?: { id: number; mitel_agent_id?: string } } | null>(null);
+  const [currentUser] = useState<{ id: number; role: string; agent?: { id: number; mitel_agent_id?: string } } | null>(null);
   const [showAgentModal, setShowAgentModal] = useState(false);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
@@ -111,16 +110,15 @@ const TicketCreateForm: React.FC<{
 
   const loadCurrentUser = async () => {
     try {
-      const user = authService.getCurrentUser();
-      if (user) {
-        console.log('Current user loaded:', user);
-        console.log('User role:', user.role);
-        setCurrentUser({
-          id: user.id,
-          role: typeof user.role === 'string' ? user.role : user.role?.slug ?? '',
-          agent: user.agent ? { id: user.agent.id, mitel_agent_id: user.agent.mitel_agent_id } : undefined
-        });
-      }
+      // TODO: Implement user loading via proper service
+      // const user = authService.getCurrentUser();
+      // if (user) {
+      //   setCurrentUser({
+      //     id: user.id,
+      //     role: typeof user.role === 'string' ? user.role : user.role?.slug ?? '',
+      //     agent: user.agent ? { id: user.agent.id, mitel_agent_id: user.agent.mitel_agent_id } : undefined
+      //   });
+      // }
     } catch (err) {
       console.error('Error loading current user:', err);
     }
@@ -137,46 +135,22 @@ const TicketCreateForm: React.FC<{
 
   const searchAndPopulateCustomer = async (phoneNumber: string) => {
     try {
-      const response = await customerService.getCustomers({
-        search: phoneNumber,
-        per_page: 5
-      });
-      
-      if (response.success && response.data?.data) {
-        const matchingCustomers = response.data.data.filter((customer: Customer) => 
-          customer.phone_number === phoneNumber
-        );
-        
-        if (matchingCustomers.length > 0) {
-          const customer = matchingCustomers[0];
-          setFormData(prev => ({
-            ...prev,
-            customer_name: customer.name,
-            customer_email: customer.email,
-            customer_phone: customer.phone_number,
-            customer_id_type: customer.id_type,
-            customer_id_no: customer.id_no
-          }));
-        } else {
-          // No exact match, just populate the phone number
-          setFormData(prev => ({
-            ...prev,
-            customer_phone: phoneNumber,
-            ...(initialData?.customerName && { customer_name: initialData.customerName }),
-            ...(initialData?.customerEmail && { customer_email: initialData.customerEmail })
-          }));
-        }
-      }
+      // TODO: Implement contact service lookup
+      // const contactResponse = await contactService.findByPhone(phoneNumber);
+      // if (contactResponse.success && contactResponse.data?.customer) {
+      //   // Handle customer found
+      // }
     } catch (err) {
       console.error('Error fetching customer by phone:', err);
-      // On error, just populate with available data
-      setFormData(prev => ({
-        ...prev,
-        customer_phone: phoneNumber,
-        ...(initialData?.customerName && { customer_name: initialData.customerName }),
-        ...(initialData?.customerEmail && { customer_email: initialData.customerEmail })
-      }));
     }
+
+    // On fallback, just populate with available data
+    setFormData(prev => ({
+      ...prev,
+      customer_phone: phoneNumber,
+      ...(initialData?.customerName && { customer_name: initialData.customerName }),
+      ...(initialData?.customerEmail && { customer_email: initialData.customerEmail })
+    }));
   };
 
   // Apply initial data from query params and handle auto-assignment
@@ -304,19 +278,11 @@ const TicketCreateForm: React.FC<{
 
       setIsSearchingPhone(true);
       try {
-        const response = await customerService.getCustomers({
-          search: phoneNumber,
-          per_page: 5
-        });
-        
-        if (response.success && response.data?.data) {
-          // Filter to only customers with matching phone numbers
-          const matchingCustomers = response.data.data.filter((customer: Customer) => 
-            customer.phone_number.includes(phoneNumber)
-          );
-          setPhoneSearchResults(matchingCustomers);
-          setShowPhoneDropdown(matchingCustomers.length > 0);
-        }
+        // TODO: Implement contact service search
+        // const response = await contactService.searchByValue(phoneNumber);
+        // Handle response...
+        setPhoneSearchResults([]);
+        setShowPhoneDropdown(false);
       } catch (err) {
         console.error('Error searching customers by phone:', err);
       } finally {
@@ -368,7 +334,6 @@ const TicketCreateForm: React.FC<{
         ...prev,
         customer_name: selectedCustomer.name,
         customer_email: selectedCustomer.email,
-        customer_phone: selectedCustomer.phone_number,
         customer_id_type: selectedCustomer.id_type,
         customer_id_no: selectedCustomer.id_no
       }));
@@ -452,7 +417,10 @@ const TicketCreateForm: React.FC<{
         lookupService.getChannels(),
         lookupService.getUrgencies(),
         lookupService.getImpacts(),
-        lookupService.getIdTypes()
+        lookupService.getIdTypes(),
+        // TODO: Uncomment when contact types are needed
+        // lookupService.getContactTypes(),
+        lookupService.getLookupsByType('contact_type').catch(() => [])
       ]);
 
       setDepartments(deptData.map((d) => d.name));
@@ -484,6 +452,8 @@ const TicketCreateForm: React.FC<{
       console.error('Error loading lookups:', err);
     }
   };
+
+
 
   const handleInputChange = (field: keyof TicketFormData, value: string | string[] | Record<string, unknown>) => {
     setFormData(prev => ({
@@ -537,7 +507,6 @@ const TicketCreateForm: React.FC<{
         const customerData = {
           name: formData.customer_name,
           email: formData.customer_email,
-          phone_number: formData.customer_phone,
           id_type: formData.customer_id_type as Customer['id_type'],
           id_no: formData.customer_id_no,
           customer_type: 'individual' as const,
@@ -555,7 +524,10 @@ const TicketCreateForm: React.FC<{
         customerId = customerResponse.data.id;
       }
       
-      // Step 2: Create ticket with customer_id
+      // Step 2: Create contacts (if provided) - TODO: implement when contact service is ready
+      // await createContactsForCustomer(customerId);
+
+      // Step 3: Create ticket with customer_id
       const ticketData = {
         customer_id: customerId,
         conversation_id: initialData?.conversationId || null,
@@ -687,7 +659,8 @@ const TicketCreateForm: React.FC<{
           
           <div className="relative">
             <Input
-              label="Phone Number"
+              label="Caller Phone (Optional)"
+              description="Used for call lookup and ticket matching."
               type="tel"
               value={formData.customer_phone}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
@@ -724,12 +697,11 @@ const TicketCreateForm: React.FC<{
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <p className="font-medium text-foreground">{customer.name}</p>
-                        <p className="text-sm text-muted-foreground">{customer.phone_number}</p>
-                        <p className="text-xs text-muted-foreground mt-1">{customer.email}</p>
+                        <p className="text-sm text-muted-foreground">{customer.email}</p>
                       </div>
                       <div className="text-right">
-                        <span className="text-xs text-muted-foreground">{customer.id_type}</span>
-                        <p className="text-xs text-muted-foreground">{customer.id_no}</p>
+                        <span className="text-xs text-muted-foreground">{(customer as Customer).id_type}</span>
+                        <p className="text-xs text-muted-foreground">{(customer as Customer).id_no}</p>
                       </div>
                     </div>
                   </button>
@@ -1145,10 +1117,6 @@ const TicketCreateForm: React.FC<{
                 </div>
 
                 <div className="grid grid-cols-1 gap-2 pt-3 border-t border-border">
-                  <div className="flex items-center gap-2">
-                    <Icon name="Phone" size={16} className="text-muted-foreground" />
-                    <span className="text-sm text-foreground">{selectedCustomer.phone_number}</span>
-                  </div>
                   <div className="flex items-center gap-2">
                     <Icon name="Mail" size={16} className="text-muted-foreground" />
                     <span className="text-sm text-foreground">{selectedCustomer.email}</span>
