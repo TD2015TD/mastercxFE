@@ -3,7 +3,7 @@ import Icon from '../../../components/AppIcon';
 import Image from '../../../components/AppImage';
 import Button from '../../../components/ui/Button';
 
-const CustomerProfileHeader = ({ customer, onEdit, onCreateTicket, onScheduleCallback }) => {
+const CustomerProfileHeader = ({ customer, customerContacts = [], onEdit, onCreateTicket, onScheduleCallback }) => {
   const getStatusColor = (status) => {
     const statusColors = {
       'Active': 'bg-success text-success-foreground',
@@ -75,8 +75,24 @@ const CustomerProfileHeader = ({ customer, onEdit, onCreateTicket, onScheduleCal
                 <div className="flex items-center gap-3">
                   <Icon name="Phone" size={16} className="text-muted-foreground flex-shrink-0" />
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-foreground">View in Interactions</p>
-                    <p className="text-xs text-muted-foreground">Phone numbers per interaction</p>
+                    {customerContacts.length > 0 ? (
+                      <div className="space-y-1">
+                        {customerContacts.slice(0, 3).map((contact) => (
+                          <p key={contact.id} className="text-sm font-medium text-foreground truncate">
+                            {(contact.contactType?.name_en || contact.contactType?.name_ms || 'Contact')}: {contact.value}
+                            {contact.is_primary ? ' (Primary)' : ''}
+                          </p>
+                        ))}
+                        {customerContacts.length > 3 && (
+                          <p className="text-xs text-muted-foreground">+{customerContacts.length - 3} more contacts</p>
+                        )}
+                      </div>
+                    ) : (
+                      <>
+                        <p className="text-sm font-medium text-foreground">No contacts added</p>
+                        <p className="text-xs text-muted-foreground">Add contact methods from Edit Profile</p>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>

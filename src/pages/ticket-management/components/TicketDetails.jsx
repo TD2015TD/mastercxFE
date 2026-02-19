@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { toast } from 'react-toastify';
 import { ticketService } from '../../../services/ticketService';
 import lookupService from '../../../services/lookupService';
+import { contactService } from '../../../services/contactService';
 import Button from '../../../components/ui/Button';
 import Input from '../../../components/ui/Input';
 import Select from '../../../components/ui/Select';
@@ -12,6 +13,7 @@ const TicketDetails = ({ ticket, onUpdate }) => {
   const [departments, setDepartments] = useState([]);
   const [priorities, setPriorities] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [customerContacts, setCustomerContacts] = useState([]);
   
   const [editData, setEditData] = useState({
     priority: ticket?.priority,
@@ -26,6 +28,25 @@ const TicketDetails = ({ ticket, onUpdate }) => {
       loadLookups();
     }
   }, [isEditing]);
+
+  React.useEffect(() => {
+    const loadCustomerContacts = async () => {
+      if (!ticket?.customer?.id) {
+        setCustomerContacts([]);
+        return;
+      }
+
+      try {
+        const response = await contactService.getCustomerContacts(ticket.customer.id, { per_page: 50 });
+        setCustomerContacts(response?.data || []);
+      } catch (error) {
+        console.error('Error loading customer contacts:', error);
+        setCustomerContacts([]);
+      }
+    };
+
+    loadCustomerContacts();
+  }, [ticket?.customer?.id]);
 
   const loadLookups = async () => {
     try {
@@ -151,8 +172,22 @@ const TicketDetails = ({ ticket, onUpdate }) => {
             </div>
             
             <div>
-              <label className="text-sm font-medium text-muted-foreground">Phone</label>
-              <p className="text-sm text-foreground mt-1">{ticket?.customer?.phone}</p>
+              <label className="text-sm font-medium text-muted-foreground">Contacts</label>
+              {customerContacts.length > 0 ? (
+                <div className="mt-1 space-y-1">
+                  {customerContacts.map((contact) => (
+                    <p key={contact.id} className="text-sm text-foreground">
+                      <span className="text-muted-foreground mr-2">
+                        {contact.contactType?.name_en || contact.contactType?.name_ms || 'Contact'}:
+                      </span>
+                      {contact.value}
+                      {contact.is_primary ? <span className="ml-2 text-xs text-primary">(Primary)</span> : null}
+                    </p>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-foreground mt-1">-</p>
+              )}
             </div>
             
             <div>

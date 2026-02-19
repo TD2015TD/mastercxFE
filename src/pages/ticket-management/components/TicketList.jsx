@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ticketService } from '../../../services/ticketService';
+import { contactService } from '../../../services/contactService';
 import { getLookupsByType } from '../../../services/lookupService';
 import { getColorClasses } from '../../../utils/colorUtils';
 import Icon from '../../../components/AppIcon';
@@ -17,6 +18,7 @@ const TicketList = ({ filter = 'all' }) => {
   const [priorityFilter, setPriorityFilter] = useState('all');
   const [statusOptions, setStatusOptions] = useState([]);
   const [priorityOptions, setPriorityOptions] = useState([]);
+  const [customerContactsMap, setCustomerContactsMap] = useState({});
 
   useEffect(() => {
     loadLookups();
@@ -59,6 +61,40 @@ const TicketList = ({ filter = 'all' }) => {
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    const loadContactsForVisibleCustomers = async () => {
+      const customerIds = Array.from(new Set(
+        (tickets || [])
+          .map((ticket) => ticket?.customer?.id)
+          .filter(Boolean)
+      ));
+
+      if (customerIds.length === 0) {
+        setCustomerContactsMap({});
+        return;
+      }
+
+      try {
+        const contactResults = await Promise.all(
+          customerIds.map(async (customerId) => {
+            const response = await contactService.getCustomerContacts(customerId, { per_page: 50 });
+            return [customerId, response?.data || []];
+          })
+        );
+
+        const nextMap = {};
+        contactResults.forEach(([customerId, contacts]) => {
+          nextMap[customerId] = contacts;
+        });
+        setCustomerContactsMap(nextMap);
+      } catch (error) {
+        console.error('Error loading contacts for ticket list:', error);
+      }
+    };
+
+    loadContactsForVisibleCustomers();
+  }, [tickets]);
 
   const filteredTickets = Array.isArray(tickets) ? tickets.filter(ticket => {
     if (!searchTerm) return true;
@@ -174,6 +210,21 @@ const TicketList = ({ filter = 'all' }) => {
                     <td className="px-6 py-4">
                       <p className="text-foreground">{ticket.customer?.name || 'N/A'}</p>
                       <p className="text-sm text-muted-foreground">{ticket.customer?.email || ''}</p>
+                      {ticket.customer?.id && (customerContactsMap[ticket.customer.id]?.length > 0) && (
+                        <div className="mt-1">
+                          {customerContactsMap[ticket.customer.id].slice(0, 2).map((contact) => (
+                            <p key={contact.id} className="text-xs text-muted-foreground truncate">
+                              {(contact.contactType?.name_en || contact.contactType?.name_ms || 'Contact')}: {contact.value}
+                              {contact.is_primary ? ' (Primary)' : ''}
+                            </p>
+                          ))}
+                          {customerContactsMap[ticket.customer.id].length > 2 && (
+                            <p className="text-xs text-muted-foreground">
+                              +{customerContactsMap[ticket.customer.id].length - 2} more
+                            </p>
+                          )}
+                        </div>
+                      )}
                     </td>
                     <td className="px-6 py-4">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPriorityColor(ticket.priority)}`}>

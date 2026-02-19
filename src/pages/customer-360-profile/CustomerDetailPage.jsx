@@ -215,6 +215,7 @@ const CustomerDetailPage = () => {
               <div className="xl:col-span-2 space-y-6">
                 <CustomerProfileHeader 
                   customer={customer} 
+                  customerContacts={customerContacts}
                   onEdit={handleEditProfile}
                   onCreateTicket={handleCreateTicket}
                 />
