@@ -144,21 +144,22 @@ const TicketCreateForm: React.FC<{
   };
 
   // Auto-fetch customer when phone number is provided in query params
+  // Only do this if lookups are already loaded to avoid race conditions
   useEffect(() => {
-    if (initialData?.customerPhone && !initialData.customerId) {
+    if (initialData?.customerPhone && !initialData.customerId && contactTypeLookups.length > 0) {
       // Automatically search and populate customer data by phone
       searchAndPopulateCustomer(initialData.customerPhone);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialData?.customerPhone]);
+  }, [initialData?.customerPhone, contactTypeLookups.length]);
 
   // Ensure phone contacts are populated once lookups are loaded
+  // This handles both successful and failed customer lookups
   useEffect(() => {
     if (
       initialData?.customerPhone &&
       contactTypeLookups.length > 0 &&
-      contactEntries.length === 0 &&
-      !selectedCustomer
+      contactEntries.length === 0
     ) {
       const phoneTypeId = contactTypeLookups.find(t => t.code?.toLowerCase() === 'phone')?.id;
       if (phoneTypeId) {
@@ -169,14 +170,14 @@ const TicketCreateForm: React.FC<{
         }]);
       }
     }
-  }, [contactTypeLookups, contactEntries.length, initialData?.customerPhone, selectedCustomer]);
+  }, [contactTypeLookups, contactEntries.length, initialData?.customerPhone]);
 
   const searchAndPopulateCustomer = async (phoneNumber: string) => {
     try {
       const contactResponse = await contactService.findByPhone(phoneNumber);
 
       if (contactResponse.success && contactResponse.data?.customer) {
-        const { customer, contact } = contactResponse.data;
+        const { customer } = contactResponse.data;
 
         setSelectedCustomer(customer as Customer);
         setFormData((prev) => ({
@@ -188,43 +189,12 @@ const TicketCreateForm: React.FC<{
         if (customer.id) {
           await fetchCustomerNotes(customer.id);
           await loadCustomerContacts(customer.id);
-          
-          // Auto-populate phone contact if not already present
-          if (contactEntries.length === 0) {
-            const phoneTypeId = contactTypeLookups.find(t => t.code?.toLowerCase() === 'phone')?.id;
-            if (phoneTypeId && contact.value) {
-              setContactEntries([{
-                contact_type_id: String(phoneTypeId),
-                value: contact.value,
-                is_primary: true
-              }]);
-            }
-          }
         }
 
         return;
       }
     } catch (err) {
       console.error('Error fetching customer by phone:', err);
-    }
-
-    // On fallback, populate form with available data and create initial phone contact entry
-    setFormData(prev => ({
-      ...prev,
-      ...(initialData?.customerName && { customer_name: initialData.customerName }),
-      ...(initialData?.customerEmail && { customer_email: initialData.customerEmail })
-    }));
-    
-    // Always populate the phone number as a contact entry in the fallback case
-    if (phoneNumber && contactEntries.length === 0) {
-      const phoneTypeId = contactTypeLookups.find(t => t.code?.toLowerCase() === 'phone')?.id;
-      if (phoneTypeId) {
-        setContactEntries([{
-          contact_type_id: String(phoneTypeId),
-          value: phoneNumber,
-          is_primary: true
-        }]);
-      }
     }
   };
 
