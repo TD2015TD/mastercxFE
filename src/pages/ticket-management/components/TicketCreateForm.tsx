@@ -152,6 +152,25 @@ const TicketCreateForm: React.FC<{
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialData?.customerPhone]);
 
+  // Ensure phone contacts are populated once lookups are loaded
+  useEffect(() => {
+    if (
+      initialData?.customerPhone &&
+      contactTypeLookups.length > 0 &&
+      contactEntries.length === 0 &&
+      !selectedCustomer
+    ) {
+      const phoneTypeId = contactTypeLookups.find(t => t.code?.toLowerCase() === 'phone')?.id;
+      if (phoneTypeId) {
+        setContactEntries([{
+          contact_type_id: String(phoneTypeId),
+          value: initialData.customerPhone,
+          is_primary: true
+        }]);
+      }
+    }
+  }, [contactTypeLookups, contactEntries.length, initialData?.customerPhone, selectedCustomer]);
+
   const searchAndPopulateCustomer = async (phoneNumber: string) => {
     try {
       const contactResponse = await contactService.findByPhone(phoneNumber);
@@ -189,12 +208,24 @@ const TicketCreateForm: React.FC<{
       console.error('Error fetching customer by phone:', err);
     }
 
-    // On fallback, just populate with available data
+    // On fallback, populate form with available data and create initial phone contact entry
     setFormData(prev => ({
       ...prev,
       ...(initialData?.customerName && { customer_name: initialData.customerName }),
       ...(initialData?.customerEmail && { customer_email: initialData.customerEmail })
     }));
+    
+    // Always populate the phone number as a contact entry in the fallback case
+    if (phoneNumber && contactEntries.length === 0) {
+      const phoneTypeId = contactTypeLookups.find(t => t.code?.toLowerCase() === 'phone')?.id;
+      if (phoneTypeId) {
+        setContactEntries([{
+          contact_type_id: String(phoneTypeId),
+          value: phoneNumber,
+          is_primary: true
+        }]);
+      }
+    }
   };
 
   // Apply initial data from query params and handle auto-assignment
