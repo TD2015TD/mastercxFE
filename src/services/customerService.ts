@@ -4,7 +4,6 @@ export interface Customer {
   id: number;
   name: string;
   email: string;
-  phone_number: string;
   id_type: 'MyKad' | 'MyTentera' | 'MyPolis' | 'MyPR' | 'Passport';
   id_no: string;
   formatted_id?: string;

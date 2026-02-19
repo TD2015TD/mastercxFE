@@ -1,22 +1,9 @@
-import React, { useState } from 'react';
+import React from 'react';
 import Icon from '../../../components/AppIcon';
 import Image from '../../../components/AppImage';
 import Button from '../../../components/ui/Button';
 
 const CustomerProfileHeader = ({ customer, onEdit, onCreateTicket, onScheduleCallback }) => {
-  const [isEditing, setIsEditing] = useState(false);
-  const [editedCustomer, setEditedCustomer] = useState(customer);
-
-  const handleSave = () => {
-    onEdit(editedCustomer);
-    setIsEditing(false);
-  };
-
-  const handleCancel = () => {
-    setEditedCustomer(customer);
-    setIsEditing(false);
-  };
-
   const getStatusColor = (status) => {
     const statusColors = {
       'Active': 'bg-success text-success-foreground',
@@ -138,7 +125,7 @@ const CustomerProfileHeader = ({ customer, onEdit, onCreateTicket, onScheduleCal
             variant="ghost"
             iconName="Edit"
             iconPosition="left"
-            onClick={() => setIsEditing(true)}
+            onClick={onEdit}
             className="w-full"
           >
             Edit Profile
@@ -162,73 +149,6 @@ const CustomerProfileHeader = ({ customer, onEdit, onCreateTicket, onScheduleCal
           </div>
         </div>
       </div>
-      {/* Edit Modal */}
-      {isEditing && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-card border border-border rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-semibold text-foreground">Edit Customer Profile</h2>
-              <Button variant="ghost" iconName="X" onClick={handleCancel} />
-            </div>
-            
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">Full Name</label>
-                  <input
-                    type="text"
-                    value={editedCustomer?.name}
-                    onChange={(e) => setEditedCustomer({...editedCustomer, name: e?.target?.value})}
-                    className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">Email</label>
-                  <input
-                    type="email"
-                    value={editedCustomer?.email}
-                    onChange={(e) => setEditedCustomer({...editedCustomer, email: e?.target?.value})}
-                    className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">Phone</label>
-                  <input
-                    type="tel"
-                    value={editedCustomer?.phone}
-                    onChange={(e) => setEditedCustomer({...editedCustomer, phone: e?.target?.value})}
-                    className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">Organization</label>
-                  <input
-                    type="text"
-                    value={editedCustomer?.organization}
-                    onChange={(e) => setEditedCustomer({...editedCustomer, organization: e?.target?.value})}
-                    className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground"
-                  />
-                </div>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Address</label>
-                <textarea
-                  value={editedCustomer?.address}
-                  onChange={(e) => setEditedCustomer({...editedCustomer, address: e?.target?.value})}
-                  rows={3}
-                  className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground"
-                />
-              </div>
-            </div>
-            
-            <div className="flex justify-end gap-3 mt-6">
-              <Button variant="outline" onClick={handleCancel}>Cancel</Button>
-              <Button variant="default" onClick={handleSave}>Save Changes</Button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

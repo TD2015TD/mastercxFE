@@ -6,11 +6,13 @@ import lookupService from '../../../services/lookupService';
 import { agentService, type Agent } from '../../../services/agentService';
 import { customerService, type Customer, type CustomerNote } from '../../../services/customerService';
 import categoryService, { type Category } from '../../../services/categoryService';
+import { contactService, type Contact } from '../../../services/contactService';
 import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
 import Input from '../../../components/ui/Input';
 import Select from '../../../components/ui/Select';
 import Textarea from '../../../components/ui/Textarea';
+import Checkbox from '../../../components/ui/Checkbox';
 
 interface TicketFormData {
   // Customer Information
@@ -40,6 +42,20 @@ interface TicketFormData {
   // Additional
   tags?: string[];
   custom_fields?: Record<string, unknown>;
+}
+
+interface ContactEntry {
+  id?: number;
+  contact_type_id: string;
+  value: string;
+  is_primary: boolean;
+  notes?: string;
+}
+
+interface ContactTypeLookup {
+  id: number;
+  code: string;
+  name: string;
 }
 
 const TicketCreateForm: React.FC<{ 
@@ -76,6 +92,10 @@ const TicketCreateForm: React.FC<{
   const [urgencyOptions, setUrgencyOptions] = useState<Array<{ value: string; label: string }>>([]);
   const [impactOptions, setImpactOptions] = useState<Array<{ value: string; label: string }>>([]);
   const [idTypeOptions, setIdTypeOptions] = useState<Array<{ value: string; label: string }>>([]);
+  const [contactTypeLookups, setContactTypeLookups] = useState<ContactTypeLookup[]>([]);
+  const [contactEntries, setContactEntries] = useState<ContactEntry[]>([]);
+  const [existingContacts, setExistingContacts] = useState<Contact[]>([]);
+  const [isLoadingContacts, setIsLoadingContacts] = useState(false);
   
   // Categories
   const [categories, setCategories] = useState<Category[]>([]);
@@ -135,11 +155,26 @@ const TicketCreateForm: React.FC<{
 
   const searchAndPopulateCustomer = async (phoneNumber: string) => {
     try {
-      // TODO: Implement contact service lookup
-      // const contactResponse = await contactService.findByPhone(phoneNumber);
-      // if (contactResponse.success && contactResponse.data?.customer) {
-      //   // Handle customer found
-      // }
+      const contactResponse = await contactService.findByPhone(phoneNumber);
+
+      if (contactResponse.success && contactResponse.data?.customer) {
+        const { customer, contact } = contactResponse.data;
+
+        setSelectedCustomer(customer as Customer);
+        setFormData((prev) => ({
+          ...prev,
+          customer_name: customer.name,
+          customer_email: customer.email,
+          customer_phone: contact.value,
+        }));
+
+        if (customer.id) {
+          await fetchCustomerNotes(customer.id);
+          await loadCustomerContacts(customer.id);
+        }
+
+        return;
+      }
     } catch (err) {
       console.error('Error fetching customer by phone:', err);
     }
@@ -278,11 +313,19 @@ const TicketCreateForm: React.FC<{
 
       setIsSearchingPhone(true);
       try {
-        // TODO: Implement contact service search
-        // const response = await contactService.searchByValue(phoneNumber);
-        // Handle response...
-        setPhoneSearchResults([]);
-        setShowPhoneDropdown(false);
+        const response = await contactService.searchByValue(phoneNumber);
+        const contacts = response?.data || [];
+        const uniqueCustomers = new Map<number, Customer>();
+
+        contacts.forEach((contact) => {
+          if (contact.customer?.id && !uniqueCustomers.has(contact.customer.id)) {
+            uniqueCustomers.set(contact.customer.id, contact.customer as Customer);
+          }
+        });
+
+        const matchingCustomers = Array.from(uniqueCustomers.values());
+        setPhoneSearchResults(matchingCustomers);
+        setShowPhoneDropdown(matchingCustomers.length > 0);
       } catch (err) {
         console.error('Error searching customers by phone:', err);
       } finally {
@@ -309,6 +352,63 @@ const TicketCreateForm: React.FC<{
     }
   };
 
+  const loadCustomerContacts = async (customerId: number) => {
+    setIsLoadingContacts(true);
+    try {
+      const response = await contactService.getCustomerContacts(customerId, { per_page: 100 });
+      setExistingContacts(response?.data || []);
+    } catch (err) {
+      console.error('Error loading customer contacts:', err);
+      setExistingContacts([]);
+    } finally {
+      setIsLoadingContacts(false);
+    }
+  };
+
+  const addContactEntry = () => {
+    const defaultTypeId = contactTypeLookups[0] ? String(contactTypeLookups[0].id) : '';
+    setContactEntries((prev) => [...prev, { contact_type_id: defaultTypeId, value: '', is_primary: false }]);
+  };
+
+  const updateContactEntry = (index: number, field: keyof ContactEntry, value: string | boolean) => {
+    setContactEntries((prev) => {
+      let next = prev.map((entry, idx) => (idx === index ? { ...entry, [field]: value } : entry));
+
+      if (field === 'is_primary' && value === true) {
+        const typeId = next[index].contact_type_id;
+        next = next.map((entry, idx) => (
+          idx !== index && entry.contact_type_id === typeId
+            ? { ...entry, is_primary: false }
+            : entry
+        ));
+      }
+
+      return next;
+    });
+  };
+
+  const removeContactEntry = (index: number) => {
+    setContactEntries((prev) => prev.filter((_, idx) => idx !== index));
+  };
+
+  const createContactsForCustomer = async (customerId: number) => {
+    const contactsToCreate = contactEntries
+      .filter((entry) => entry.contact_type_id && entry.value.trim())
+      .map((entry) => ({
+        customer_id: customerId,
+        contact_type_id: Number(entry.contact_type_id),
+        value: entry.value.trim(),
+        is_primary: entry.is_primary,
+        notes: entry.notes,
+      }));
+
+    if (contactsToCreate.length === 0) {
+      return;
+    }
+
+    await Promise.all(contactsToCreate.map((entry) => contactService.createContact(entry)));
+  };
+
   // Debounce phone search
   useEffect(() => {
     const timeoutId = setTimeout(() => {
@@ -325,6 +425,7 @@ const TicketCreateForm: React.FC<{
     // Fetch customer notes
     if (customer.id) {
       fetchCustomerNotes(customer.id);
+      loadCustomerContacts(customer.id);
     }
   };
 
@@ -346,6 +447,7 @@ const TicketCreateForm: React.FC<{
     setShowCustomerConfirmModal(false);
     setSelectedCustomer(null);
     setPinnedNotes([]);
+    setExistingContacts([]);
   };
 
   // Load categories when department changes
@@ -411,15 +513,13 @@ const TicketCreateForm: React.FC<{
 
   const loadLookups = async () => {
     try {
-      const [deptData, prioData, channelData, urgencyData, impactData, idTypeData] = await Promise.all([
+      const [deptData, prioData, channelData, urgencyData, impactData, idTypeData, contactTypeData] = await Promise.all([
         lookupService.getDepartments(),
         lookupService.getPriorities(),
         lookupService.getChannels(),
         lookupService.getUrgencies(),
         lookupService.getImpacts(),
         lookupService.getIdTypes(),
-        // TODO: Uncomment when contact types are needed
-        // lookupService.getContactTypes(),
         lookupService.getLookupsByType('contact_type').catch(() => [])
       ]);
 
@@ -448,6 +548,18 @@ const TicketCreateForm: React.FC<{
       setUrgencyOptions(urgencyData.map(u => ({ value: u.code, label: u.name })));
       setImpactOptions(impactData.map(i => ({ value: i.code, label: i.name })));
       setIdTypeOptions(idTypeData.map(t => ({ value: t.code, label: t.name })));
+
+      const mappedContactTypes = (contactTypeData || []).map((lookup: { id: number; code: string; name?: string; name_en?: string; name_ms?: string }) => ({
+        id: lookup.id,
+        code: lookup.code,
+        name: lookup.name || lookup.name_en || lookup.name_ms || lookup.code,
+      }));
+      setContactTypeLookups(mappedContactTypes);
+
+      if (mappedContactTypes.length > 0 && contactEntries.length === 0) {
+        const defaultPhoneType = mappedContactTypes.find((type) => type.code === 'phone') || mappedContactTypes[0];
+        setContactEntries([{ contact_type_id: String(defaultPhoneType.id), value: '', is_primary: true }]);
+      }
     } catch (err) {
       console.error('Error loading lookups:', err);
     }
@@ -524,8 +636,8 @@ const TicketCreateForm: React.FC<{
         customerId = customerResponse.data.id;
       }
       
-      // Step 2: Create contacts (if provided) - TODO: implement when contact service is ready
-      // await createContactsForCustomer(customerId);
+      // Step 2: Create contacts (if provided)
+      await createContactsForCustomer(customerId);
 
       // Step 3: Create ticket with customer_id
       const ticketData = {
@@ -724,6 +836,103 @@ const TicketCreateForm: React.FC<{
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('customer_id_no', e.target.value)}
             placeholder="Enter ID number"
           />
+        </div>
+
+        <div className="mt-4 pt-4 border-t border-border space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h4 className="text-sm font-semibold text-foreground">Contacts</h4>
+              <p className="text-xs text-muted-foreground">Add multiple contact methods for this customer.</p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              iconName="Plus"
+              iconPosition="left"
+              onClick={addContactEntry}
+            >
+              Add Contact
+            </Button>
+          </div>
+
+          <div className="space-y-3">
+            {contactEntries.map((entry, index) => (
+              <div key={`${entry.contact_type_id}-${index}`} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+                <div className="md:col-span-4">
+                  <Select
+                    label={index === 0 ? 'Contact Type' : undefined}
+                    value={entry.contact_type_id}
+                    onChange={(value) => updateContactEntry(index, 'contact_type_id', value as string)}
+                    options={contactTypeLookups.map((type) => ({ value: String(type.id), label: type.name }))}
+                    placeholder="Select type"
+                  />
+                </div>
+                <div className="md:col-span-5">
+                  <Input
+                    label={index === 0 ? 'Contact Value' : undefined}
+                    type="text"
+                    value={entry.value}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateContactEntry(index, 'value', e.target.value)}
+                    placeholder="e.g., +60 12-345-6789 or email@example.com"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <Checkbox
+                    checked={entry.is_primary}
+                    onChange={(e) => updateContactEntry(index, 'is_primary', e.target.checked)}
+                    label="Primary"
+                  />
+                </div>
+                <div className="md:col-span-1 flex md:justify-end">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    iconName="Trash2"
+                    iconPosition="left"
+                    onClick={() => removeContactEntry(index)}
+                  >
+                    Remove
+                  </Button>
+                </div>
+              </div>
+            ))}
+
+            {contactEntries.length === 0 && (
+              <p className="text-sm text-muted-foreground">No contact entries added yet.</p>
+            )}
+          </div>
+
+          {selectedCustomer && (
+            <div className="mt-4">
+              <h5 className="text-sm font-semibold text-foreground mb-2">Existing Contacts</h5>
+              {isLoadingContacts ? (
+                <div className="flex items-center text-sm text-muted-foreground">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2"></div>
+                  Loading contacts...
+                </div>
+              ) : existingContacts.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {existingContacts.map((contact) => (
+                    <div key={contact.id} className="rounded-md border border-border bg-muted/20 p-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-foreground">
+                            {contact.contactType?.name_en || contact.contactType?.name_ms || 'Contact'}
+                          </p>
+                          <p className="text-sm text-muted-foreground">{contact.value}</p>
+                        </div>
+                        {contact.is_primary && (
+                          <span className="text-xs font-semibold text-primary">Primary</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">No contacts found for this customer.</p>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Pinned Customer Notes */}

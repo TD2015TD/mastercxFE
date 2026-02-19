@@ -4,9 +4,15 @@ import Button from '../../../components/ui/Button';
 import Input from '../../../components/ui/Input';
 import Select from '../../../components/ui/Select';
 import Textarea from '../../../components/ui/Textarea';
+import { contactService } from '../../../services/contactService';
+import lookupService from '../../../services/lookupService';
 
 const CustomerFormModal = ({ isOpen, onClose, onSave, customer = null, isLoading = false }) => {
   const isEditMode = !!customer;
+
+  const [contactEntries, setContactEntries] = useState([]);
+  const [contactTypeOptions, setContactTypeOptions] = useState([]);
+  const [isLoadingContacts, setIsLoadingContacts] = useState(false);
   
   const [formData, setFormData] = useState({
     name: '',
@@ -52,6 +58,91 @@ const CustomerFormModal = ({ isOpen, onClose, onSave, customer = null, isLoading
     }
   }, [customer]);
 
+  useEffect(() => {
+    const loadContactTypes = async () => {
+      try {
+        const lookups = await lookupService.getLookupsByType('contact_type');
+        const options = (lookups || []).map((lookup) => ({
+          value: String(lookup.id),
+          label: lookup.name || lookup.name_en || lookup.code,
+          code: lookup.code,
+        }));
+        setContactTypeOptions(options);
+
+        if (!customer && options.length > 0) {
+          const defaultPhone = options.find((option) => option.code === 'phone') || options[0];
+          setContactEntries([{ contact_type_id: defaultPhone.value, value: '', is_primary: true }]);
+        }
+      } catch (error) {
+        console.error('Error loading contact types:', error);
+      }
+    };
+
+    if (isOpen) {
+      loadContactTypes();
+    }
+  }, [isOpen, customer]);
+
+  useEffect(() => {
+    const loadCustomerContacts = async () => {
+      if (!customer?.id || !isOpen) return;
+
+      setIsLoadingContacts(true);
+      try {
+        const response = await contactService.getCustomerContacts(customer.id, { per_page: 100 });
+        const mapped = (response?.data || []).map((contact) => ({
+          id: contact.id,
+          contact_type_id: String(contact.contact_type_id),
+          value: contact.value || '',
+          is_primary: !!contact.is_primary,
+          notes: contact.notes || '',
+        }));
+        setContactEntries(mapped.length > 0 ? mapped : []);
+      } catch (error) {
+        console.error('Error loading customer contacts:', error);
+        setContactEntries([]);
+      } finally {
+        setIsLoadingContacts(false);
+      }
+    };
+
+    loadCustomerContacts();
+  }, [customer?.id, isOpen]);
+
+  const addContactEntry = () => {
+    const defaultTypeId = contactTypeOptions[0]?.value || '';
+    setContactEntries((prev) => [
+      ...prev,
+      {
+        contact_type_id: defaultTypeId,
+        value: '',
+        is_primary: false,
+      },
+    ]);
+  };
+
+  const updateContactEntry = (index, key, value) => {
+    setContactEntries((prev) => {
+      let updated = prev.map((entry, idx) => (idx === index ? { ...entry, [key]: value } : entry));
+
+      if (key === 'is_primary' && value) {
+        const targetTypeId = updated[index].contact_type_id;
+        updated = updated.map((entry, idx) => {
+          if (idx !== index && entry.contact_type_id === targetTypeId) {
+            return { ...entry, is_primary: false };
+          }
+          return entry;
+        });
+      }
+
+      return updated;
+    });
+  };
+
+  const removeContactEntry = (index) => {
+    setContactEntries((prev) => prev.filter((_, idx) => idx !== index));
+  };
+
   const handleChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     // Clear error for this field
@@ -88,7 +179,17 @@ const CustomerFormModal = ({ isOpen, onClose, onSave, customer = null, isLoading
       return;
     }
 
-    onSave(formData);
+    const contacts = contactEntries
+      .filter((entry) => entry.contact_type_id && entry.value?.trim())
+      .map((entry) => ({
+        id: entry.id,
+        contact_type_id: Number(entry.contact_type_id),
+        value: entry.value.trim(),
+        is_primary: !!entry.is_primary,
+        notes: entry.notes || undefined,
+      }));
+
+    onSave({ ...formData, contacts });
   };
 
   if (!isOpen) return null;
@@ -214,6 +315,85 @@ const CustomerFormModal = ({ isOpen, onClose, onSave, customer = null, isLoading
                   />
                 )}
               </div>
+            </div>
+
+            {/* Contact Methods */}
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
+                  <Icon name="Phone" size={20} />
+                  Contact Methods
+                </h3>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  iconName="Plus"
+                  iconPosition="left"
+                  onClick={addContactEntry}
+                  disabled={isLoading}
+                >
+                  Add Contact
+                </Button>
+              </div>
+
+              {isLoadingContacts ? (
+                <div className="text-sm text-muted-foreground">Loading contacts...</div>
+              ) : (
+                <div className="space-y-3">
+                  {contactEntries.map((entry, index) => (
+                    <div key={entry.id || index} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+                      <div className="md:col-span-4">
+                        <Select
+                          label={index === 0 ? 'Type' : undefined}
+                          value={entry.contact_type_id}
+                          onChange={(value) => updateContactEntry(index, 'contact_type_id', value)}
+                          options={contactTypeOptions}
+                          disabled={isLoading}
+                        />
+                      </div>
+                      <div className="md:col-span-6">
+                        <Input
+                          label={index === 0 ? 'Value' : undefined}
+                          type="text"
+                          value={entry.value}
+                          onChange={(e) => updateContactEntry(index, 'value', e.target.value)}
+                          placeholder="Enter contact value"
+                          disabled={isLoading}
+                        />
+                      </div>
+                      <div className="md:col-span-2 flex items-center gap-2 pb-2">
+                        <input
+                          id={`primary-contact-${index}`}
+                          type="checkbox"
+                          checked={!!entry.is_primary}
+                          onChange={(e) => updateContactEntry(index, 'is_primary', e.target.checked)}
+                          disabled={isLoading}
+                          className="h-4 w-4"
+                        />
+                        <label htmlFor={`primary-contact-${index}`} className="text-sm text-muted-foreground">Primary</label>
+                      </div>
+                      <div className="md:col-span-12 flex justify-end">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          iconName="Trash2"
+                          iconPosition="left"
+                          onClick={() => removeContactEntry(index)}
+                          disabled={isLoading}
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+
+                  {contactEntries.length === 0 && (
+                    <div className="text-sm text-muted-foreground">No contact methods added yet.</div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Business Information (if business type) */}

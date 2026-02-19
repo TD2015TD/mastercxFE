@@ -15,6 +15,7 @@ import CustomerFormModal from './components/CustomerFormModal';
 import CustomerDocuments from './components/CustomerDocuments';
 import CustomerNotes from './components/CustomerNotes';
 import { customerService } from '../../services/customerService';
+import { contactService } from '../../services/contactService';
 
 const CustomerDetailPage = () => {
   const { id } = useParams();
@@ -25,6 +26,7 @@ const CustomerDetailPage = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [customerContacts, setCustomerContacts] = useState([]);
 
   useEffect(() => {
     if (id) {
@@ -40,6 +42,13 @@ const CustomerDetailPage = () => {
       
       if (response.success) {
         setCustomer(response.data);
+        try {
+          const contactsResponse = await contactService.getCustomerContacts(parseInt(id), { per_page: 100 });
+          setCustomerContacts(contactsResponse?.data || []);
+        } catch (contactError) {
+          console.error('Error loading customer contacts:', contactError);
+          setCustomerContacts([]);
+        }
       } else {
         setError('Customer not found');
       }
@@ -115,9 +124,41 @@ const CustomerDetailPage = () => {
   const handleSaveProfile = async (formData) => {
     setIsSaving(true);
     try {
-      const response = await customerService.updateCustomer(parseInt(id), formData);
+      const { contacts = [], ...customerPayload } = formData;
+
+      const response = await customerService.updateCustomer(parseInt(id), customerPayload);
       
       if (response.success) {
+        const existingContactsResponse = await contactService.getCustomerContacts(parseInt(id), { per_page: 100 });
+        const existingContacts = existingContactsResponse?.data || [];
+        const incomingContacts = contacts.filter((contact) => contact.contact_type_id && contact.value);
+
+        const incomingIds = new Set(incomingContacts.filter((contact) => contact.id).map((contact) => contact.id));
+
+        for (const contact of existingContacts) {
+          if (!incomingIds.has(contact.id)) {
+            await contactService.deleteContact(contact.id);
+          }
+        }
+
+        for (const contact of incomingContacts) {
+          const payload = {
+            contact_type_id: Number(contact.contact_type_id),
+            value: contact.value,
+            is_primary: !!contact.is_primary,
+            notes: contact.notes || undefined,
+          };
+
+          if (contact.id) {
+            await contactService.updateContact(contact.id, payload);
+          } else {
+            await contactService.createContact({
+              customer_id: parseInt(id),
+              ...payload,
+            });
+          }
+        }
+
         // Reload customer data to get updated information
         await loadCustomer();
         setIsEditModalOpen(false);
@@ -139,8 +180,21 @@ const CustomerDetailPage = () => {
 
   const handleCreateTicket = () => {
     if (customer) {
-      // Phone number is now tracked in interactions, not on customer record
-      navigate(`/ticket-management/create?customerName=${encodeURIComponent(customer.name)}&customerEmail=${encodeURIComponent(customer.email)}&customerId=${customer.id}`);
+      const primaryPhone = customerContacts.find((contact) =>
+        contact.is_primary && (contact.contactType?.code === 'phone' || contact.contactType?.code === 'mobile')
+      ) || customerContacts.find((contact) => contact.contactType?.code === 'phone' || contact.contactType?.code === 'mobile');
+
+      const queryParts = [
+        `customerName=${encodeURIComponent(customer.name)}`,
+        `customerEmail=${encodeURIComponent(customer.email)}`,
+        `customerId=${customer.id}`,
+      ];
+
+      if (primaryPhone?.value) {
+        queryParts.push(`customerPhone=${encodeURIComponent(primaryPhone.value)}`);
+      }
+
+      navigate(`/ticket-management/create?${queryParts.join('&')}`);
     }
   };
 
