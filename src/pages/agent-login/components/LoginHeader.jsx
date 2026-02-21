@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Icon from '../../../components/AppIcon';
+import cxLogo from '../../../assets/cxlogo.png';
 
 const LoginHeader = () => {
   const [currentLanguage, setCurrentLanguage] = useState('en');
@@ -32,8 +33,8 @@ const LoginHeader = () => {
     <div className="text-center space-y-4 mb-8">
       {/* Logo and System Name */}
       <div className="flex items-center justify-center space-x-4">
-        <div className="w-16 h-16 bg-primary rounded-xl flex items-center justify-center shadow-lg">
-          <Icon name="Shield" size={32} color="white" />
+        <div className="w-16 h-16 flex items-center justify-center">
+          <img src={cxLogo} alt="CRM Logo" className="w-full h-full object-contain" />
         </div>
         <div className="text-left">
           <h1 className="text-2xl font-bold text-foreground">

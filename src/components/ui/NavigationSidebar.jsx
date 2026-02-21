@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Icon from '../AppIcon';
 import { menuService } from '../../services/menuService';
+import cxLogo from '../../assets/cxlogo.png';
 
 const NavigationSidebar = ({ isCollapsed = false, onToggleCollapse, userRole = 'agent' }) => {
   const location = useLocation();
@@ -142,8 +143,8 @@ const NavigationSidebar = ({ isCollapsed = false, onToggleCollapse, userRole = '
         <div className="flex items-center justify-between p-6 border-b border-border">
           {!isCollapsed && (
             <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                <Icon name="Shield" size={20} color="white" />
+              <div className="w-8 h-8 flex items-center justify-center">
+                <img src={cxLogo} alt="CRM Logo" className="w-full h-full object-contain" />
               </div>
               <div>
                 <h1 className="text-lg font-semibold text-foreground">JKDM CRM</h1>
@@ -152,8 +153,8 @@ const NavigationSidebar = ({ isCollapsed = false, onToggleCollapse, userRole = '
             </div>
           )}
           {isCollapsed && (
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center mx-auto">
-              <Icon name="Shield" size={20} color="white" />
+            <div className="w-8 h-8 flex items-center justify-center mx-auto">
+              <img src={cxLogo} alt="CRM Logo" className="w-full h-full object-contain" />
             </div>
           )}
           {onToggleCollapse && (
@@ -214,7 +215,7 @@ const NavigationSidebar = ({ isCollapsed = false, onToggleCollapse, userRole = '
             </div>
           ) : (
             <div className="flex justify-center">
-              <Icon name="Shield" size={16} className="text-muted-foreground" />
+              <img src={cxLogo} alt="CRM Logo" className="w-6 h-6 object-contain opacity-60" />
             </div>
           )}
         </div>
