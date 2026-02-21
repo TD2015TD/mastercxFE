@@ -4,6 +4,7 @@ import LoginForm from './components/LoginForm';
 import LanguageToggle from './components/LanguageToggle';
 import SecurityBadges from './components/SecurityBadges';
 import LoginHeader from './components/LoginHeader';
+import cxLogo from '../../assets/cxlogo.png';
 
 const AgentLogin = () => {
   const navigate = useNavigate();
@@ -40,19 +41,8 @@ const AgentLogin = () => {
           <div className="hidden lg:block space-y-8">
             <div className="text-center lg:text-left">
               <div className="flex items-center justify-center lg:justify-start space-x-4 mb-6">
-                <div className="w-20 h-20 bg-primary rounded-2xl flex items-center justify-center shadow-xl">
-                  <svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="w-10 h-10 text-primary-foreground"
-                  >
-                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                    <path d="M9 12l2 2 4-4"/>
-                  </svg>
+                <div className="w-20 h-20 flex items-center justify-center">
+                  <img src={cxLogo} alt="CRM Logo" className="w-full h-full object-contain" />
                 </div>
                 <div>
                   <h1 className="text-3xl font-bold text-foreground">
