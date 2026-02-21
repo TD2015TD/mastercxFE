@@ -6,6 +6,7 @@ import NotificationCenter from './NotificationCenter';
 import ConversationNotification from './ConversationNotification';
 import CommandPalette from './CommandPalette';
 import TelephonyBar from '../TelephonyBar';
+import cxLogo from '../../assets/cxlogo.png';
 
 const Header = ({ user = null, onMenuToggle }) => {
   const location = useLocation();
@@ -148,8 +149,8 @@ const Header = ({ user = null, onMenuToggle }) => {
               className="flex items-center space-x-3 hover:opacity-80 transition-opacity duration-200"
               title="Go to CRM Dashboard"
             >
-              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                <Icon name="Shield" size={20} color="white" />
+              <div className="w-8 h-8 flex items-center justify-center">
+                <img src={cxLogo} alt="CRM Logo" className="w-full h-full object-contain" />
               </div>
               <div className="hidden sm:block">
                 <h1 className="text-lg font-semibold text-foreground">JKDM CRM Portal</h1>
