@@ -11,20 +11,18 @@ const SecurityBadges = () => {
 
   const translations = {
     en: {
-      ismsCompliant: 'ISMS Compliant',
-      govCertified: 'Government Certified',
       securePortal: 'Secure Portal',
-      dataProtection: 'Data Protection Act Compliant',
-      iso27001: 'ISO 27001 Certified',
-      encryption: '256-bit SSL Encryption'
+      https: 'HTTPS Secure Communication',
+      rbac: 'Role-Based Access Control (RBAC)',
+      auditTrail: 'Activity Logging & Audit Trail',
+      encryption: 'Data Encryption in Transit'
     },
     ms: {
-      ismsCompliant: 'Patuh ISMS',
-      govCertified: 'Diperakui Kerajaan',
       securePortal: 'Portal Selamat',
-      dataProtection: 'Patuh Akta Perlindungan Data',
-      iso27001: 'Diperakui ISO 27001',
-      encryption: 'Enkripsi SSL 256-bit'
+      https: 'Komunikasi Selamat HTTPS',
+      rbac: 'Kawalan Akses Berasaskan Peranan (RBAC)',
+      auditTrail: 'Pengelogan Aktiviti & Jejak Audit',
+      encryption: 'Penyulitan Data Semasa Penghantaran'
     }
   };
 
@@ -32,25 +30,25 @@ const SecurityBadges = () => {
 
   const securityBadges = [
     {
-      icon: 'Shield',
-      label: t?.govCertified,
+      icon: 'Lock',
+      label: t?.https,
       color: 'text-success',
       bgColor: 'bg-success/10'
     },
     {
-      icon: 'Lock',
-      label: t?.ismsCompliant,
+      icon: 'ShieldCheck',
+      label: t?.rbac,
       color: 'text-primary',
       bgColor: 'bg-primary/10'
     },
     {
-      icon: 'Award',
-      label: t?.iso27001,
+      icon: 'ClipboardList',
+      label: t?.auditTrail,
       color: 'text-accent',
       bgColor: 'bg-accent/10'
     },
     {
-      icon: 'Key',
+      icon: 'KeyRound',
       label: t?.encryption,
       color: 'text-warning',
       bgColor: 'bg-warning/10'
@@ -70,9 +68,9 @@ const SecurityBadges = () => {
             key={index}
             className={`flex items-center space-x-2 p-3 rounded-lg ${badge?.bgColor} border border-border/50`}
           >
-            <Icon 
-              name={badge?.icon} 
-              size={16} 
+            <Icon
+              name={badge?.icon}
+              size={16}
               className={badge?.color}
             />
             <span className="text-xs font-medium text-foreground">
@@ -80,12 +78,6 @@ const SecurityBadges = () => {
             </span>
           </div>
         ))}
-      </div>
-      <div className="text-center pt-2">
-        <div className="flex items-center justify-center space-x-2 text-xs text-muted-foreground">
-          <Icon name="CheckCircle" size={14} className="text-success" />
-          <span>{t?.dataProtection}</span>
-        </div>
       </div>
     </div>
   );
