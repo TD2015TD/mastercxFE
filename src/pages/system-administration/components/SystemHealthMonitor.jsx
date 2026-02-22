@@ -5,29 +5,15 @@ import Button from '../../../components/ui/Button';
 import {
   getSystemHealth,
   getServiceStatus,
-  getSystemAlerts,
-  acknowledgeAlert,
   performHealthCheck,
-  testServiceConnectivity,
 } from '../../../services/systemService';
 
 const SystemHealthMonitor = () => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [healthMetrics, setHealthMetrics] = useState(null);
   const [services, setServices] = useState([]);
-  const [alerts, setAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [connectivityResults, setConnectivityResults] = useState({
-    database: null,
-    mitel: null,
-    superset: null,
-  });
-  const [connectivityTesting, setConnectivityTesting] = useState({
-    database: false,
-    mitel: false,
-    superset: false,
-  });
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -48,10 +34,9 @@ const SystemHealthMonitor = () => {
   const fetchAllData = async () => {
     try {
       setLoading(true);
-      const [healthRes, servicesRes, alertsRes] = await Promise.all([
+      const [healthRes, servicesRes] = await Promise.all([
         getSystemHealth(),
         getServiceStatus(),
-        getSystemAlerts(),
       ]);
 
       if (healthRes.success) {
@@ -60,10 +45,6 @@ const SystemHealthMonitor = () => {
 
       if (servicesRes.success) {
         setServices(servicesRes.data);
-      }
-
-      if (alertsRes.success) {
-        setAlerts(alertsRes.data);
       }
 
       setError(null);
@@ -77,48 +58,6 @@ const SystemHealthMonitor = () => {
 
   const handleRefresh = () => {
     fetchAllData();
-  };
-
-  const handleAcknowledgeAlert = async (alertId) => {
-    try {
-      await acknowledgeAlert(alertId);
-      fetchAllData();
-      toast.success('Alert acknowledged');
-    } catch (err) {
-      console.error('Error acknowledging alert:', err);
-      toast.error('Failed to acknowledge alert');
-    }
-  };
-
-  const handleRestartService = async (serviceName) => {
-    if (!confirm(`Are you sure you want to restart ${serviceName}?`)) return;
-
-    try {
-      await restartService(serviceName);
-      toast.success(`${serviceName} restart initiated`);
-      setTimeout(fetchAllData, 2000);
-    } catch (err) {
-      console.error('Error restarting service:', err);
-      toast.error('Failed to restart service');
-    }
-  };
-
-  const handleTestConnectivity = async (service) => {
-    setConnectivityTesting(prev => ({ ...prev, [service]: true }));
-    try {
-      const response = await testServiceConnectivity(service);
-      setConnectivityResults(prev => ({ ...prev, [service]: response }));
-      if (response.connected) {
-        toast.success(`${response.service} is reachable (${response.response_time_ms}ms)`);
-      } else {
-        toast.warning(`${response.service} is not reachable`);
-      }
-    } catch (err) {
-      setConnectivityResults(prev => ({ ...prev, [service]: { connected: false, message: err.message } }));
-      toast.error(`Failed to test ${service} connectivity`);
-    } finally {
-      setConnectivityTesting(prev => ({ ...prev, [service]: false }));
-    }
   };
 
   const handleHealthCheck = async () => {
@@ -198,24 +137,6 @@ const SystemHealthMonitor = () => {
         {status}
       </span>
     );
-  };
-
-  const getAlertIcon = (type) => {
-    const iconMap = {
-      'Info': 'Info',
-      'Warning': 'AlertTriangle',
-      'Critical': 'AlertCircle'
-    };
-    return iconMap?.[type] || 'Info';
-  };
-
-  const getAlertColor = (type) => {
-    const colorMap = {
-      'Info': 'text-blue-600',
-      'Warning': 'text-warning',
-      'Critical': 'text-error'
-    };
-    return colorMap?.[type] || 'text-blue-600';
   };
 
   const getTrendIcon = (trend) => {
@@ -356,106 +277,6 @@ const SystemHealthMonitor = () => {
           </div>
         </div>
 
-        {/* Connectivity Tests */}
-        <div className="mb-8">
-          <h4 className="text-md font-medium text-foreground mb-4">Connectivity Tests</h4>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {[
-              { key: 'database', label: 'Database', icon: 'Database', description: 'PostgreSQL database connection' },
-              { key: 'mitel', label: 'Mitel', icon: 'Phone', description: 'Mitel telephony server' },
-              { key: 'superset', label: 'Superset', icon: 'BarChart2', description: 'Apache Superset analytics' },
-            ].map(({ key, label, icon, description }) => {
-              const result = connectivityResults[key];
-              const testing = connectivityTesting[key];
-              return (
-                <div key={key} className="border border-border rounded-lg p-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <Icon name={icon} size={20} className="text-primary" />
-                      <div>
-                        <h5 className="text-sm font-medium text-foreground">{label}</h5>
-                        <p className="text-xs text-muted-foreground">{description}</p>
-                      </div>
-                    </div>
-                    {result && (
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${result.connected ? 'bg-success/10 text-success' : 'bg-error/10 text-error'}`}>
-                        {result.connected ? 'Connected' : 'Failed'}
-                      </span>
-                    )}
-                  </div>
-                  {result && (
-                    <div className="text-xs text-muted-foreground space-y-1">
-                      {result.response_time_ms != null && (
-                        <p>Response: <span className="font-mono text-foreground">{result.response_time_ms}ms</span></p>
-                      )}
-                      {result.host && <p>Host: <span className="font-mono text-foreground">{result.host}</span></p>}
-                      {result.port && <p>Port: <span className="font-mono text-foreground">{result.port}</span></p>}
-                      {result.message && <p className="text-error">{result.message}</p>}
-                    </div>
-                  )}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    iconName={testing ? 'Loader' : 'Zap'}
-                    onClick={() => handleTestConnectivity(key)}
-                    disabled={testing}
-                    className="w-full"
-                  >
-                    {testing ? 'Testing...' : 'Test Connection'}
-                  </Button>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* System Alerts */}
-        <div>
-          <div className="flex items-center justify-between mb-4">
-            <h4 className="text-md font-medium text-foreground">System Alerts</h4>
-            <Button variant="outline" size="sm" iconName="Bell">
-              View All Alerts
-            </Button>
-          </div>
-          
-          <div className="space-y-3">
-            {alerts?.map((alert) => (
-              <div key={alert?.id} className={`border rounded-lg p-4 ${
-                alert?.acknowledged ? 'border-border bg-muted/20' : 'border-warning bg-warning/5'
-              }`}>
-                <div className="flex items-start space-x-3">
-                  <Icon 
-                    name={getAlertIcon(alert?.type)} 
-                    size={20} 
-                    className={getAlertColor(alert?.type)}
-                  />
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between mb-1">
-                      <h5 className="text-sm font-medium text-foreground">{alert?.type} Alert</h5>
-                      <div className="flex items-center space-x-2">
-                        <span className="text-xs text-muted-foreground">
-                          {formatTimestamp(alert?.timestamp)}
-                        </span>
-                        {!alert?.acknowledged && (
-                          <Button variant="ghost" size="sm" iconName="Check" onClick={() => handleAcknowledgeAlert(alert?.id)}>
-                            Acknowledge
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                    <p className="text-sm text-foreground">{alert?.message}</p>
-                    <div className="flex items-center space-x-4 mt-2">
-                      <span className="text-xs text-muted-foreground">Severity: {alert?.severity}</span>
-                      {alert?.acknowledged && (
-                        <span className="text-xs text-success">✓ Acknowledged</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
           </>
         )}
       </div>
