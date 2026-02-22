@@ -192,6 +192,14 @@ export const performHealthCheck = async () => {
   return response.data;
 };
 
+/**
+ * Test connectivity for a specific service (database, mitel, superset)
+ */
+export const testServiceConnectivity = async (service: 'database' | 'mitel' | 'superset') => {
+  const response = await api.post(`/system/connectivity/${service}`);
+  return response.data;
+};
+
 export default {
   getSystemHealth,
   getServiceStatus,
@@ -206,4 +214,5 @@ export default {
   getBackupHistory,
   downloadBackup,
   performHealthCheck,
+  testServiceConnectivity,
 };

@@ -99,8 +99,6 @@ const SystemAdministration = () => {
     { id: 'sla', label: 'SLA Management', icon: 'Clock', description: 'Configure and monitor Service Level Agreements' },
     { id: 'reports', label: 'Report Configuration', icon: 'BarChart', description: 'Configure dashboards and assign role-based access to reports' },
     { id: 'system', label: t('systemAdmin.tabs.system'), icon: 'Settings', description: t('systemAdmin.tabs.systemDesc') },
-    { id: 'audit', label: t('systemAdmin.tabs.audit'), icon: 'FileText', description: t('systemAdmin.tabs.auditDesc') },
-    { id: 'compliance', label: t('systemAdmin.tabs.compliance'), icon: 'Lock', description: t('systemAdmin.tabs.complianceDesc') },
     { id: 'health', label: t('systemAdmin.tabs.health'), icon: 'Activity', description: t('systemAdmin.tabs.healthDesc') }
   ];
 
