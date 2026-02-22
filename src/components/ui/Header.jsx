@@ -149,7 +149,7 @@ const Header = ({ user = null, onMenuToggle }) => {
               className="flex items-center space-x-3 hover:opacity-80 transition-opacity duration-200"
               title="Go to CRM Dashboard"
             >
-              <div className="w-8 h-8 flex items-center justify-center">
+              <div className="w-12 h-12 flex items-center justify-center">
                 <img src={cxLogo} alt="CRM Logo" className="w-full h-full object-contain" />
               </div>
               <div className="hidden sm:block">
