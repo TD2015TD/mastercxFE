@@ -121,6 +121,7 @@ const SystemHealthMonitor = () => {
   ] : [];
 
   const getStatusBadge = (status) => {
+    const normalized = status ? status.charAt(0).toUpperCase() + status.slice(1).toLowerCase() : '';
     const statusConfig = {
       'Normal': 'bg-success/10 text-success',
       'Warning': 'bg-warning/10 text-warning',
@@ -133,8 +134,8 @@ const SystemHealthMonitor = () => {
     };
     
     return (
-      <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusConfig?.[status]}`}>
-        {status}
+      <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusConfig?.[normalized]}`}>
+        {normalized}
       </span>
     );
   };
@@ -268,7 +269,7 @@ const SystemHealthMonitor = () => {
                     <td className="py-3 px-4 text-sm text-foreground font-mono">{service?.uptime}</td>
                     <td className="py-3 px-4 text-sm text-muted-foreground">{service?.port}</td>
                     <td className="py-3 px-4 text-sm text-muted-foreground">
-                      {formatTimestamp(service?.lastRestart)}
+                      {formatTimestamp(service?.last_restart)}
                     </td>
                   </tr>
                 ))}
