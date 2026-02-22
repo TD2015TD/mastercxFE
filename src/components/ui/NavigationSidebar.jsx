@@ -143,7 +143,7 @@ const NavigationSidebar = ({ isCollapsed = false, onToggleCollapse, userRole = '
         <div className="flex items-center justify-between p-6 border-b border-border">
           {!isCollapsed && (
             <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 flex items-center justify-center">
+              <div className="w-12 h-12 flex items-center justify-center">
                 <img src={cxLogo} alt="CRM Logo" className="w-full h-full object-contain" />
               </div>
               <div>
@@ -153,7 +153,7 @@ const NavigationSidebar = ({ isCollapsed = false, onToggleCollapse, userRole = '
             </div>
           )}
           {isCollapsed && (
-            <div className="w-8 h-8 flex items-center justify-center mx-auto">
+            <div className="w-12 h-12 flex items-center justify-center mx-auto">
               <img src={cxLogo} alt="CRM Logo" className="w-full h-full object-contain" />
             </div>
           )}
@@ -215,7 +215,7 @@ const NavigationSidebar = ({ isCollapsed = false, onToggleCollapse, userRole = '
             </div>
           ) : (
             <div className="flex justify-center">
-              <img src={cxLogo} alt="CRM Logo" className="w-6 h-6 object-contain opacity-60" />
+              <img src={cxLogo} alt="CRM Logo" className="w-12 h-12 object-contain opacity-60" />
             </div>
           )}
         </div>
