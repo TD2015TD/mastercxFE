@@ -156,7 +156,7 @@ const KnowledgeBaseAdmin = () => {
       {/* Quick Actions */}
       <div className="bg-card border border-border rounded-lg p-6">
         <h3 className="text-sm font-semibold text-foreground mb-4">Quick Actions</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 gap-4">
           <Button
             variant="outline"
             iconName="RefreshCw"
@@ -165,24 +165,6 @@ const KnowledgeBaseAdmin = () => {
             onClick={fetchStatistics}
           >
             Refresh Statistics
-          </Button>
-          <Button
-            variant="outline"
-            iconName="Download"
-            iconPosition="left"
-            fullWidth
-            onClick={() => window.open('/knowledge-base', '_blank')}
-          >
-            View Public KB
-          </Button>
-          <Button
-            variant="outline"
-            iconName="Upload"
-            iconPosition="left"
-            fullWidth
-            disabled
-          >
-            Bulk Import (Coming Soon)
           </Button>
         </div>
       </div>

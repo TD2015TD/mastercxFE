@@ -20,6 +20,7 @@ const KnowledgeBasePortal = () => {
   const [recentViews, setRecentViews] = useState([]);
   const [searchResults, setSearchResults] = useState([]);
   const [hasSearched, setHasSearched] = useState(false);
+  const [selectedArticle, setSelectedArticle] = useState(null);
 
   // Fetch stats from knowledge-base-articles
   const fetchStats = async () => {
@@ -145,12 +146,10 @@ const KnowledgeBasePortal = () => {
     setHasSearched(true);
     try {
       const response = await api.get('/knowledge-base-articles/search', {
-        params: {
-          query: searchTerm
-        }
+        params: { q: searchTerm }
       });
-      // Backend returns a raw array of Elasticsearch hits
-      const hits = Array.isArray(response.data) ? response.data : [];
+      // Backend returns { success, data: [...ES hits with _id/_source] }
+      const hits = response.data.success ? (response.data.data || []) : [];
       const transformed = hits.map(hit => ({
         id: hit._id,
         title: hit._source?.title,
@@ -166,6 +165,25 @@ const KnowledgeBasePortal = () => {
       toast.error('Failed to search articles');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Open article detail modal
+  const handleViewArticle = async (article) => {
+    // For browse/recent: article already has full fields from REST API
+    // For search results: fetch full article by ES _id (which equals DB id)
+    if (article.content !== undefined) {
+      setSelectedArticle(article);
+      return;
+    }
+    try {
+      const response = await api.get(`/knowledge-base-articles/${article.id}`);
+      if (response.data.success) {
+        setSelectedArticle(response.data.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch article:', error);
+      toast.error('Failed to load article');
     }
   };
 
@@ -291,7 +309,7 @@ const KnowledgeBasePortal = () => {
               ) : (
                 <div className="space-y-3">
                   {articles.map((article) => (
-                    <div key={article.id} className="flex items-center justify-between p-4 bg-muted/30 rounded-lg hover:bg-muted/50 cursor-pointer">
+                    <div key={article.id} onClick={() => handleViewArticle(article)} className="flex items-center justify-between p-4 bg-muted/30 rounded-lg hover:bg-muted/50 cursor-pointer">
                       <div className="flex items-center space-x-3 flex-1">
                         <Icon name="FileText" size={20} className="text-primary" />
                         <div className="flex-1">
@@ -348,7 +366,7 @@ const KnowledgeBasePortal = () => {
                     <h4 className="text-left font-semibold mb-4">Search Results ({searchResults.length})</h4>
                     <div className="space-y-3">
                       {searchResults.map((article) => (
-                        <div key={article.id} className="flex items-center justify-between p-4 bg-muted/30 rounded-lg hover:bg-muted/50 cursor-pointer text-left">
+                        <div key={article.id} onClick={() => handleViewArticle(article)} className="flex items-center justify-between p-4 bg-muted/30 rounded-lg hover:bg-muted/50 cursor-pointer text-left">
                           <div className="flex items-center space-x-3 flex-1">
                             <Icon name="FileText" size={20} className="text-primary" />
                             <div className="flex-1">
@@ -385,7 +403,7 @@ const KnowledgeBasePortal = () => {
             ) : (
               <div className="space-y-3">
                 {recentViews.map((article) => (
-                  <div key={article.id} className="flex items-center justify-between p-4 bg-muted/30 rounded-lg hover:bg-muted/50 cursor-pointer">
+                  <div key={article.id} onClick={() => handleViewArticle(article)} className="flex items-center justify-between p-4 bg-muted/30 rounded-lg hover:bg-muted/50 cursor-pointer">
                     <div className="flex items-center space-x-3 flex-1">
                       <Icon name="FileText" size={20} className="text-primary" />
                       <div className="flex-1">
@@ -472,9 +490,6 @@ const KnowledgeBasePortal = () => {
               <div className="flex items-center space-x-3">
                 <Button variant="outline" iconName="RefreshCw" iconPosition="left" onClick={handleRefresh}>
                   Refresh
-                </Button>
-                <Button variant="outline" iconName="Plus" iconPosition="left">
-                  Request Article
                 </Button>
               </div>
             </div>
@@ -569,13 +584,32 @@ const KnowledgeBasePortal = () => {
               >
                 Recent Updates
               </Button>
-              <Button variant="outline" className="justify-start" iconName="Plus" iconPosition="left">
-                Request Article
-              </Button>
             </div>
           </div>
         </main>
       </div>
+
+      {/* Article Detail Modal */}
+      {selectedArticle && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setSelectedArticle(null)}>
+          <div className="bg-card rounded-lg border border-border w-full max-w-3xl mx-4 max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="flex items-start justify-between p-6 border-b border-border">
+              <div>
+                <h2 className="text-xl font-semibold text-foreground">{selectedArticle.title}</h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {getCategoryName(selectedArticle.category_code)} • By {selectedArticle.author}
+                </p>
+              </div>
+              <button onClick={() => setSelectedArticle(null)} className="text-muted-foreground hover:text-foreground ml-4">
+                <Icon name="X" size={20} />
+              </button>
+            </div>
+            <div className="p-6 overflow-y-auto flex-1 prose prose-sm max-w-none text-foreground whitespace-pre-wrap">
+              {selectedArticle.content || 'No content available.'}
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };
