@@ -125,13 +125,6 @@ export const supersetService = {
   async getSupersetDomain(): Promise<string> {
     return supersetConfigService.getUrl();
   },
-
-  /**
-   * Get Superset domain URL synchronously (uses env fallback if config not yet loaded)
-   */
-  getSupersetDomainSync(): string {
-    return import.meta.env.VITE_SUPERSET_URL || 'http://localhost:8088';
-  },
 };
 
 export default supersetService;

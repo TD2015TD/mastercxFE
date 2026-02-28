@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Icon from '../AppIcon';
 import Button from './Button';
 import { useMitelSignalR } from '../../hooks/useMitelSignalR';
+import mitelConfigService from '../../services/mitelConfigService';
 
 // ConversationNotification - Real-time Employee Inbox Notification Component
 // Shows active conversations from Mitel SignalR in a dropdown format
@@ -18,10 +19,27 @@ const ConversationNotification = ({ className = '', onConversationEvent }) => {
   const [filter, setFilter] = useState('all'); // all, voice, email, chat, callback
   const [agentStatus, setAgentStatus] = useState('Offline');
   const [isLoading, setIsLoading] = useState(false);
+  const [signalRUrl, setSignalRUrl] = useState('');
+
+  useEffect(() => {
+    // Only fetch SignalR URL for agent roles (non-agents don't need it)
+    const agentRoles = ['agent', 'supervisor', 'super-admin', 'admin'];
+    try {
+      const session = JSON.parse(localStorage.getItem('user-session') || '{}');
+      const role = session?.role?.slug || '';
+      if (!agentRoles.includes(role.toLowerCase())) return;
+    } catch {
+      return;
+    }
+
+    mitelConfigService.getSignalRUrl()
+      .then(url => setSignalRUrl(url))
+      .catch(err => console.error('Failed to fetch SignalR URL:', err));
+  }, []);
 
   // ---- Mitel SignalR Hook ----
   const { state: connState, on, connection } = useMitelSignalR({
-    baseUrl: `${import.meta.env.VITE_MITEL_BASE_URL || 'https://micc.telediant.com.my'}/MiccSdk/signalr`,
+    baseUrl: signalRUrl,
     hubs: ['queueHub', 'employeeHub', 'agentHub'],
     token: localStorage.getItem('mitel_token')
   });

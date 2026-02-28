@@ -4,6 +4,7 @@ import Icon from './AppIcon';
 import Button from './ui/Button';
 import { useMitelSignalR } from '../hooks/useMitelSignalR';
 import customerInteractionService from '../services/customerInteractionService';
+import mitelConfigService from '../services/mitelConfigService';
 
 const EmployeeInbox = ({ className = '', onConversationEvent }) => {
   const navigate = useNavigate();
@@ -11,6 +12,13 @@ const EmployeeInbox = ({ className = '', onConversationEvent }) => {
   const [filter, setFilter] = useState('all'); // all, voice, email, chat, callback
   const [isExpanded, setIsExpanded] = useState(true);
   const [agentStatus, setAgentStatus] = useState('Offline');
+  const [signalRUrl, setSignalRUrl] = useState('');
+
+  useEffect(() => {
+    mitelConfigService.getSignalRUrl()
+      .then(url => setSignalRUrl(url))
+      .catch(err => console.error('Failed to fetch SignalR URL:', err));
+  }, []);
 
   // ---- Helper: Log Customer Interaction Asynchronously ----
   const logInteractionAsync = useCallback(async (interactionData) => {
@@ -37,7 +45,7 @@ const EmployeeInbox = ({ className = '', onConversationEvent }) => {
 
   // ---- Mitel SignalR Hook ----
   const { state: connState, on } = useMitelSignalR({
-    baseUrl: `${import.meta.env.VITE_MITEL_BASE_URL || 'https://micc.telediant.com.my'}/MiccSdk/signalr`,
+    baseUrl: signalRUrl,
     hubs: ['queueHub', 'employeeHub', 'agentHub'],
     token: localStorage.getItem('mitel_token')
   });

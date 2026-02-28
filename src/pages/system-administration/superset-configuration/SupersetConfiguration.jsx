@@ -20,7 +20,7 @@ const SupersetConfiguration = () => {
   const loadConfigurations = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/superset-config');
+      const response = await api.get('/superset-config/admin');
 
       if (response.data.status === 'success') {
         const fieldOrder = ['SUPERSET_URL', 'SUPERSET_USERNAME', 'SUPERSET_PASSWORD'];

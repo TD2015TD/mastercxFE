@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import Icon from './AppIcon';
 import Button from './ui/Button';
 import { authService } from '../services/authService';
+import mitelConfigService from '../services/mitelConfigService';
 
 const VoiceContactsModal = ({ isOpen, onClose, onSelect, currentExtension }) => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -10,6 +11,13 @@ const VoiceContactsModal = ({ isOpen, onClose, onSelect, currentExtension }) => 
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [mitelBaseUrl, setMitelBaseUrl] = useState('');
+
+  useEffect(() => {
+    mitelConfigService.getBaseUrl()
+      .then(url => setMitelBaseUrl(url))
+      .catch(err => console.error('Failed to fetch Mitel base URL:', err));
+  }, []);
 
   const tabs = ['All', 'Employees', 'Queues', 'External', 'Active Directory', 'Extension'];
 
@@ -38,7 +46,6 @@ const VoiceContactsModal = ({ isOpen, onClose, onSelect, currentExtension }) => 
 
     try {
       const mitelToken = authService.getMitelToken();
-      const mitelBaseUrl = import.meta.env.VITE_MITEL_BASE_URL || 'https://micc.telediant.com.my';
 
       const params = new URLSearchParams();
       const filter = getFilterForTab(activeTab);
