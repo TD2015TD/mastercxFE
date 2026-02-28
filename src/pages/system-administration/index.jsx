@@ -21,6 +21,7 @@ import UserRoleAssignment from './rbac/components/UserRoleAssignment';
 import { getUsers } from '../../services/userService';
 import { getSystemHealth } from '../../services/systemService';
 import { languageService } from '../../services/languageService';
+import { exportToCsv } from '../../utils/exportCsv';
 
 const SystemAdministration = () => {
   const navigate = useNavigate();
@@ -136,6 +137,14 @@ const SystemAdministration = () => {
       color: "text-success"
     }
   ];
+
+  const handleExportReport = () => {
+    const rows = [
+      ['Metric', 'Value', 'Change'],
+      ...statsData.map(stat => [stat.title, stat.value, stat.change])
+    ];
+    exportToCsv(rows, 'system-administration-report');
+  };
 
   const renderTabContent = () => {
     switch (activeTab) {
@@ -405,7 +414,7 @@ const SystemAdministration = () => {
               </p>
             </div>
             <div className="flex items-center space-x-3">
-              <Button variant="outline" iconName="Download" iconPosition="left">
+              <Button variant="outline" iconName="Download" iconPosition="left" onClick={handleExportReport}>
                 {t('systemAdmin.actions.exportReport')}
               </Button>
               <Button variant="default" iconName="Settings" iconPosition="left">

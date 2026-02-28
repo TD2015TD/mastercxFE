@@ -6,6 +6,7 @@ import Button from '../../../../components/ui/Button';
 import { ticketService } from '../../../../services/ticketService';
 import { authService } from '../../../../services/authService';
 import { getPriorities, getTicketStatuses } from '../../../../services/lookupService';
+import { exportToCsv } from '../../../../utils/exportCsv';
 
 const ActiveTicketsQueue = ({ fullView = false }) => {
   const navigate = useNavigate();
@@ -203,6 +204,21 @@ const ActiveTicketsQueue = ({ fullView = false }) => {
     return 'text-foreground';
   };
 
+  const handleExport = () => {
+    const rows = [
+      ['Ticket ID', 'Subject', 'Status', 'Priority', 'SLA Remaining (min)', 'Created At'],
+      ...tickets.map(t => [
+        t.ticket_number || t.id,
+        t.subject || t.title,
+        t.status,
+        t.priority,
+        t.sla_remaining_minutes ?? '',
+        t.created_at
+      ])
+    ];
+    exportToCsv(rows, 'active-tickets-queue');
+  };
+
   return (
     <div className="bg-card border border-border rounded-lg">
       {/* Header */}
@@ -213,7 +229,7 @@ const ActiveTicketsQueue = ({ fullView = false }) => {
             <Button variant="outline" size="sm" iconName="Filter">
               Filter
             </Button>
-            <Button variant="outline" size="sm" iconName="Download">
+            <Button variant="outline" size="sm" iconName="Download" onClick={handleExport}>
               Export
             </Button>
           </div>

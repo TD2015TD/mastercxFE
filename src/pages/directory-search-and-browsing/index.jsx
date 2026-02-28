@@ -3,6 +3,7 @@ import { Helmet } from 'react-helmet-async';
 import Icon from '../../components/AppIcon';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
+import { exportToCsv } from '../../utils/exportCsv';
 
 const DirectorySearchAndBrowsing = () => {
   const [activeTab, setActiveTab] = useState('search');
@@ -55,6 +56,14 @@ const DirectorySearchAndBrowsing = () => {
     { name: 'General Inquiry', count: 312, icon: 'HelpCircle' },
     { name: 'Compliance', count: 156, icon: 'Shield' }
   ];
+
+  const handleExport = () => {
+    const rows = [
+      ['Department', 'Contact Count'],
+      ...mockDepartments.map(d => [d.name, d.count])
+    ];
+    exportToCsv(rows, 'directory-export');
+  };
 
   const renderTabContent = () => {
     switch (activeTab) {
@@ -162,7 +171,7 @@ const DirectorySearchAndBrowsing = () => {
                 <Button variant="outline" iconName="RefreshCw" iconPosition="left">
                   Refresh
                 </Button>
-                <Button variant="outline" iconName="Download" iconPosition="left">
+                <Button variant="outline" iconName="Download" iconPosition="left" onClick={handleExport}>
                   Export
                 </Button>
               </div>

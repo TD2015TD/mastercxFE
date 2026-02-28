@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
+import { exportToCsv } from '../../../utils/exportCsv';
 
 const AgentPerformanceTable = () => {
   const [sortField, setSortField] = useState('ticketsResolved');
@@ -86,6 +87,17 @@ const AgentPerformanceTable = () => {
   { value: 'this_month', label: 'This Month' },
   { value: 'last_month', label: 'Last Month' }];
 
+
+  const handleExport = () => {
+    const rows = [
+      ['Name', 'Department', 'Tickets Assigned', 'Tickets Resolved', 'Avg Resolution Time', 'SLA Compliance (%)', 'Customer Satisfaction', 'Escalation Rate (%)', 'Status'],
+      ...agentData.map(a => [
+        a.name, a.department, a.ticketsAssigned, a.ticketsResolved,
+        a.avgResolutionTime, a.slaCompliance, a.customerSatisfaction, a.escalationRate, a.status
+      ])
+    ];
+    exportToCsv(rows, `agent-performance-${selectedPeriod}`);
+  };
 
   const handleSort = (field) => {
     if (sortField === field) {
@@ -177,8 +189,8 @@ const AgentPerformanceTable = () => {
               variant="outline"
               iconName="Download"
               iconPosition="left"
-              size="sm">
-
+              size="sm"
+              onClick={handleExport}>
               Export
             </Button>
           </div>

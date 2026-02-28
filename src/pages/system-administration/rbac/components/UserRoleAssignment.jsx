@@ -4,6 +4,7 @@ import Button from '../../../../components/ui/Button';
 import Input from '../../../../components/ui/Input';
 import Modal from '../../../../components/ui/Modal';
 import Select from '../../../../components/ui/Select';
+import { exportToCsv } from '../../../../utils/exportCsv';
 
 const UserRoleAssignment = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -101,6 +102,14 @@ const UserRoleAssignment = () => {
     // TODO: API call to update user role
     console.log('Updating role for user:', selectedUser);
     setIsModalOpen(false);
+  };
+
+  const handleExportUserList = () => {
+    const rows = [
+      ['Name', 'Email', 'Role', 'Department', 'Status', 'Last Login', 'Created At'],
+      ...users.map(u => [u.name, u.email, u.role, u.department, u.status, u.lastLogin, u.createdAt])
+    ];
+    exportToCsv(rows, 'user-role-list');
   };
 
   const handleBulkRoleChange = () => {
@@ -296,7 +305,7 @@ const UserRoleAssignment = () => {
           <Button variant="outline" iconName="UserPlus" iconPosition="left" onClick={handleBulkRoleChange}>
             Bulk Role Assignment
           </Button>
-          <Button variant="outline" iconName="Download" iconPosition="left">
+          <Button variant="outline" iconName="Download" iconPosition="left" onClick={handleExportUserList}>
             Export User List
           </Button>
           <Button variant="outline" iconName="Upload" iconPosition="left">

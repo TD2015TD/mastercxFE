@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
+import { exportToCsv } from '../../../utils/exportCsv';
 
 const ComplianceDashboard = () => {
   const [selectedCertification, setSelectedCertification] = useState(null);
@@ -174,6 +175,31 @@ const ComplianceDashboard = () => {
     });
   };
 
+  const handleExportReport = () => {
+    const rows = [
+      ['Standard', 'Status', 'Score (%)', 'Compliant', 'Total Requirements', 'Last Assessment', 'Next Review'],
+      ...complianceMetrics.map(m => [
+        m.title, m.status, m.score, m.compliant, m.requirements, m.lastAssessment, m.nextReview
+      ])
+    ];
+    exportToCsv(rows, 'compliance-report');
+  };
+
+  const handleDownloadCert = (cert) => {
+    const rows = [
+      ['Field', 'Value'],
+      ['Name', cert.name],
+      ['Type', cert.type],
+      ['Status', cert.status],
+      ['Certificate Number', cert.certificateNumber],
+      ['Authority', cert.authority],
+      ['Issue Date', cert.issueDate],
+      ['Expiry Date', cert.expiryDate],
+      ['Renewal Due', cert.renewalDue]
+    ];
+    exportToCsv(rows, `certification-${cert.certificateNumber}`);
+  };
+
   const getDaysUntilExpiry = (expiryDate) => {
     const today = new Date();
     const expiry = new Date(expiryDate);
@@ -191,7 +217,7 @@ const ComplianceDashboard = () => {
             <h3 className="text-lg font-semibold text-foreground">Compliance Dashboard</h3>
             <p className="text-sm text-muted-foreground">Government ICT standards and certification monitoring</p>
           </div>
-          <Button variant="default" iconName="Download" iconPosition="left">
+          <Button variant="default" iconName="Download" iconPosition="left" onClick={handleExportReport}>
             Export Report
           </Button>
         </div>
@@ -294,7 +320,7 @@ const ComplianceDashboard = () => {
               </div>
               
               <div className="flex items-center space-x-2">
-                <Button variant="outline" size="sm" iconName="Download">
+                <Button variant="outline" size="sm" iconName="Download" onClick={() => handleDownloadCert(cert)}>
                   Download
                 </Button>
                 <Button variant="outline" size="sm" iconName="RefreshCw">

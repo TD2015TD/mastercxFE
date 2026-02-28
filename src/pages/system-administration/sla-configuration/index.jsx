@@ -6,6 +6,7 @@ import BreadcrumbNavigation from '../../../components/ui/BreadcrumbNavigation';
 import SlaConfigurationTable from './components/SlaConfigurationTable';
 import SlaRulesEngine from './components/SlaRulesEngine';
 import { useTranslation } from '../../../hooks/useTranslation';
+import { exportToCsv } from '../../../utils/exportCsv';
 
 const SlaManagement = () => {
   const { t } = useTranslation();
@@ -31,6 +32,17 @@ const SlaManagement = () => {
       description: t('sla.engine.desc') || 'Configure SLA calculation rules and escalation thresholds' 
     }
   ];
+
+  const handleExportReport = () => {
+    const rows = [
+      ['Metric', 'Value'],
+      ['Total SLA Rules', stats.totalConfigurations],
+      ['Active SLAs', stats.activeSlas],
+      ['Compliance Rate (%)', stats.compliance],
+      ['SLA Breaches', stats.breaches]
+    ];
+    exportToCsv(rows, 'sla-report');
+  };
 
   const renderTabContent = () => {
     switch (activeTab) {
@@ -66,7 +78,7 @@ const SlaManagement = () => {
               </p>
             </div>
             <div className="flex items-center space-x-3">
-              <Button variant="outline" iconName="Download" iconPosition="left">
+              <Button variant="outline" iconName="Download" iconPosition="left" onClick={handleExportReport}>
                 {t('common.export') || 'Export'} {t('common.report') || 'Report'}
               </Button>
             </div>
@@ -181,7 +193,7 @@ const SlaManagement = () => {
             <Button variant="outline" iconName="Copy" iconPosition="left" fullWidth>
               {t('sla.quickActions.duplicate') || 'Duplicate Configuration'}
             </Button>
-            <Button variant="outline" iconName="Download" iconPosition="left" fullWidth>
+            <Button variant="outline" iconName="Download" iconPosition="left" fullWidth onClick={handleExportReport}>
               {t('sla.quickActions.exportReport') || 'Export SLA Report'}
             </Button>
           </div>

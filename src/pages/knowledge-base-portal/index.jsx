@@ -18,6 +18,8 @@ const KnowledgeBasePortal = () => {
   const [categories, setCategories] = useState([]);
   const [articles, setArticles] = useState([]);
   const [recentViews, setRecentViews] = useState([]);
+  const [searchResults, setSearchResults] = useState([]);
+  const [hasSearched, setHasSearched] = useState(false);
 
   // Fetch stats from knowledge-base-articles
   const fetchStats = async () => {
@@ -140,26 +142,25 @@ const KnowledgeBasePortal = () => {
     }
 
     setLoading(true);
+    setHasSearched(true);
     try {
       const response = await api.get('/knowledge-base-articles/search', {
         params: {
-          q: searchTerm
+          query: searchTerm
         }
       });
-      if (response.data.success) {
-        const searchResults = response.data.data || [];
-        // Transform OpenSearch results
-        const transformedArticles = searchResults.map(hit => ({
-          id: hit._id,
-          title: hit._source.title,
-          content: hit._source.content,
-          category_code: hit._source.category_code,
-          author: hit._source.author,
-          published_at: hit._source.published_at,
-          updated_at: hit._source.published_at
-        }));
-        setArticles(transformedArticles);
-      }
+      // Backend returns a raw array of Elasticsearch hits
+      const hits = Array.isArray(response.data) ? response.data : [];
+      const transformed = hits.map(hit => ({
+        id: hit._id,
+        title: hit._source?.title,
+        content: hit._source?.content,
+        category_code: hit._source?.category_code,
+        author: hit._source?.author,
+        published_at: hit._source?.published_at,
+        updated_at: hit._source?.published_at
+      }));
+      setSearchResults(transformed);
     } catch (error) {
       console.error('Failed to search articles:', error);
       toast.error('Failed to search articles');
@@ -336,27 +337,35 @@ const KnowledgeBasePortal = () => {
               </div>
             </div>
 
-            {articles.length > 0 && (
+            {hasSearched && (
               <div className="mt-8">
-                <h4 className="text-left font-semibold mb-4">Search Results ({articles.length})</h4>
-                <div className="space-y-3">
-                  {articles.map((article) => (
-                    <div key={article.id} className="flex items-center justify-between p-4 bg-muted/30 rounded-lg hover:bg-muted/50 cursor-pointer text-left">
-                      <div className="flex items-center space-x-3 flex-1">
-                        <Icon name="FileText" size={20} className="text-primary" />
-                        <div className="flex-1">
-                          <p className="font-medium text-foreground">{article.title}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {getCategoryName(article.category_code)} • By {article.author}
-                          </p>
+                {loading ? (
+                  <div className="text-muted-foreground py-4">Searching...</div>
+                ) : searchResults.length === 0 ? (
+                  <div className="text-muted-foreground py-4">No results found for "{searchTerm}"</div>
+                ) : (
+                  <>
+                    <h4 className="text-left font-semibold mb-4">Search Results ({searchResults.length})</h4>
+                    <div className="space-y-3">
+                      {searchResults.map((article) => (
+                        <div key={article.id} className="flex items-center justify-between p-4 bg-muted/30 rounded-lg hover:bg-muted/50 cursor-pointer text-left">
+                          <div className="flex items-center space-x-3 flex-1">
+                            <Icon name="FileText" size={20} className="text-primary" />
+                            <div className="flex-1">
+                              <p className="font-medium text-foreground">{article.title}</p>
+                              <p className="text-sm text-muted-foreground">
+                                {getCategoryName(article.category_code)} • By {article.author}
+                              </p>
+                            </div>
+                          </div>
+                          <span className="text-sm text-muted-foreground">
+                            {getRelativeTime(article.updated_at || article.published_at)}
+                          </span>
                         </div>
-                      </div>
-                      <span className="text-sm text-muted-foreground">
-                        {getRelativeTime(article.updated_at || article.published_at)}
-                      </span>
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  </>
+                )}
               </div>
             )}
           </div>

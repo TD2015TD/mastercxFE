@@ -5,6 +5,7 @@ import Icon from '../../components/AppIcon';
 import Button from '../../components/ui/Button';
 import TicketList from './components/TicketList';
 import { ticketService } from '../../services/ticketService';
+import { exportToCsv } from '../../utils/exportCsv';
 
 const TicketManagement = () => {
   const navigate = useNavigate();
@@ -96,6 +97,21 @@ const TicketManagement = () => {
 
   const stats = calculateStats();
   const tabs = calculateTabCounts();
+
+  const handleExportList = () => {
+    const rows = [
+      ['Ticket ID', 'Title', 'Status', 'Priority', 'Assigned To', 'Created At'],
+      ...tickets.map(t => [
+        t.ticket_number || t.id,
+        t.title || t.subject,
+        t.status,
+        t.priority,
+        t.assigned_to || 'Unassigned',
+        t.created_at
+      ])
+    ];
+    exportToCsv(rows, 'ticket-list');
+  };
 
   const renderTabContent = () => {
     switch (activeTab) {
@@ -256,11 +272,12 @@ const TicketManagement = () => {
               >
                 Advanced Search
               </Button>
-              <Button 
-                variant="outline" 
-                className="justify-start" 
-                iconName="Download" 
+              <Button
+                variant="outline"
+                className="justify-start"
+                iconName="Download"
                 iconPosition="left"
+                onClick={handleExportList}
               >
                 Export List
               </Button>

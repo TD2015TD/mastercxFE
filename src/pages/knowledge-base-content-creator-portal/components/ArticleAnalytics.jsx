@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import Icon from '../../../components/AppIcon';
+import { exportToCsv } from '../../../utils/exportCsv';
 
 const ArticleAnalytics = ({ userRole }) => {
   const [selectedPeriod, setSelectedPeriod] = useState('30d');
@@ -166,6 +167,16 @@ const ArticleAnalytics = ({ userRole }) => {
     { value: 'engagement', label: 'Engagement', icon: 'Activity' }
   ];
 
+  const handleExportReport = () => {
+    const rows = [
+      ['Article ID', 'Title', 'Category', 'Views', 'Helpful %', 'Avg Rating', 'Author', 'Published Date'],
+      ...analyticsData.topArticles.map(a => [
+        a.id, a.title, a.category, a.views, `${a.helpfulPercentage}%`, a.avgRating, a.author, a.publishedDate
+      ])
+    ];
+    exportToCsv(rows, `article-analytics-${selectedPeriod}`);
+  };
+
   const getRatingStars = (rating) => {
     const stars = [];
     const fullStars = Math.floor(rating);
@@ -212,7 +223,7 @@ const ArticleAnalytics = ({ userRole }) => {
             ))}
           </select>
           
-          <button className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors duration-200 flex items-center space-x-2">
+          <button onClick={handleExportReport} className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors duration-200 flex items-center space-x-2">
             <Icon name="Download" size={16} />
             <span>Export Report</span>
           </button>
