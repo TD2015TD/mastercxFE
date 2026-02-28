@@ -24,7 +24,8 @@ const EmployeeInboxPage = () => {
   const { state: connState, on } = useMitelSignalR({
     baseUrl: signalRUrl,
     hubs: ['queueHub', 'employeeHub', 'agentHub'],
-    token: localStorage.getItem('mitel_token')
+    token: localStorage.getItem('mitel_token'),
+    enabled: !!signalRUrl,
   });
 
   // ---- Listen to Employee Conversation Events ----

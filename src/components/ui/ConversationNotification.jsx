@@ -41,7 +41,8 @@ const ConversationNotification = ({ className = '', onConversationEvent }) => {
   const { state: connState, on, connection } = useMitelSignalR({
     baseUrl: signalRUrl,
     hubs: ['queueHub', 'employeeHub', 'agentHub'],
-    token: localStorage.getItem('mitel_token')
+    token: localStorage.getItem('mitel_token'),
+    enabled: !!signalRUrl,
   });
 
   // ---- Dropdown/Popover close logic ----
