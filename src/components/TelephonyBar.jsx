@@ -56,8 +56,6 @@ const TelephonyBar = ({ className = '', onCallEvent }) => {
         })
         .catch(err => {
           console.error('Failed to fetch SignalR URL:', err);
-          // Fallback to default if API fails
-          setSignalRUrl('https://micc.telediant.com.my/miccsdk/signalr');
         });
     }
   }, [isAgent, telephonyEnabled]);
@@ -280,7 +278,7 @@ const TelephonyBar = ({ className = '', onCallEvent }) => {
   // ---- Mitel SignalR Hook (only for agents with telephony enabled) ----
   // Wait for SignalR URL to be fetched before connecting, or use fallback
   const { state: connState, on, invoke, error } = useMitelSignalR({
-    baseUrl: signalRUrl || 'https://micc.telediant.com.my/miccsdk/signalr',
+    baseUrl: signalRUrl,
     hubs: ['queueHub', 'employeeHub', 'agentHub'],
     token: localStorage.getItem('mitel_token'),
     // Only connect if: agent role + telephony enabled + URL is ready

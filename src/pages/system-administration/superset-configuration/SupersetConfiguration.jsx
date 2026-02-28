@@ -110,6 +110,10 @@ const SupersetConfiguration = () => {
   };
 
   const handleSave = async (key) => {
+    if (!editValue.trim()) {
+      toast.error('Value cannot be empty');
+      return;
+    }
     try {
       const response = await api.put(`/superset-config/${key}`, { value: editValue });
 
@@ -122,7 +126,10 @@ const SupersetConfiguration = () => {
       }
     } catch (error) {
       console.error('Error updating configuration:', error);
-      toast.error(error.response?.data?.message || 'Failed to update configuration');
+      const msg = error.response?.data?.errors
+        ? Object.values(error.response.data.errors).flat().join(' ')
+        : error.response?.data?.message || 'Failed to update configuration';
+      toast.error(msg);
     }
   };
 
