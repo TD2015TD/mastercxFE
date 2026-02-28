@@ -492,28 +492,6 @@ const SystemAdministration = () => {
           {renderTabContent()}
         </div>
 
-        {/* Quick Actions */}
-        <div className="mt-8 bg-card rounded-lg border border-border p-6">
-          <h3 className="text-lg font-semibold text-foreground mb-4">{t('systemAdmin.quickActions.title')}</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Button 
-              variant="outline" 
-              iconName="UserPlus" 
-              iconPosition="left" 
-              fullWidth
-              onClick={() => navigate('/system-administration/users/create')}
-            >
-              {t('systemAdmin.quickActions.addUser')}
-            </Button>
-            <Button variant="outline" iconName="Database" iconPosition="left" fullWidth>
-              {t('systemAdmin.quickActions.createBackup')}
-            </Button>
-            <Button variant="outline" iconName="RefreshCw" iconPosition="left" fullWidth>
-              {t('systemAdmin.quickActions.healthCheck')}
-            </Button>
-          </div>
-        </div>
-
         {/* Footer */}
         <div className="mt-12 text-center text-sm text-muted-foreground">
           <p>JKDM CRM Portal System Administration</p>
