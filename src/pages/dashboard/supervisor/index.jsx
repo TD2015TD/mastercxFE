@@ -61,7 +61,7 @@ const SupervisorDashboard = () => {
         console.log('User department:', userData.department);
         
         // Use department if available, otherwise use a default
-        const dept = userData.department || 'General'; // Default department
+        const dept = userData.agent?.department || userData.department || 'General';
         setUserDepartment(dept);
       } catch (err) {
         console.error('Error parsing user session:', err);
@@ -291,9 +291,6 @@ const SupervisorDashboard = () => {
                 >
                   {loading ? t('supervisor.dashboard.refreshing') : t('supervisor.dashboard.refresh')}
                 </Button>
-                <Button variant="outline" iconName="Filter" iconPosition="left">
-                  {t('supervisor.dashboard.filter')}
-                </Button>
               </div>
             </div>
           </div>
@@ -391,27 +388,6 @@ const SupervisorDashboard = () => {
             {renderTabContent()}
           </div>
 
-          {/* Quick Actions Panel */}
-          <div className="bg-card rounded-lg border border-border p-6">
-            <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center">
-              <Icon name="Zap" size={20} className="mr-2 text-primary" />
-              {t('supervisor.dashboard.quickActions.title')}
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <Button variant="outline" className="justify-start" iconName="UserPlus" iconPosition="left">
-                {t('supervisor.dashboard.quickActions.assignTicket')}
-              </Button>
-              <Button variant="outline" className="justify-start" iconName="BarChart3" iconPosition="left">
-                {t('supervisor.dashboard.quickActions.viewReports')}
-              </Button>
-              <Button variant="outline" className="justify-start" iconName="Megaphone" iconPosition="left">
-                {t('supervisor.dashboard.quickActions.broadcast')}
-              </Button>
-              <Button variant="outline" className="justify-start" iconName="AlertTriangle" iconPosition="left">
-                {t('supervisor.dashboard.quickActions.approveEscalation')}
-              </Button>
-            </div>
-          </div>
             </>
           )}
         </main>

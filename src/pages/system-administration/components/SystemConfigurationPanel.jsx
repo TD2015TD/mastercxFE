@@ -10,6 +10,7 @@ import EmailConfiguration from '../email-configuration/EmailConfiguration';
 import AuthenticationConfiguration from '../authentication-configuration/AuthenticationConfiguration';
 import LdapConfiguration from '../ldap-configuration/LdapConfiguration';
 import MitelConfiguration from '../mitel-configuration/MitelConfiguration';
+import SupersetConfiguration from '../superset-configuration/SupersetConfiguration';
 
 const SystemConfigurationPanel = () => {
   const [activeTab, setActiveTab] = useState('categories');
@@ -31,6 +32,7 @@ const SystemConfigurationPanel = () => {
     { id: 'lookups', label: 'Lookup Configuration', icon: 'List' },
     { id: 'email', label: 'Email Configuration', icon: 'Mail' },
     { id: 'mitel', label: 'Mitel Configuration', icon: 'Phone' },
+    { id: 'superset', label: 'Superset Configuration', icon: 'BarChart3' },
     { id: 'authentication', label: 'Authentication', icon: 'Shield' },
     { id: 'ldap', label: 'LDAP Configuration', icon: 'Server' }
   ];
@@ -409,6 +411,7 @@ const SystemConfigurationPanel = () => {
         {activeTab === 'lookups' && renderLookups()}
         {activeTab === 'email' && <EmailConfiguration />}
         {activeTab === 'mitel' && <MitelConfiguration />}
+        {activeTab === 'superset' && <SupersetConfiguration />}
         {activeTab === 'authentication' && <AuthenticationConfiguration />}
         {activeTab === 'ldap' && <LdapConfiguration />}
       </div>

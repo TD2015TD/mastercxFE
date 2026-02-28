@@ -1,12 +1,11 @@
 import api from './api';
+import supersetConfigService from './supersetConfigService';
 import type {
   SupersetDashboard,
   DashboardListResponse,
   GuestTokenResponse,
   RLSRule
 } from '../types/superset';
-
-const SUPERSET_URL = import.meta.env.VITE_SUPERSET_URL || 'http://localhost:8088';
 
 /**
  * Superset Dashboard Service
@@ -121,10 +120,17 @@ export const supersetService = {
   },
 
   /**
-   * Get Superset domain URL
+   * Get Superset domain URL (fetched from backend configuration)
    */
-  getSupersetDomain(): string {
-    return SUPERSET_URL;
+  async getSupersetDomain(): Promise<string> {
+    return supersetConfigService.getUrl();
+  },
+
+  /**
+   * Get Superset domain URL synchronously (uses env fallback if config not yet loaded)
+   */
+  getSupersetDomainSync(): string {
+    return import.meta.env.VITE_SUPERSET_URL || 'http://localhost:8088';
   },
 };
 

@@ -29,7 +29,7 @@ export async function embedSupersetDashboard(
 
     await embedDashboard({
       id: dashboardId,
-      supersetDomain: supersetService.getSupersetDomain(),
+      supersetDomain: await supersetService.getSupersetDomain(),
       mountPoint: container,
       fetchGuestToken: async () => {
         // Fetch guest token from backend with optional RLS rules
