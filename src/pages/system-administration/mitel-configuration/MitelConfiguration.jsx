@@ -733,13 +733,6 @@ const MitelConfiguration = () => {
                       <Button
                         size="sm"
                         variant="ghost"
-                        iconName="FileText"
-                        onClick={() => viewConnectionLogs(connection)}
-                        title="View logs"
-                      />
-                      <Button
-                        size="sm"
-                        variant="ghost"
                         iconName="Edit"
                         onClick={() => openConnectionModal(connection)}
                         title="Edit connection"
