@@ -24,26 +24,51 @@ const SupersetConfiguration = () => {
 
       if (response.data.status === 'success') {
         const fieldOrder = ['SUPERSET_URL', 'SUPERSET_USERNAME', 'SUPERSET_PASSWORD'];
+        const data = response.data.data;
+        let configArray = [];
 
-        const configArray = fieldOrder
-          .filter(key => Object.prototype.hasOwnProperty.call(response.data.data, key))
-          .map(key => ({
-            key,
-            value: response.data.data[key],
-            description: getDescription(key),
-            isSecret: key === 'SUPERSET_PASSWORD',
-          }));
+        if (Array.isArray(data)) {
+          // Admin route format: [{key, value, description, is_secret}, ...]
+          configArray = fieldOrder
+            .map(key => data.find(c => c.key === key))
+            .filter(Boolean)
+            .map(c => ({
+              key: c.key,
+              value: c.is_secret ? null : c.value,
+              description: getDescription(c.key),
+              isSecret: c.is_secret,
+            }));
 
-        Object.entries(response.data.data).forEach(([key, value]) => {
-          if (!fieldOrder.includes(key)) {
+          data.filter(c => !fieldOrder.includes(c.key)).forEach(c => {
             configArray.push({
-              key,
-              value,
-              description: getDescription(key),
-              isSecret: false,
+              key: c.key,
+              value: c.is_secret ? null : c.value,
+              description: c.description || getDescription(c.key),
+              isSecret: c.is_secret,
             });
-          }
-        });
+          });
+        } else {
+          // Public route format: {SUPERSET_URL: '...', SUPERSET_USERNAME: '...', ...}
+          configArray = fieldOrder
+            .filter(key => Object.prototype.hasOwnProperty.call(data, key))
+            .map(key => ({
+              key,
+              value: data[key],
+              description: getDescription(key),
+              isSecret: key === 'SUPERSET_PASSWORD',
+            }));
+
+          Object.entries(data).forEach(([key, value]) => {
+            if (!fieldOrder.includes(key)) {
+              configArray.push({
+                key,
+                value: typeof value === 'string' ? value : null,
+                description: getDescription(key),
+                isSecret: false,
+              });
+            }
+          });
+        }
 
         setConfigs(configArray);
       }
