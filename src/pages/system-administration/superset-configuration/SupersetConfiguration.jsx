@@ -28,13 +28,14 @@ const SupersetConfiguration = () => {
         let configArray = [];
 
         if (Array.isArray(data)) {
-          // Admin route format: [{key, value, description, is_secret}, ...]
+          // Admin route format: [{key, value, has_value, description, is_secret}, ...]
           configArray = fieldOrder
             .map(key => data.find(c => c.key === key))
             .filter(Boolean)
             .map(c => ({
               key: c.key,
               value: c.is_secret ? null : c.value,
+              hasValue: c.is_secret ? c.has_value : null,
               description: getDescription(c.key),
               isSecret: c.is_secret,
             }));
@@ -43,6 +44,7 @@ const SupersetConfiguration = () => {
             configArray.push({
               key: c.key,
               value: c.is_secret ? null : c.value,
+              hasValue: c.is_secret ? c.has_value : null,
               description: c.description || getDescription(c.key),
               isSecret: c.is_secret,
             });
@@ -98,7 +100,8 @@ const SupersetConfiguration = () => {
 
   const handleEdit = (config) => {
     setEditingKey(config.key);
-    setEditValue(config.value || '');
+    // Secret fields: always start empty so user types a new value
+    setEditValue(config.isSecret ? '' : (config.value || ''));
   };
 
   const handleCancel = () => {
@@ -192,7 +195,9 @@ const SupersetConfiguration = () => {
               ) : (
                 <div className="flex items-center space-x-3">
                   <code className="text-sm bg-muted px-3 py-1.5 rounded border border-border font-mono">
-                    {config.isSecret ? (config.value ? '••••••••••••••••' : 'Not set') : config.value || 'Not set'}
+                    {config.isSecret
+                      ? (config.hasValue ? '••••••••••••••••' : 'Not set')
+                      : (config.value || 'Not set')}
                   </code>
                 </div>
               )}

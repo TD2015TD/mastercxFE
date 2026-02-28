@@ -41,26 +41,13 @@ class MitelConfigService {
    * Fetch configuration from API
    */
   private async fetchConfig(): Promise<MitelConfig> {
-    try {
-      const response = await api.get('/mitel-config');
-      
-      if (response.data.status === 'success') {
-        return response.data.data as MitelConfig;
-      }
-      
-      throw new Error('Failed to fetch Mitel configuration');
-    } catch (error) {
-      console.error('Error fetching Mitel config:', error);
-      
-      // Fallback to environment variables if API fails
-      return {
-        MITEL_BASE_URL: import.meta.env.VITE_MITEL_BASE_URL || 'https://mcx.telediant.com.my',
-        MITEL_API_PATH: '/MiccSdk',
-        MITEL_SIGNALR_URL: import.meta.env.VITE_MITEL_SIGNALR_URL || 'https://mcx.telediant.com.my/MiccSdk/signalr',
-        MITEL_CLIENT_ID: 'CXCRM',
-        MITEL_CLIENT_SECRET: '98538800-3af7-4b8f-bfca-f9065b88e5b4',
-      };
+    const response = await api.get('/mitel-config');
+
+    if (response.data.status === 'success') {
+      return response.data.data as MitelConfig;
     }
+
+    throw new Error('Failed to fetch Mitel configuration');
   }
 
   /**

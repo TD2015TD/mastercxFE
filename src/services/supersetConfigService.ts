@@ -30,24 +30,13 @@ class SupersetConfigService {
   }
 
   private async fetchConfig(): Promise<SupersetConfig> {
-    try {
-      const response = await api.get('/superset-config');
+    const response = await api.get('/superset-config');
 
-      if (response.data.status === 'success') {
-        return response.data.data as SupersetConfig;
-      }
-
-      throw new Error('Failed to fetch Superset configuration');
-    } catch (error) {
-      console.error('Error fetching Superset config:', error);
-
-      // Fallback to environment variables
-      return {
-        SUPERSET_URL: import.meta.env.VITE_SUPERSET_URL || 'http://localhost:8088',
-        SUPERSET_USERNAME: null,
-        SUPERSET_PASSWORD: null,
-      };
+    if (response.data.status === 'success') {
+      return response.data.data as SupersetConfig;
     }
+
+    throw new Error('Failed to fetch Superset configuration');
   }
 
   clearCache(): void {
@@ -57,7 +46,7 @@ class SupersetConfigService {
 
   async getUrl(): Promise<string> {
     const config = await this.getConfig();
-    return config.SUPERSET_URL || import.meta.env.VITE_SUPERSET_URL || 'http://localhost:8088';
+    return config.SUPERSET_URL;
   }
 }
 
