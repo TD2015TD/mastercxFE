@@ -725,14 +725,6 @@ const MitelConfiguration = () => {
                       <Button
                         size="sm"
                         variant="ghost"
-                        iconName="Zap"
-                        onClick={() => testDbConnection(connection.id)}
-                        disabled={testingDbConnection === connection.id}
-                        title="Test connection"
-                      />
-                      <Button
-                        size="sm"
-                        variant="ghost"
                         iconName="Edit"
                         onClick={() => openConnectionModal(connection)}
                         title="Edit connection"
