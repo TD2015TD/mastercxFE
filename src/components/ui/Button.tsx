@@ -105,6 +105,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>((
 
     const renderFallbackButton = () => (
         <button
+            type="button"
             className={cn(
                 buttonVariants({ variant, size, className }),
                 fullWidth && "w-full"
@@ -160,6 +161,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>((
 
     return (
         <Comp
+            type="button"
             className={cn(
                 buttonVariants({ variant, size, className }),
                 fullWidth && "w-full"
