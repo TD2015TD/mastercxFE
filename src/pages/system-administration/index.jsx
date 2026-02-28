@@ -495,7 +495,7 @@ const SystemAdministration = () => {
         {/* Quick Actions */}
         <div className="mt-8 bg-card rounded-lg border border-border p-6">
           <h3 className="text-lg font-semibold text-foreground mb-4">{t('systemAdmin.quickActions.title')}</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Button 
               variant="outline" 
               iconName="UserPlus" 
@@ -507,9 +507,6 @@ const SystemAdministration = () => {
             </Button>
             <Button variant="outline" iconName="Database" iconPosition="left" fullWidth>
               {t('systemAdmin.quickActions.createBackup')}
-            </Button>
-            <Button variant="outline" iconName="Download" iconPosition="left" fullWidth>
-              {t('systemAdmin.quickActions.exportAuditLog')}
             </Button>
             <Button variant="outline" iconName="RefreshCw" iconPosition="left" fullWidth>
               {t('systemAdmin.quickActions.healthCheck')}
