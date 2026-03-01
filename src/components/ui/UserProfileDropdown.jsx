@@ -6,6 +6,7 @@ import { toast } from 'react-toastify';
 import BusyReasonModal from '../BusyReasonModal';
 import { authService } from '../../services/authService';
 import { useWebRTCSoftphone } from '../../hooks/useWebRTCSoftphone';
+import mitelConfigService from '../../services/mitelConfigService';
 
 const UserProfileDropdown = ({ user = null }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -17,7 +18,22 @@ const UserProfileDropdown = ({ user = null }) => {
   const [pendingStatusType, setPendingStatusType] = useState(null);
   const [isLoadingInitialStatus, setIsLoadingInitialStatus] = useState(true);
   const [isAgent, setIsAgent] = useState(false);
+  const [telephonyEnabled, setTelephonyEnabled] = useState(false);
   const dropdownRef = useRef(null);
+
+  // Fetch telephony enabled state from admin configuration
+  useEffect(() => {
+    mitelConfigService.getTelephonyEnabled()
+      .then(enabled => setTelephonyEnabled(enabled))
+      .catch(() => setTelephonyEnabled(false));
+  }, []);
+
+  // Listen for admin changes to telephony enabled state
+  useEffect(() => {
+    const handler = (e) => setTelephonyEnabled(e.detail);
+    window.addEventListener('telephony_enabled_changed', handler);
+    return () => window.removeEventListener('telephony_enabled_changed', handler);
+  }, []);
 
   // WebRTC Softphone hook
   const { initialize: initializeWebRTC, isRegistered: isWebRTCRegistered, disconnect: disconnectWebRTC } = useWebRTCSoftphone();
@@ -387,7 +403,8 @@ const UserProfileDropdown = ({ user = null }) => {
               </div>
             </div>
 
-            {/* Availability Status Section */}
+            {/* Availability Status Section - hidden when telephony is disabled */}
+            {telephonyEnabled && (
             <div className="px-4 py-2">
               <div className="text-xs font-medium text-muted-foreground mb-2 flex items-center justify-between">
                 <span>Status</span>
@@ -427,6 +444,7 @@ const UserProfileDropdown = ({ user = null }) => {
                 </div>
               )}
             </div>
+            )}
 
             {/* Divider */}
             <div className="border-t border-border my-2"></div>

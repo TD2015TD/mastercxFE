@@ -31,19 +31,25 @@ const TelephonyBar = ({ className = '', onCallEvent }) => {
       const isAgentRole = agentRoles.includes(role.toLowerCase());
       setIsAgent(isAgentRole);
 
-      // Load telephony enabled state from localStorage
-      const savedTelephonyState = localStorage.getItem('telephony_enabled');
-      const initialTelephonyState = savedTelephonyState !== null
-        ? savedTelephonyState === 'true'
-        : isAgentRole; // Default to enabled if user is an agent
-      setTelephonyEnabled(initialTelephonyState);
-
-      console.log('📞 TelephonyBar - User role:', role, 'Is Agent:', isAgentRole, 'Telephony Enabled:', initialTelephonyState);
+      console.log('📞 TelephonyBar - User role:', role, 'Is Agent:', isAgentRole);
     } catch (error) {
       console.error('Error checking user role:', error);
       setIsAgent(false);
-      setTelephonyEnabled(false);
     }
+  }, []);
+
+  // Fetch telephony enabled state from admin configuration
+  useEffect(() => {
+    mitelConfigService.getTelephonyEnabled()
+      .then(enabled => setTelephonyEnabled(enabled))
+      .catch(() => setTelephonyEnabled(false));
+  }, []);
+
+  // Listen for admin changes to telephony enabled state
+  useEffect(() => {
+    const handler = (e) => setTelephonyEnabled(e.detail);
+    window.addEventListener('telephony_enabled_changed', handler);
+    return () => window.removeEventListener('telephony_enabled_changed', handler);
   }, []);
 
   // Fetch SignalR URL from API when component mounts or when telephony is enabled
@@ -946,27 +952,6 @@ const TelephonyBar = ({ className = '', onCallEvent }) => {
     ticketIdRef.current = null;
   }, [caller, timer, wrapUpCode, wrapUpNotes, currentConversationId, onCallEvent, logInteractionAsync]);
 
-  const toggleTelephony = useCallback(() => {
-    const newState = !telephonyEnabled;
-    setTelephonyEnabled(newState);
-    localStorage.setItem('telephony_enabled', newState.toString());
-
-    if (newState) {
-      toast.success('Telephony enabled - Connecting to Mitel...');
-      console.log('📞 Telephony enabled by user');
-    } else {
-      toast.info('Telephony disabled - Disconnecting from Mitel...');
-      console.log('📞 Telephony disabled by user');
-
-      // Reset telephony state when disabling
-      setStatus('IDLE');
-      setCaller(null);
-      setTimer(0);
-      setMuted(false);
-      setCurrentConversationId(null);
-    }
-  }, [telephonyEnabled]);
-
   const handleContactSelect = useCallback((destination, contact) => {
     setTransferTarget(destination);
     setSelectedContact(contact);
@@ -1030,11 +1015,6 @@ const TelephonyBar = ({ className = '', onCallEvent }) => {
 
   // ---- Status display ----
   const getStatusDisplay = () => {
-    // If telephony is disabled, show disabled status
-    if (!telephonyEnabled) {
-      return { text:'Telephony Disabled', className:'bg-gray-100 text-gray-600 border-gray-300' };
-    }
-
     switch(status){
       case 'IDLE':
         if (isReadyForCalls) {
@@ -1059,8 +1039,8 @@ const TelephonyBar = ({ className = '', onCallEvent }) => {
   }[connState] || '⚪';
 
   // ---- Render ----
-  // Don't render telephony bar for non-agents
-  if (!isAgent) {
+  // Don't render telephony bar for non-agents, when telephony is disabled, or when Not Ready (idle + not ready for calls)
+  if (!isAgent || !telephonyEnabled || (status === 'IDLE' && !isReadyForCalls)) {
     return null;
   }
 
@@ -1087,22 +1067,11 @@ const TelephonyBar = ({ className = '', onCallEvent }) => {
         </div>
 
         <div className="flex items-center space-x-2">
-          {/* Telephony Toggle Button */}
-          <Button
-            variant={telephonyEnabled ? "default" : "ghost"}
-            size="sm"
-            iconName={telephonyEnabled ? "Power" : "PowerOff"}
-            onClick={toggleTelephony}
-            disabled={status !== 'IDLE'}
-            title={telephonyEnabled ? 'Disable Telephony' : 'Enable Telephony'}
-            className={telephonyEnabled ? 'bg-green-600 hover:bg-green-700 text-white' : 'text-gray-500'}
-          />
-          <div className="w-px h-6 bg-border" />
-          <Button variant="ghost" size="sm" iconName={status==='RINGING'?'PhoneCall':'Phone'} onClick={status==='RINGING'?acceptCall:demoIncoming} disabled={!telephonyEnabled || ['IN_CALL','TRANSFERRING','ENDED'].includes(status)} title={status==='RINGING'?'Accept Call (A)':'Demo Incoming Call (Ctrl+Shift+P)'} />
-          <Button variant="ghost" size="sm" iconName="PhoneOff" onClick={hangUp} disabled={!telephonyEnabled || !['IN_CALL','RINGING','TRANSFERRING'].includes(status)} title="Hang Up (H)" />
-          <Button variant="ghost" size="sm" iconName="PhoneForwarded" onClick={startTransfer} disabled={!telephonyEnabled || status!=='IN_CALL'} title="Transfer Call (T)" />
+          <Button variant="ghost" size="sm" iconName={status==='RINGING'?'PhoneCall':'Phone'} onClick={status==='RINGING'?acceptCall:demoIncoming} disabled={['IN_CALL','TRANSFERRING','ENDED'].includes(status)} title={status==='RINGING'?'Accept Call (A)':'Demo Incoming Call (Ctrl+Shift+P)'} />
+          <Button variant="ghost" size="sm" iconName="PhoneOff" onClick={hangUp} disabled={!['IN_CALL','RINGING','TRANSFERRING'].includes(status)} title="Hang Up (H)" />
+          <Button variant="ghost" size="sm" iconName="PhoneForwarded" onClick={startTransfer} disabled={status!=='IN_CALL'} title="Transfer Call (T)" />
           <Button variant="ghost" size="sm" iconName="FileText" onClick={()=>setShowWrapUp(true)} disabled={status!=='ENDED'} title="Wrap-Up" />
-          <Button variant="ghost" size="sm" iconName={muted?'MicOff':'Mic'} onClick={toggleMute} disabled={!telephonyEnabled || status!=='IN_CALL'} title="Mute/Unmute (M)" />
+          <Button variant="ghost" size="sm" iconName={muted?'MicOff':'Mic'} onClick={toggleMute} disabled={status!=='IN_CALL'} title="Mute/Unmute (M)" />
         </div>
 
         {(status==='RINGING'||status==='IN_CALL') && caller && (

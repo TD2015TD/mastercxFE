@@ -6,6 +6,7 @@ export interface MitelConfig {
   MITEL_SIGNALR_URL: string;
   MITEL_CLIENT_ID: string;
   MITEL_CLIENT_SECRET: string;
+  TELEPHONY_ENABLED?: string;
 }
 
 class MitelConfigService {
@@ -72,6 +73,16 @@ class MitelConfigService {
   async getSignalRUrl(): Promise<string> {
     const config = await this.getConfig();
     return config.MITEL_SIGNALR_URL;
+  }
+
+  /**
+   * Get telephony enabled state from admin configuration (convenience method)
+   * Defaults to false if not set
+   */
+  async getTelephonyEnabled(): Promise<boolean> {
+    const config = await this.getConfig();
+    if (config.TELEPHONY_ENABLED === undefined) return false;
+    return config.TELEPHONY_ENABLED === 'true';
   }
 }
 

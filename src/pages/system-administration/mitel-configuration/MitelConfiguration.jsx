@@ -10,6 +10,8 @@ const MitelConfiguration = () => {
   const [loading, setLoading] = useState(false);
   const [editingKey, setEditingKey] = useState(null);
   const [editValue, setEditValue] = useState('');
+  const [telephonyEnabled, setTelephonyEnabled] = useState(false);
+  const [togglingTelephony, setTogglingTelephony] = useState(false);
   const [testingConnection, setTestingConnection] = useState(false);
   
   // Database Connection Management State
@@ -47,7 +49,14 @@ const MitelConfiguration = () => {
       const response = await api.get('/mitel-config');
 
       if (response.data.status === 'success') {
-        // Define the desired order of configuration fields
+        const data = response.data.data;
+
+        // Extract telephony toggle separately
+        if (data.hasOwnProperty('TELEPHONY_ENABLED')) {
+          setTelephonyEnabled(data['TELEPHONY_ENABLED'] === 'true');
+        }
+
+        // Define the desired order of configuration fields (exclude TELEPHONY_ENABLED)
         const fieldOrder = [
           'MITEL_BASE_URL',
           'MITEL_API_PATH',
@@ -58,16 +67,16 @@ const MitelConfiguration = () => {
 
         // Convert object to array and sort by the defined order
         const configArray = fieldOrder
-          .filter(key => response.data.data.hasOwnProperty(key))
+          .filter(key => data.hasOwnProperty(key))
           .map(key => ({
             key,
-            value: response.data.data[key],
+            value: data[key],
             description: getDescription(key)
           }));
 
-        // Add any additional fields that weren't in the predefined order
-        Object.entries(response.data.data).forEach(([key, value]) => {
-          if (!fieldOrder.includes(key)) {
+        // Add any additional fields not in the predefined order (except TELEPHONY_ENABLED)
+        Object.entries(data).forEach(([key, value]) => {
+          if (!fieldOrder.includes(key) && key !== 'TELEPHONY_ENABLED') {
             configArray.push({
               key,
               value,
@@ -194,6 +203,28 @@ const MitelConfiguration = () => {
       }
     } finally {
       setTestingConnection(false);
+    }
+  };
+
+  const handleTelephonyToggle = async () => {
+    try {
+      setTogglingTelephony(true);
+      const newValue = !telephonyEnabled;
+      const response = await api.put('/mitel-config/TELEPHONY_ENABLED', {
+        value: newValue.toString()
+      });
+
+      if (response.data.status === 'success') {
+        setTelephonyEnabled(newValue);
+        mitelConfigService.clearCache();
+        window.dispatchEvent(new CustomEvent('telephony_enabled_changed', { detail: newValue }));
+        toast.success(`Telephony ${newValue ? 'enabled' : 'disabled'} for all agents`);
+      }
+    } catch (error) {
+      console.error('Error toggling telephony:', error);
+      toast.error('Failed to update telephony setting');
+    } finally {
+      setTogglingTelephony(false);
     }
   };
 
@@ -556,6 +587,47 @@ const MitelConfiguration = () => {
             </div>
           ) : (
             <>
+              {/* Telephony Enable/Disable Toggle */}
+              <div className="bg-card border border-border rounded-lg p-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-4">
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${telephonyEnabled ? 'bg-green-100 dark:bg-green-900/30' : 'bg-gray-100 dark:bg-gray-800'}`}>
+                      <Icon name="Phone" size={20} className={telephonyEnabled ? 'text-green-600' : 'text-gray-400'} />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-semibold text-foreground">Telephony Features</h3>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Enable or disable the telephony bar and call features for all agents. When disabled, agents cannot make or receive calls through the CRM.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleTelephonyToggle}
+                    disabled={togglingTelephony}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${
+                      telephonyEnabled ? 'bg-green-600' : 'bg-gray-300 dark:bg-gray-600'
+                    } ${togglingTelephony ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                    title={telephonyEnabled ? 'Disable telephony for all agents' : 'Enable telephony for all agents'}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform ${
+                        telephonyEnabled ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </div>
+                <div className="mt-3 flex items-center">
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                    telephonyEnabled
+                      ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
+                      : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
+                  }`}>
+                    <Icon name={telephonyEnabled ? 'CheckCircle2' : 'XCircle'} size={12} className="mr-1" />
+                    {telephonyEnabled ? 'Enabled' : 'Disabled'}
+                  </span>
+                </div>
+              </div>
+
               {/* Configuration Cards */}
               <div className="grid grid-cols-1 gap-4">
                 {configs.map(config => renderConfigRow(config))}
