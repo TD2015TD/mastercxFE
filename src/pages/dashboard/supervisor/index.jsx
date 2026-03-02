@@ -199,13 +199,14 @@ const SupervisorDashboard = () => {
 
   function calculateAvgResponseTime() {
     if (!dashboardData?.agents || dashboardData.agents.length === 0) return '0m';
-    const avgMinutes = dashboardData.agents.reduce((sum, agent) => sum + (agent.avg_resolution_time || 0), 0) / dashboardData.agents.length;
+    const withTimes = dashboardData.agents.filter(a => a.avg_resolution_time > 0);
+    if (withTimes.length === 0) return '0m';
+    const avgMinutes = withTimes.reduce((sum, agent) => sum + (agent.avg_resolution_time || 0), 0) / withTimes.length;
     return avgMinutes < 60 ? `${Math.round(avgMinutes)}m` : `${Math.round(avgMinutes / 60)}h`;
   }
 
   function getWeekComparison() {
-    // Placeholder - you can calculate this from historical data if available
-    return `+2% ${t('supervisor.dashboard.stats.fromLastWeek')}`;
+    return '';
   }
 
   const tabs = [

@@ -21,6 +21,8 @@ const TicketList = ({ filter = 'all' }) => {
   const [departmentFilter, setDepartmentFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [channelFilter, setChannelFilter] = useState('all');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const [statusOptions, setStatusOptions] = useState([]);
   const [priorityOptions, setPriorityOptions] = useState([]);
   const [departmentOptions, setDepartmentOptions] = useState([]);
@@ -44,7 +46,7 @@ const TicketList = ({ filter = 'all' }) => {
 
   useEffect(() => {
     loadTickets();
-  }, [filter, statusFilter, priorityFilter, departmentFilter, categoryFilter, channelFilter, debouncedSearch]);
+  }, [filter, statusFilter, priorityFilter, departmentFilter, categoryFilter, channelFilter, debouncedSearch, dateFrom, dateTo]);
 
   const loadLookups = async () => {
     try {
@@ -81,6 +83,8 @@ const TicketList = ({ filter = 'all' }) => {
       if (categoryFilter !== 'all') params.category = categoryFilter;
       if (channelFilter !== 'all') params.channel = channelFilter;
       if (debouncedSearch) params.search = debouncedSearch;
+      if (dateFrom) params.date_from = dateFrom;
+      if (dateTo) params.date_to = dateTo;
 
       const response = await ticketService.getTickets(params);
 
@@ -142,7 +146,7 @@ const TicketList = ({ filter = 'all' }) => {
     return getColorClasses(statusOption?.color);
   };
 
-  const hasActiveFilters = statusFilter !== 'all' || priorityFilter !== 'all' || departmentFilter !== 'all' || categoryFilter !== 'all' || channelFilter !== 'all' || searchTerm;
+  const hasActiveFilters = statusFilter !== 'all' || priorityFilter !== 'all' || departmentFilter !== 'all' || categoryFilter !== 'all' || channelFilter !== 'all' || searchTerm || dateFrom || dateTo;
 
   const clearFilters = () => {
     setSearchTerm('');
@@ -151,6 +155,8 @@ const TicketList = ({ filter = 'all' }) => {
     setDepartmentFilter('all');
     setCategoryFilter('all');
     setChannelFilter('all');
+    setDateFrom('');
+    setDateTo('');
   };
 
   if (isLoading) {
@@ -165,7 +171,7 @@ const TicketList = ({ filter = 'all' }) => {
     <div className="space-y-4">
       {/* Filters */}
       <div className="space-y-3">
-        {/* Search */}
+        {/* Search + Clear */}
         <div className="flex gap-2 items-center">
           <div className="flex-1">
             <Input
@@ -189,8 +195,8 @@ const TicketList = ({ filter = 'all' }) => {
           )}
         </div>
 
-        {/* Filter selects */}
-        <div className="flex flex-wrap gap-3">
+        {/* Filter selects + Date range */}
+        <div className="flex flex-wrap gap-3 items-center">
           <Select
             value={statusFilter}
             onChange={(value) => setStatusFilter(value)}
@@ -236,6 +242,28 @@ const TicketList = ({ filter = 'all' }) => {
             ]}
             className="w-40"
           />
+
+          {/* Date range */}
+          <div className="flex items-center gap-2">
+            <Icon name="Calendar" size={16} className="text-muted-foreground shrink-0" />
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              max={dateTo || undefined}
+              className="h-10 rounded-md border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              title="From date"
+            />
+            <span className="text-muted-foreground text-sm">–</span>
+            <input
+              type="date"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+              min={dateFrom || undefined}
+              className="h-10 rounded-md border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              title="To date"
+            />
+          </div>
         </div>
       </div>
 

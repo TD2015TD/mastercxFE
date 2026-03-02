@@ -89,6 +89,8 @@ export const ticketService = {
     category?: string;
     channel?: string;
     search?: string;
+    date_from?: string;
+    date_to?: string;
     sort_by?: string;
     sort_order?: 'asc' | 'desc';
     per_page?: number;

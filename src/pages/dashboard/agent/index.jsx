@@ -3,6 +3,7 @@ import { toast } from 'react-toastify';
 import { agentService } from '../../../services/agentService';
 import { authService } from '../../../services/authService';
 import { ticketService } from '../../../services/ticketService';
+import { getAgentDashboard } from '../../../services/dashboardService';
 import mitelService from '../../../services/mitelService';
 import { Helmet } from 'react-helmet';
 import { useNavigate } from 'react-router-dom';
@@ -66,9 +67,11 @@ const AgentDashboard = () => {
     ticketsResolved: 0,
     newToday: 0,
     avgResponseTime: '0 min',
+    avgResponseMinutes: 0,
     slaCompliance: 0
   });
   const [isLoadingStats, setIsLoadingStats] = useState(false);
+  const [agentDashboard, setAgentDashboard] = useState(null);
 
   // Fetch agent statistics
   useEffect(() => {
@@ -85,6 +88,7 @@ const AgentDashboard = () => {
             ticketsResolved: response.data.resolvedToday,
             newToday: response.data.newToday,
             avgResponseTime: response.data.avgResponseTime,
+            avgResponseMinutes: response.data.avgResponseMinutes ?? 0,
             slaCompliance: response.data.slaCompliance
           });
         }
@@ -101,6 +105,16 @@ const AgentDashboard = () => {
     const interval = setInterval(fetchAgentStats, 5 * 60 * 1000);
 
     return () => clearInterval(interval);
+  }, [currentUser?.agent?.id]);
+
+  // Fetch richer agent dashboard data (daily target, CSAT, etc.)
+  useEffect(() => {
+    if (!currentUser?.agent?.id) return;
+    getAgentDashboard(currentUser.agent.id)
+      .then(response => {
+        if (response.success) setAgentDashboard(response.data);
+      })
+      .catch(err => console.error('Failed to fetch agent dashboard data:', err));
   }, [currentUser?.agent?.id]);
 
   const tabs = [
@@ -207,7 +221,13 @@ const AgentDashboard = () => {
       case 'tickets':
         return <ActiveTicketsQueue fullView />;
       case 'performance':
-        return <PerformanceMetrics />;
+        return <PerformanceMetrics metrics={{
+          ticketsResolvedToday: agentDashboard?.today?.resolved ?? stats.ticketsResolved,
+          dailyTarget: agentDashboard?.today?.target || 20,
+          avgResponseTime: agentDashboard?.week?.avg_resolution_time ?? stats.avgResponseMinutes,
+          slaComplianceRate: agentDashboard?.month?.sla_compliance ?? stats.slaCompliance,
+          customerSatisfaction: agentDashboard?.week?.csat ?? 0,
+        }} />;
       case 'knowledge':
         return <KnowledgeBaseWidget />;
       case 'schedule':

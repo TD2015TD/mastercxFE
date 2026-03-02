@@ -58,8 +58,8 @@ const DepartmentMetrics = ({ data }) => {
       id: 2,
       title: t('supervisor.dashboard.metrics.slaCompliance'),
       value: `${data.sla.compliance_rate}%`,
-      change: "+2.1%", // Could be calculated from historical data
-      changeType: "increase",
+      change: null,
+      changeType: null,
       icon: "Clock",
       color: "text-success",
       bgColor: "bg-success/10"
@@ -78,7 +78,7 @@ const DepartmentMetrics = ({ data }) => {
       id: 4,
       title: t('supervisor.dashboard.metrics.slaBreaches'),
       value: data.sla.sla_breaches_today,
-      change: "+3", // Could be calculated from historical data
+      change: null,
       changeType: data.sla.sla_breaches_today > 0 ? "increase" : "decrease",
       icon: "AlertTriangle",
       color: "text-warning",
@@ -94,15 +94,17 @@ const DepartmentMetrics = ({ data }) => {
             <div className={`w-12 h-12 ${stat?.bgColor} rounded-lg flex items-center justify-center`}>
               <Icon name={stat?.icon} size={24} className={stat?.color} />
             </div>
-            <div className={`flex items-center space-x-1 text-sm ${
-              stat?.changeType === 'increase' ? 'text-success' : 'text-error'
-            }`}>
-              <Icon 
-                name={stat?.changeType === 'increase' ? 'TrendingUp' : 'TrendingDown'} 
-                size={16} 
-              />
-              <span>{stat?.change}</span>
-            </div>
+            {stat?.change !== null && stat?.changeType && (
+              <div className={`flex items-center space-x-1 text-sm ${
+                stat?.changeType === 'increase' ? 'text-success' : 'text-error'
+              }`}>
+                <Icon
+                  name={stat?.changeType === 'increase' ? 'TrendingUp' : 'TrendingDown'}
+                  size={16}
+                />
+                <span>{stat?.change}</span>
+              </div>
+            )}
           </div>
           
           <div>
