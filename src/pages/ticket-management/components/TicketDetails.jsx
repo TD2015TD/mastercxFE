@@ -12,7 +12,6 @@ const TicketDetails = ({ ticket, onUpdate }) => {
   const [isSaving, setIsSaving] = useState(false);
   const [departments, setDepartments] = useState([]);
   const [priorities, setPriorities] = useState([]);
-  const [categories, setCategories] = useState([]);
   const [customerContacts, setCustomerContacts] = useState([]);
   
   const [editData, setEditData] = useState({
@@ -200,7 +199,14 @@ const TicketDetails = ({ ticket, onUpdate }) => {
         {/* Ticket Classification */}
         <div className="space-y-4">
           <h4 className="font-medium text-foreground mb-3">Classification</h4>
-          
+
+          {ticket?.case_id && (
+            <div>
+              <label className="text-sm font-medium text-muted-foreground">Case ID</label>
+              <p className="text-sm font-mono text-foreground mt-1">{ticket.case_id}</p>
+            </div>
+          )}
+
           <div className="space-y-3">
             {isEditing ? (
               <>

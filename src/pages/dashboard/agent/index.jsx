@@ -1,10 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { toast } from 'react-toastify';
-import { agentService } from '../../../services/agentService';
+import { useState, useEffect } from 'react';
 import { authService } from '../../../services/authService';
 import { ticketService } from '../../../services/ticketService';
 import { getAgentDashboard } from '../../../services/dashboardService';
-import mitelService from '../../../services/mitelService';
 import { Helmet } from 'react-helmet';
 import { useNavigate } from 'react-router-dom';
 import BreadcrumbNavigation from '../../../components/ui/BreadcrumbNavigation';
@@ -15,52 +12,13 @@ import PerformanceMetrics from './components/PerformanceMetrics';
 import KnowledgeBaseWidget from './components/KnowledgeBaseWidget';
 import RecentInteractions from './components/RecentInteractions';
 import DepartmentAnnouncements from './components/DepartmentAnnouncements';
-import MySchedule from './components/MySchedule';
+
 
 const AgentDashboard = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
-  const [userStatus, setUserStatus] = useState('Offline');
-  const [mitelAgentId, setMitelAgentId] = useState(null);
-  const [agentState, setAgentState] = useState(null);
-  const [isLoadingMitelState, setIsLoadingMitelState] = useState(false);
-  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
-  // Get logged-in user data using authService
-  const currentUser = authService.getCurrentUser() || {
-    name: 'Ahmad Rahman',
-    email: 'ahmad.rahman@jkdm.gov.my',
-    role: 'agent',
-    department: 'Customer Service',
-    avatar: null
-  };
-
-  // Fetch Mitel agent state when mitelAgentId changes
-  useEffect(() => {
-    if (currentUser && currentUser.agent && currentUser.agent.employee_id) {
-      setIsLoadingMitelState(true);
-      mitelService.getMitelEmployeeState(currentUser.agent.employee_id)
-        .then((state) => {
-          setAgentState(state);
-          console.log('Mitel Agent State:', state);
-          if (state && state.data.presence.aggregate.state) {
-            // Update userStatus based on the fetched Mitel state
-            setUserStatus(state.data.presence.aggregate.state);
-          }
-        })
-        .catch((error) => {
-          console.error('Error fetching Mitel state:', error);
-          setUserStatus('offline');
-        })
-        .finally(() => {
-          setIsLoadingMitelState(false);
-        });
-    } else {
-      console.log('⚠️ User is not an agent or missing employee_id, skipping Mitel state fetch');
-      setIsLoadingMitelState(false);
-      setUserStatus('offline');
-    }
-  }, [currentUser.id]);
+  const currentUser = authService.getCurrentUser();
 
   const [stats, setStats] = useState({
     myTickets: 0,
@@ -101,9 +59,7 @@ const AgentDashboard = () => {
 
     fetchAgentStats();
 
-    // Refresh stats every 5 minutes
     const interval = setInterval(fetchAgentStats, 5 * 60 * 1000);
-
     return () => clearInterval(interval);
   }, [currentUser?.agent?.id]);
 
@@ -118,89 +74,31 @@ const AgentDashboard = () => {
   }, [currentUser?.agent?.id]);
 
   const tabs = [
-    { 
-      id: 'overview', 
-      label: 'Overview', 
-      icon: 'LayoutDashboard', 
-      description: 'Your workspace overview with active tickets and key metrics' 
+    {
+      id: 'overview',
+      label: 'Overview',
+      icon: 'LayoutDashboard',
+      description: 'Your workspace overview with active tickets and key metrics'
     },
-    { 
-      id: 'tickets', 
-      label: 'My Tickets', 
-      icon: 'Ticket', 
-      description: 'Manage your assigned tickets and queue' 
+    {
+      id: 'tickets',
+      label: 'My Tickets',
+      icon: 'Ticket',
+      description: 'Manage your assigned tickets and queue'
     },
-    { 
-      id: 'performance', 
-      label: 'Performance', 
-      icon: 'TrendingUp', 
-      description: 'View your performance metrics and KPIs' 
+    {
+      id: 'performance',
+      label: 'Performance',
+      icon: 'TrendingUp',
+      description: 'View your performance metrics and KPIs'
     },
-    { 
-      id: 'knowledge', 
-      label: 'Knowledge Base', 
-      icon: 'BookOpen', 
-      description: 'Quick access to articles and documentation' 
+    {
+      id: 'knowledge',
+      label: 'Knowledge Base',
+      icon: 'BookOpen',
+      description: 'Quick access to articles and documentation'
     },
-    { 
-      id: 'schedule', 
-      label: 'My Schedule', 
-      icon: 'Calendar', 
-      description: 'View your work schedule and availability' 
-    }
   ];
-
-  const handleStatusChange = async (newStatus) => {
-    // Don't proceed if already updating or no current user ID
-    if (isUpdatingStatus || !currentUser.id) {
-      console.warn('Cannot update status: either already updating or no user ID');
-      return;
-    }
-
-    const previousStatus = userStatus;
-    
-    // Optimistically update UI
-    setUserStatus(newStatus);
-    setIsUpdatingStatus(true);
-    
-    try {
-      // Create the payload using the helper function from mitelService
-      const payload = mitelService.createPresenceStatePayload(newStatus);
-
-      // Use currentUser.id (this is the user_id that the backend expects)
-      const result = await mitelService.updateMitelEmployeeState(currentUser.agent.employee_id, payload);
-      
-      if (result && result.status) {
-        console.log('Employee state updated successfully:', newStatus);
-        // Update agent state
-        setAgentState(prevState => ({
-          ...prevState,
-          state: newStatus
-        }));
-      } else {
-        console.error('Failed to update employee state:', result?.message);
-        // Revert the status on error
-        setUserStatus(previousStatus);
-        toast.error(`Failed to update status: ${result?.message || 'Unknown error'}`);
-      }
-    } catch (error) {
-      console.error('Error updating employee state:', error);
-      // Revert the status on error
-      setUserStatus(previousStatus);
-      toast.error(`Error updating status: ${error.message || 'Network error'}`);
-    } finally {
-      setIsUpdatingStatus(false);
-    }
-  };
-
-  // Helper function to get status color
-  const getStatusColor = (status) => {
-    const statusLower = status.toLowerCase();
-    if (statusLower === 'available') return 'text-green-500';
-    if (statusLower === 'busy' || statusLower === 'on-call') return 'text-red-500';
-    if (statusLower === 'away' || statusLower === 'after-call-work') return 'text-yellow-500';
-    return 'text-gray-500';
-  };
 
   const renderTabContent = () => {
     switch (activeTab) {
@@ -213,7 +111,7 @@ const AgentDashboard = () => {
               </div>
               <div className="space-y-6">
                 <RecentInteractions />
-                <DepartmentAnnouncements />
+                <DepartmentAnnouncements announcements={[]} />
               </div>
             </div>
           </div>
@@ -230,8 +128,6 @@ const AgentDashboard = () => {
         }} />;
       case 'knowledge':
         return <KnowledgeBaseWidget />;
-      case 'schedule':
-        return <MySchedule />;
       default:
         return null;
     }
@@ -333,7 +229,7 @@ const AgentDashboard = () => {
               ))}
             </nav>
           </div>
-          
+
           {/* Tab Description */}
           <div className="px-6 py-3 bg-muted/30">
             <p className="text-sm text-muted-foreground">
@@ -354,37 +250,37 @@ const AgentDashboard = () => {
             Quick Actions
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <Button 
-              variant="outline" 
-              iconName="Plus" 
-              iconPosition="left" 
+            <Button
+              variant="outline"
+              iconName="Plus"
+              iconPosition="left"
               fullWidth
               onClick={() => navigate('/ticket-management/new')}
             >
               Create Ticket
             </Button>
-            <Button 
-              variant="outline" 
-              iconName="Search" 
-              iconPosition="left" 
+            <Button
+              variant="outline"
+              iconName="Search"
+              iconPosition="left"
               fullWidth
               onClick={() => navigate('/customer-360-profile')}
             >
               Find Customer
             </Button>
-            <Button 
-              variant="outline" 
-              iconName="BookOpen" 
-              iconPosition="left" 
+            <Button
+              variant="outline"
+              iconName="BookOpen"
+              iconPosition="left"
               fullWidth
               onClick={() => navigate('/knowledge-base-portal')}
             >
               Browse KB
             </Button>
-            <Button 
-              variant="outline" 
-              iconName="BarChart" 
-              iconPosition="left" 
+            <Button
+              variant="outline"
+              iconName="BarChart"
+              iconPosition="left"
               fullWidth
               onClick={() => navigate('/analytics-and-reporting')}
             >
