@@ -5,6 +5,7 @@ import { contactService } from '../../../services/contactService';
 import { getLookupsByType } from '../../../services/lookupService';
 import categoryService from '../../../services/categoryService';
 import { authService } from '../../../services/authService';
+import { exportToCsv } from '../../../utils/exportCsv';
 import { getColorClasses } from '../../../utils/colorUtils';
 import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
@@ -78,26 +79,7 @@ const TicketList = ({ filter = 'all' }) => {
   const loadTickets = async () => {
     try {
       setIsLoading(true);
-      const params = {};
-
-      // Apply tab-level filter
-      if (filter === 'my-tickets' && currentUser?.agent?.id) {
-        params.assigned_to = currentUser.agent.id;
-      } else if (filter === 'unassigned') {
-        params.unassigned = 1;
-      } else if (filter === 'escalated') {
-        params.sla_breached = true;
-      }
-
-      if (statusFilter !== 'all') params.status = statusFilter;
-      if (priorityFilter !== 'all') params.priority = priorityFilter;
-      if (departmentFilter !== 'all') params.department = departmentFilter;
-      if (categoryFilter !== 'all') params.category = categoryFilter;
-      if (channelFilter !== 'all') params.channel = channelFilter;
-      if (debouncedSearch) params.search = debouncedSearch;
-      if (dateFrom) params.date_from = dateFrom;
-      if (dateTo) params.date_to = dateTo;
-
+      const params = buildQueryParams();
       const response = await ticketService.getTickets(params);
 
       if (response.success && response.data) {
@@ -112,6 +94,30 @@ const TicketList = ({ filter = 'all' }) => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const buildQueryParams = (overrides = {}) => {
+    const params = {};
+
+    // Apply tab-level filter
+    if (filter === 'my-tickets' && currentUser?.agent?.id) {
+      params.assigned_to = currentUser.agent.id;
+    } else if (filter === 'unassigned') {
+      params.unassigned = 1;
+    } else if (filter === 'escalated') {
+      params.sla_breached = true;
+    }
+
+    if (statusFilter !== 'all') params.status = statusFilter;
+    if (priorityFilter !== 'all') params.priority = priorityFilter;
+    if (departmentFilter !== 'all') params.department = departmentFilter;
+    if (categoryFilter !== 'all') params.category = categoryFilter;
+    if (channelFilter !== 'all') params.channel = channelFilter;
+    if (debouncedSearch) params.search = debouncedSearch;
+    if (dateFrom) params.date_from = dateFrom;
+    if (dateTo) params.date_to = dateTo;
+
+    return Object.assign(params, overrides);
   };
 
   useEffect(() => {
@@ -171,6 +177,46 @@ const TicketList = ({ filter = 'all' }) => {
     setDateTo('');
   };
 
+  const handleExport = async () => {
+    try {
+      setIsLoading(true);
+
+      // Build params identical to the list filters, but request all matching records
+      const params = buildQueryParams({ per_page: 10000, page: 1 });
+
+      const response = await ticketService.getTickets(params);
+      let exportTickets = [];
+      if (response && response.data) {
+        exportTickets = response.data.data || response.data;
+      }
+
+      const rows = [
+        ['Ticket ID', 'Case ID', 'Subject', 'Customer', 'Email', 'Priority', 'Status', 'Assigned To', 'Department', 'Category', 'Channel', 'Created At', 'Updated At'],
+        ...((Array.isArray(exportTickets) ? exportTickets : []).map(t => [
+          t.ticket_number,
+          t.case_id || '',
+          t.subject,
+          t.customer?.name || '',
+          t.customer?.email || '',
+          t.priority,
+          t.status,
+          t.assigned_agent?.user?.name || t.assigned_agent?.employee_id || 'Unassigned',
+          t.department || '',
+          t.category || '',
+          t.channel || '',
+          t.created_at,
+          t.updated_at,
+        ]))
+      ];
+
+      exportToCsv(rows, 'tickets');
+    } catch (error) {
+      console.error('Error exporting tickets:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -194,6 +240,17 @@ const TicketList = ({ filter = 'all' }) => {
               icon="Search"
             />
           </div>
+          <Button
+            variant="outline"
+            size="sm"
+            iconName="Download"
+            iconPosition="left"
+            onClick={handleExport}
+            disabled={tickets.length === 0}
+            className="shrink-0"
+          >
+            Export
+          </Button>
           {hasActiveFilters && (
             <Button
               variant="ghost"
@@ -313,8 +370,8 @@ const TicketList = ({ filter = 'all' }) => {
                       <span className="font-mono text-sm text-foreground">{ticket.ticket_number}</span>
                     </td>
                     <td className="px-6 py-4">
-                      {ticket.call_id ? (
-                        <span className="font-mono text-sm text-foreground">{ticket.call_id}</span>
+                      {ticket.case_id ? (
+                        <span className="font-mono text-sm text-foreground">{ticket.case_id}</span>
                       ) : (
                         <span className="text-sm text-muted-foreground">-</span>
                       )}

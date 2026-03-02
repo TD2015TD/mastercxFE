@@ -96,21 +96,6 @@ const TicketManagement = () => {
   const stats = calculateStats();
   const tabs = calculateTabCounts();
 
-  const handleExportList = () => {
-    const rows = [
-      ['Ticket ID', 'Title', 'Status', 'Priority', 'Assigned To', 'Created At'],
-      ...tickets.map(t => [
-        t.ticket_number || t.id,
-        t.title || t.subject,
-        t.status,
-        t.priority,
-        t.assigned_to || 'Unassigned',
-        t.created_at
-      ])
-    ];
-    exportToCsv(rows, 'ticket-list');
-  };
-
   const renderTabContent = () => {
     switch (activeTab) {
       case 'all':
@@ -275,7 +260,7 @@ const TicketManagement = () => {
                 className="justify-start"
                 iconName="Download"
                 iconPosition="left"
-                onClick={handleExportList}
+                onClick={() => document.querySelector('[data-export-tickets]')?.click()}
               >
                 Export List
               </Button>
