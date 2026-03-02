@@ -5,17 +5,15 @@ import Icon from '../../components/AppIcon';
 import Button from '../../components/ui/Button';
 import TicketList from './components/TicketList';
 import { ticketService } from '../../services/ticketService';
+import { authService } from '../../services/authService';
 import { exportToCsv } from '../../utils/exportCsv';
 
 const TicketManagement = () => {
   const navigate = useNavigate();
+  const currentUser = authService.getCurrentUser();
   const [activeTab, setActiveTab] = useState('all');
   const [tickets, setTickets] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [currentUser] = useState(() => {
-    const userData = localStorage.getItem('user');
-    return userData ? JSON.parse(userData) : null;
-  });
 
   // Load tickets on mount
   useEffect(() => {
@@ -82,7 +80,7 @@ const TicketManagement = () => {
 
   // Calculate tab counts
   const calculateTabCounts = () => {
-    const myTickets = currentUser ? tickets.filter(t => t.assigned_to === currentUser.id).length : 0;
+    const myTickets = currentUser?.agent?.id ? tickets.filter(t => t.assigned_to === currentUser.agent.id).length : 0;
     const unassigned = tickets.filter(t => !t.assigned_to).length;
     const escalated = tickets.filter(t => t.status === 'Escalated').length;
 

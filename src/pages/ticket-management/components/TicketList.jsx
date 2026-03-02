@@ -4,6 +4,7 @@ import { ticketService } from '../../../services/ticketService';
 import { contactService } from '../../../services/contactService';
 import { getLookupsByType } from '../../../services/lookupService';
 import categoryService from '../../../services/categoryService';
+import { authService } from '../../../services/authService';
 import { getColorClasses } from '../../../utils/colorUtils';
 import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
@@ -12,6 +13,7 @@ import Input from '../../../components/ui/Input';
 
 const TicketList = ({ filter = 'all' }) => {
   const navigate = useNavigate();
+  const currentUser = authService.getCurrentUser();
   const [tickets, setTickets] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -76,7 +78,17 @@ const TicketList = ({ filter = 'all' }) => {
   const loadTickets = async () => {
     try {
       setIsLoading(true);
-      const params = { filter };
+      const params = {};
+
+      // Apply tab-level filter
+      if (filter === 'my-tickets' && currentUser?.agent?.id) {
+        params.assigned_to = currentUser.agent.id;
+      } else if (filter === 'unassigned') {
+        params.unassigned = 1;
+      } else if (filter === 'escalated') {
+        params.sla_breached = true;
+      }
+
       if (statusFilter !== 'all') params.status = statusFilter;
       if (priorityFilter !== 'all') params.priority = priorityFilter;
       if (departmentFilter !== 'all') params.department = departmentFilter;
