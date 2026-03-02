@@ -40,7 +40,7 @@ export async function embedSupersetDashboard(
         hideTab: options.hideTab ?? false,
         hideChartControls: options.hideChartControls ?? false,
         filters: {
-          expanded: options.filtersExpanded ?? true,
+          expanded: options.filtersExpanded ?? false,
           visible: options.filtersVisible ?? true,
         },
       },

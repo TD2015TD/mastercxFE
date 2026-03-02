@@ -92,14 +92,8 @@ const SupersetDashboardModal: React.FC<SupersetDashboardModalProps> = ({
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 overflow-hidden bg-black/50 flex items-center justify-center p-4"
-      onClick={onClose}
-    >
-      <div
-        className="bg-card rounded-lg shadow-xl w-full h-full max-w-[95vw] max-h-[90vh] flex flex-col overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <div className="fixed inset-0 z-50 overflow-hidden flex flex-col bg-card">
+      <div className="flex flex-col w-full h-full overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border flex-shrink-0">
           <div className="flex items-center space-x-3">
