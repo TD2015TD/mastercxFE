@@ -7,6 +7,7 @@ import { agentService, type Agent } from '../../../services/agentService';
 import { customerService, type Customer, type CustomerNote } from '../../../services/customerService';
 import categoryService, { type Category } from '../../../services/categoryService';
 import { contactService, type Contact } from '../../../services/contactService';
+import { authService } from '../../../services/authService';
 import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
 import Input from '../../../components/ui/Input';
@@ -69,7 +70,7 @@ const TicketCreateForm: React.FC<{
   const [createdTicket, setCreatedTicket] = useState<{ id: number; ticket_number: string } | null>(null);
   
   // User and Agent Management
-  const [currentUser] = useState<{ id: number; role: string; agent?: { id: number; mitel_agent_id?: string } } | null>(null);
+  const [currentUser, setCurrentUser] = useState<{ id: number; role: string; agent?: { id: number; mitel_agent_id?: string } } | null>(null);
   const [showAgentModal, setShowAgentModal] = useState(false);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
@@ -129,19 +130,33 @@ const TicketCreateForm: React.FC<{
 
   const loadCurrentUser = async () => {
     try {
-      // TODO: Implement user loading via proper service
-      // const user = authService.getCurrentUser();
-      // if (user) {
-      //   setCurrentUser({
-      //     id: user.id,
-      //     role: typeof user.role === 'string' ? user.role : user.role?.slug ?? '',
-      //     agent: user.agent ? { id: user.agent.id, mitel_agent_id: user.agent.mitel_agent_id } : undefined
-      //   });
-      // }
+      const user = authService.getCurrentUser();
+      if (user) {
+        const role = typeof user.role === 'string' ? user.role : (user.role as any)?.slug ?? '';
+        setCurrentUser({
+          id: user.id,
+          role,
+          agent: user.agent ? { id: user.agent.id, mitel_agent_id: user.agent.mitel_agent_id } : undefined
+        });
+      }
     } catch (err) {
       console.error('Error loading current user:', err);
     }
   };
+
+  // Auto-assign to self when agent creates a ticket (no MiTel agentId needed)
+  useEffect(() => {
+    if (!currentUser?.agent?.id) return;
+    const isAgentRole = currentUser.role !== 'super_admin' && currentUser.role !== 'admin' && currentUser.role !== 'supervisor';
+    if (!isAgentRole) return;
+    // Set assigned_to to the logged-in agent
+    setFormData(prev => ({ ...prev, assigned_to: currentUser.agent!.id }));
+    // Fetch the agent record for display in the UI
+    agentService.getAgents({ search: String(currentUser.agent.id) }).then(res => {
+      const found = res?.data?.data?.find((a: Agent) => a.id === currentUser.agent!.id);
+      if (found) setSelectedAgent(found);
+    }).catch(() => {/* non-critical */});
+  }, [currentUser]);
 
   // Auto-fetch customer when phone number is provided in query params
   // Only do this if lookups are already loaded to avoid race conditions
