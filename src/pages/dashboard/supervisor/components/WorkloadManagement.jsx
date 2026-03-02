@@ -15,7 +15,7 @@ const WorkloadManagement = () => {
 
   // Get department from session storage
   const userSession = JSON.parse(localStorage.getItem('user-session') || '{}');
-  const department = userSession?.user?.agent?.department || 'General';
+  const department = userSession?.agent?.department || 'General';
 
   useEffect(() => {
     const loadTranslations = async () => {

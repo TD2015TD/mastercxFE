@@ -27,7 +27,7 @@ const SLAComplianceCenter = ({ data }) => {
     if (userSession) {
       try {
         const userData = JSON.parse(userSession);
-        setUserDepartment(userData.department || 'General');
+        setUserDepartment(userData.agent?.department || 'General');
       } catch (err) {
         console.error('Error parsing user session:', err);
       }
