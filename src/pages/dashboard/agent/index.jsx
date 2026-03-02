@@ -10,8 +10,6 @@ import Button from '../../../components/ui/Button';
 import ActiveTicketsQueue from './components/ActiveTicketsQueue';
 import PerformanceMetrics from './components/PerformanceMetrics';
 import KnowledgeBaseWidget from './components/KnowledgeBaseWidget';
-import RecentInteractions from './components/RecentInteractions';
-import DepartmentAnnouncements from './components/DepartmentAnnouncements';
 
 
 const AgentDashboard = () => {
@@ -103,25 +101,12 @@ const AgentDashboard = () => {
   const renderTabContent = () => {
     switch (activeTab) {
       case 'overview':
-        return (
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-              <div className="xl:col-span-2">
-                <ActiveTicketsQueue />
-              </div>
-              <div className="space-y-6">
-                <RecentInteractions />
-                <DepartmentAnnouncements announcements={[]} />
-              </div>
-            </div>
-          </div>
-        );
+        return <ActiveTicketsQueue />;
       case 'tickets':
         return <ActiveTicketsQueue fullView />;
       case 'performance':
         return <PerformanceMetrics metrics={{
           ticketsResolvedToday: agentDashboard?.today?.resolved ?? stats.ticketsResolved,
-          dailyTarget: agentDashboard?.today?.target || 20,
           avgResponseTime: agentDashboard?.week?.avg_resolution_time ?? stats.avgResponseMinutes,
           slaComplianceRate: agentDashboard?.month?.sla_compliance ?? stats.slaCompliance,
           customerSatisfaction: agentDashboard?.week?.csat ?? 0,

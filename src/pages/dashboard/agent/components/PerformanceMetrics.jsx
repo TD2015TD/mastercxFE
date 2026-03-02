@@ -1,4 +1,3 @@
-import React from 'react';
 import Icon from '../../../../components/AppIcon';
 
 const PerformanceMetrics = ({ metrics }) => {
@@ -11,61 +10,37 @@ const PerformanceMetrics = ({ metrics }) => {
     return `${Math.round(minutes / 60)} hr`;
   };
 
-  const getProgressPercentage = (value, target) => {
-    const v = typeof value === 'string' ? parseFloat(value) : (value ?? 0);
-    const t = typeof target === 'string' ? parseFloat(target) : (target ?? 0);
-    if (!t) return 0;
-    return Math.min((v / t) * 100, 100);
-  };
-
   const csat = metrics?.customerSatisfaction ?? 0;
-  const csatDisplay = csat > 0 ? `${csat.toFixed(1)}/5` : 'N/A';
+  const csatDisplay = csat > 0 ? `${csat.toFixed(1)} / 5` : 'N/A';
 
   const metricCards = [
     {
       title: 'Tickets Resolved Today',
       value: metrics?.ticketsResolvedToday ?? 0,
-      targetLabel: `/ ${metrics?.dailyTarget || 20}`,
       icon: 'CheckCircle',
       color: 'text-success',
       bgColor: 'bg-success/10',
-      barColor: 'bg-success',
-      progressValue: metrics?.ticketsResolvedToday ?? 0,
-      progressTarget: metrics?.dailyTarget || 20,
     },
     {
       title: 'Average Response Time',
       value: formatAvgResponseTime(metrics?.avgResponseTime),
-      targetLabel: 'target: 15 min',
       icon: 'Clock',
       color: 'text-warning',
       bgColor: 'bg-warning/10',
-      barColor: 'bg-warning',
-      // lower is better — show how close to target (15 min ceiling)
-      progressValue: Math.max(0, 15 - (metrics?.avgResponseTime ?? 0)),
-      progressTarget: 15,
     },
     {
       title: 'SLA Compliance Rate',
       value: `${metrics?.slaComplianceRate ?? 0}%`,
-      targetLabel: '/ 95%',
       icon: 'Target',
       color: 'text-accent',
       bgColor: 'bg-accent/10',
-      barColor: 'bg-accent',
-      progressValue: metrics?.slaComplianceRate ?? 0,
-      progressTarget: 100,
     },
     {
       title: 'Customer Satisfaction',
       value: csatDisplay,
-      targetLabel: '/ 4.5',
       icon: 'Star',
       color: 'text-primary',
       bgColor: 'bg-primary/10',
-      barColor: 'bg-primary',
-      progressValue: csat,
-      progressTarget: 5,
     },
   ];
 
@@ -86,20 +61,9 @@ const PerformanceMetrics = ({ metrics }) => {
                 <Icon name={metric.icon} size={20} className={metric.color} />
               </div>
             </div>
-
-            <div className="space-y-2">
+            <div className="space-y-1">
               <h3 className="text-sm font-medium text-muted-foreground">{metric.title}</h3>
-              <div className="flex items-baseline space-x-2">
-                <span className="text-2xl font-bold text-foreground">{metric.value}</span>
-                <span className="text-sm text-muted-foreground">{metric.targetLabel}</span>
-              </div>
-
-              <div className="w-full bg-muted rounded-full h-2">
-                <div
-                  className={`h-2 rounded-full transition-all duration-300 ${metric.barColor}`}
-                  style={{ width: `${getProgressPercentage(metric.progressValue, metric.progressTarget)}%` }}
-                />
-              </div>
+              <span className="text-2xl font-bold text-foreground">{metric.value}</span>
             </div>
           </div>
         ))}
