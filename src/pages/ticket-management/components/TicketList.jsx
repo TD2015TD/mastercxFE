@@ -33,13 +33,21 @@ const TicketList = ({ filter = 'all' }) => {
   const [channelOptions, setChannelOptions] = useState([]);
   const [customerContactsMap, setCustomerContactsMap] = useState({});
   const [isExporting, setIsExporting] = useState(false);
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [perPage] = useState(20);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [lastPage, setLastPage] = useState(1);
+
   const debounceTimer = useRef(null);
 
-  // Debounce search input
+  // Debounce search input — also reset to page 1 when search fires
   useEffect(() => {
     if (debounceTimer.current) clearTimeout(debounceTimer.current);
     debounceTimer.current = setTimeout(() => {
       setDebouncedSearch(searchTerm);
+      setCurrentPage(1);
     }, 400);
     return () => clearTimeout(debounceTimer.current);
   }, [searchTerm]);
@@ -50,7 +58,7 @@ const TicketList = ({ filter = 'all' }) => {
 
   useEffect(() => {
     loadTickets();
-  }, [filter, statusFilter, priorityFilter, departmentFilter, categoryFilter, channelFilter, debouncedSearch, dateFrom, dateTo]);
+  }, [filter, statusFilter, priorityFilter, departmentFilter, categoryFilter, channelFilter, debouncedSearch, dateFrom, dateTo, currentPage]);
 
   const loadLookups = async () => {
     try {
@@ -86,6 +94,12 @@ const TicketList = ({ filter = 'all' }) => {
       if (response.success && response.data) {
         const ticketsData = response.data.data || response.data;
         setTickets(Array.isArray(ticketsData) ? ticketsData : []);
+
+        // Capture pagination metadata
+        if (response.data.current_page !== undefined) {
+          setTotalRecords(response.data.total || 0);
+          setLastPage(response.data.last_page || 1);
+        }
       } else {
         setTickets([]);
       }
@@ -98,7 +112,7 @@ const TicketList = ({ filter = 'all' }) => {
   };
 
   const buildQueryParams = (overrides = {}) => {
-    const params = {};
+    const params = { page: currentPage, per_page: perPage };
 
     // Apply tab-level filter
     if (filter === 'my-tickets' && currentUser?.agent?.id) {
@@ -176,6 +190,7 @@ const TicketList = ({ filter = 'all' }) => {
     setChannelFilter('all');
     setDateFrom('');
     setDateTo('');
+    setCurrentPage(1);
   };
 
   const handleExport = async () => {
@@ -216,6 +231,15 @@ const TicketList = ({ filter = 'all' }) => {
     } finally {
       setIsExporting(false);
     }
+  };
+
+  // Compute sliding window of page numbers (current ±2)
+  const getPageNumbers = () => {
+    const start = Math.max(1, currentPage - 2);
+    const end = Math.min(lastPage, currentPage + 2);
+    const pages = [];
+    for (let i = start; i <= end; i++) pages.push(i);
+    return pages;
   };
 
   if (isLoading) {
@@ -269,7 +293,7 @@ const TicketList = ({ filter = 'all' }) => {
         <div className="flex flex-wrap gap-3 items-center">
           <Select
             value={statusFilter}
-            onChange={(value) => setStatusFilter(value)}
+            onChange={(value) => { setStatusFilter(value); setCurrentPage(1); }}
             options={[
               { value: 'all', label: 'All Status' },
               ...statusOptions.map(s => ({ value: s.code, label: s.name }))
@@ -278,7 +302,7 @@ const TicketList = ({ filter = 'all' }) => {
           />
           <Select
             value={priorityFilter}
-            onChange={(value) => setPriorityFilter(value)}
+            onChange={(value) => { setPriorityFilter(value); setCurrentPage(1); }}
             options={[
               { value: 'all', label: 'All Priority' },
               ...priorityOptions.map(p => ({ value: p.code, label: p.name }))
@@ -287,7 +311,7 @@ const TicketList = ({ filter = 'all' }) => {
           />
           <Select
             value={departmentFilter}
-            onChange={(value) => setDepartmentFilter(value)}
+            onChange={(value) => { setDepartmentFilter(value); setCurrentPage(1); }}
             options={[
               { value: 'all', label: 'All Department' },
               ...departmentOptions.map(d => ({ value: d.code, label: d.name }))
@@ -296,7 +320,7 @@ const TicketList = ({ filter = 'all' }) => {
           />
           <Select
             value={categoryFilter}
-            onChange={(value) => setCategoryFilter(value)}
+            onChange={(value) => { setCategoryFilter(value); setCurrentPage(1); }}
             options={[
               { value: 'all', label: 'All Category' },
               ...categoryOptions.map(c => ({ value: c.name, label: c.name }))
@@ -305,7 +329,7 @@ const TicketList = ({ filter = 'all' }) => {
           />
           <Select
             value={channelFilter}
-            onChange={(value) => setChannelFilter(value)}
+            onChange={(value) => { setChannelFilter(value); setCurrentPage(1); }}
             options={[
               { value: 'all', label: 'All Channel' },
               ...channelOptions.map(ch => ({ value: ch.code, label: ch.name }))
@@ -319,7 +343,7 @@ const TicketList = ({ filter = 'all' }) => {
             <input
               type="datetime-local"
               value={dateFrom}
-              onChange={(e) => setDateFrom(e.target.value)}
+              onChange={(e) => { setDateFrom(e.target.value); setCurrentPage(1); }}
               max={dateTo || undefined}
               className="h-10 rounded-md border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
               title="From date & time"
@@ -328,7 +352,7 @@ const TicketList = ({ filter = 'all' }) => {
             <input
               type="datetime-local"
               value={dateTo}
-              onChange={(e) => setDateTo(e.target.value)}
+              onChange={(e) => { setDateTo(e.target.value); setCurrentPage(1); }}
               min={dateFrom || undefined}
               className="h-10 rounded-md border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
               title="To date & time"
@@ -430,6 +454,62 @@ const TicketList = ({ filter = 'all' }) => {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {/* Pagination */}
+        {!isLoading && lastPage > 1 && (
+          <div className="px-6 py-4 border-t border-border flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">
+              Showing {((currentPage - 1) * perPage) + 1}–{Math.min(currentPage * perPage, totalRecords)} of {totalRecords} tickets
+            </p>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage(1)}
+              >
+                «
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage(p => p - 1)}
+              >
+                ‹
+              </Button>
+              {getPageNumbers().map(page => (
+                <button
+                  key={page}
+                  onClick={() => setCurrentPage(page)}
+                  className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+                    currentPage === page
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-foreground hover:bg-muted'
+                  }`}
+                >
+                  {page}
+                </button>
+              ))}
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={currentPage === lastPage}
+                onClick={() => setCurrentPage(p => p + 1)}
+              >
+                ›
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={currentPage === lastPage}
+                onClick={() => setCurrentPage(lastPage)}
+              >
+                »
+              </Button>
+            </div>
           </div>
         )}
       </div>
