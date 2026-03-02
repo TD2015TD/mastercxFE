@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ticketService } from '../../../services/ticketService';
 import { contactService } from '../../../services/contactService';
 import { getLookupsByType } from '../../../services/lookupService';
+import categoryService from '../../../services/categoryService';
 import { getColorClasses } from '../../../utils/colorUtils';
 import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
@@ -14,41 +15,76 @@ const TicketList = ({ filter = 'all' }) => {
   const [tickets, setTickets] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState('all');
+  const [departmentFilter, setDepartmentFilter] = useState('all');
+  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [channelFilter, setChannelFilter] = useState('all');
   const [statusOptions, setStatusOptions] = useState([]);
   const [priorityOptions, setPriorityOptions] = useState([]);
+  const [departmentOptions, setDepartmentOptions] = useState([]);
+  const [categoryOptions, setCategoryOptions] = useState([]);
+  const [channelOptions, setChannelOptions] = useState([]);
   const [customerContactsMap, setCustomerContactsMap] = useState({});
+  const debounceTimer = useRef(null);
+
+  // Debounce search input
+  useEffect(() => {
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    debounceTimer.current = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+    }, 400);
+    return () => clearTimeout(debounceTimer.current);
+  }, [searchTerm]);
 
   useEffect(() => {
     loadLookups();
+  }, []);
+
+  useEffect(() => {
     loadTickets();
-  }, [filter, statusFilter, priorityFilter]);
+  }, [filter, statusFilter, priorityFilter, departmentFilter, categoryFilter, channelFilter, debouncedSearch]);
 
   const loadLookups = async () => {
     try {
-      const [statuses, priorities] = await Promise.all([
+      const [statuses, priorities, departments, channels] = await Promise.all([
         getLookupsByType('ticket_status'),
-        getLookupsByType('ticket_priority')
+        getLookupsByType('ticket_priority'),
+        getLookupsByType('department'),
+        getLookupsByType('channel'),
       ]);
       setStatusOptions(statuses);
       setPriorityOptions(priorities);
+      setDepartmentOptions(departments);
+      setChannelOptions(channels);
     } catch (error) {
       console.error('Error loading lookups:', error);
+    }
+
+    try {
+      const catResponse = await categoryService.getCategories({ level: 1, is_active: true, roots_only: true, per_page: 100 });
+      const cats = catResponse?.data || [];
+      setCategoryOptions(Array.isArray(cats) ? cats : []);
+    } catch (error) {
+      console.error('Error loading categories:', error);
     }
   };
 
   const loadTickets = async () => {
     try {
       setIsLoading(true);
-      const response = await ticketService.getTickets({
-        filter,
-        status: statusFilter !== 'all' ? statusFilter : undefined,
-        priority: priorityFilter !== 'all' ? priorityFilter : undefined
-      });
-      
+      const params = { filter };
+      if (statusFilter !== 'all') params.status = statusFilter;
+      if (priorityFilter !== 'all') params.priority = priorityFilter;
+      if (departmentFilter !== 'all') params.department = departmentFilter;
+      if (categoryFilter !== 'all') params.category = categoryFilter;
+      if (channelFilter !== 'all') params.channel = channelFilter;
+      if (debouncedSearch) params.search = debouncedSearch;
+
+      const response = await ticketService.getTickets(params);
+
       if (response.success && response.data) {
-        // API returns paginated data: response.data.data contains the tickets array
         const ticketsData = response.data.data || response.data;
         setTickets(Array.isArray(ticketsData) ? ticketsData : []);
       } else {
@@ -96,17 +132,6 @@ const TicketList = ({ filter = 'all' }) => {
     loadContactsForVisibleCustomers();
   }, [tickets]);
 
-  const filteredTickets = Array.isArray(tickets) ? tickets.filter(ticket => {
-    if (!searchTerm) return true;
-    const search = searchTerm.toLowerCase();
-    return (
-      ticket.ticket_number?.toLowerCase().includes(search) ||
-      ticket.call_id?.toLowerCase().includes(search) ||
-      ticket.subject?.toLowerCase().includes(search) ||
-      ticket.customer?.name?.toLowerCase().includes(search)
-    );
-  }) : [];
-
   const getPriorityColor = (priority) => {
     const priorityOption = priorityOptions.find(p => p.code === priority);
     return getColorClasses(priorityOption?.color);
@@ -115,6 +140,17 @@ const TicketList = ({ filter = 'all' }) => {
   const getStatusColor = (status) => {
     const statusOption = statusOptions.find(s => s.code === status);
     return getColorClasses(statusOption?.color);
+  };
+
+  const hasActiveFilters = statusFilter !== 'all' || priorityFilter !== 'all' || departmentFilter !== 'all' || categoryFilter !== 'all' || channelFilter !== 'all' || searchTerm;
+
+  const clearFilters = () => {
+    setSearchTerm('');
+    setStatusFilter('all');
+    setPriorityFilter('all');
+    setDepartmentFilter('all');
+    setCategoryFilter('all');
+    setChannelFilter('all');
   };
 
   if (isLoading) {
@@ -126,47 +162,86 @@ const TicketList = ({ filter = 'all' }) => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Filters */}
-      <div className="flex flex-col md:flex-row gap-4">
-        <div className="flex-1">
-          <Input
-            type="text"
-            placeholder="Search tickets by Ticket ID, Case ID, subject, or customer..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            icon="Search"
+      <div className="space-y-3">
+        {/* Search */}
+        <div className="flex gap-2 items-center">
+          <div className="flex-1">
+            <Input
+              type="text"
+              placeholder="Search by Ticket ID, Case ID, subject, or customer..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              icon="Search"
+            />
+          </div>
+          {hasActiveFilters && (
+            <Button
+              variant="ghost"
+              size="sm"
+              iconName="X"
+              onClick={clearFilters}
+              className="shrink-0 text-muted-foreground"
+            >
+              Clear
+            </Button>
+          )}
+        </div>
+
+        {/* Filter selects */}
+        <div className="flex flex-wrap gap-3">
+          <Select
+            value={statusFilter}
+            onChange={(value) => setStatusFilter(value)}
+            options={[
+              { value: 'all', label: 'All Status' },
+              ...statusOptions.map(s => ({ value: s.code, label: s.name }))
+            ]}
+            className="w-40"
+          />
+          <Select
+            value={priorityFilter}
+            onChange={(value) => setPriorityFilter(value)}
+            options={[
+              { value: 'all', label: 'All Priority' },
+              ...priorityOptions.map(p => ({ value: p.code, label: p.name }))
+            ]}
+            className="w-40"
+          />
+          <Select
+            value={departmentFilter}
+            onChange={(value) => setDepartmentFilter(value)}
+            options={[
+              { value: 'all', label: 'All Department' },
+              ...departmentOptions.map(d => ({ value: d.code, label: d.name }))
+            ]}
+            className="w-44"
+          />
+          <Select
+            value={categoryFilter}
+            onChange={(value) => setCategoryFilter(value)}
+            options={[
+              { value: 'all', label: 'All Category' },
+              ...categoryOptions.map(c => ({ value: c.name, label: c.name }))
+            ]}
+            className="w-44"
+          />
+          <Select
+            value={channelFilter}
+            onChange={(value) => setChannelFilter(value)}
+            options={[
+              { value: 'all', label: 'All Channel' },
+              ...channelOptions.map(ch => ({ value: ch.code, label: ch.name }))
+            ]}
+            className="w-40"
           />
         </div>
-        <Select
-          value={statusFilter}
-          onChange={(value) => setStatusFilter(value)}
-          options={[
-            { value: 'all', label: 'All Status' },
-            ...statusOptions.map(status => ({
-              value: status.code,
-              label: status.name
-            }))
-          ]}
-          className="w-full md:w-48"
-        />
-        <Select
-          value={priorityFilter}
-          onChange={(value) => setPriorityFilter(value)}
-          options={[
-            { value: 'all', label: 'All Priority' },
-            ...priorityOptions.map(priority => ({
-              value: priority.code,
-              label: priority.name
-            }))
-          ]}
-          className="w-full md:w-48"
-        />
       </div>
 
       {/* Ticket List */}
       <div className="bg-card rounded-lg border border-border overflow-hidden">
-        {filteredTickets.length === 0 ? (
+        {tickets.length === 0 ? (
           <div className="p-12 text-center">
             <Icon name="Inbox" size={48} className="mx-auto mb-4 text-muted-foreground" />
             <p className="text-muted-foreground">No tickets found</p>
@@ -188,7 +263,7 @@ const TicketList = ({ filter = 'all' }) => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {filteredTickets.map((ticket) => (
+                {tickets.map((ticket) => (
                   <tr
                     key={ticket.id}
                     className="hover:bg-muted/30 cursor-pointer"
@@ -243,8 +318,8 @@ const TicketList = ({ filter = 'all' }) => {
                       {new Date(ticket.updated_at).toLocaleDateString()}
                     </td>
                     <td className="px-6 py-4">
-                      <Button 
-                        variant="ghost" 
+                      <Button
+                        variant="ghost"
                         size="sm"
                         iconName="Eye"
                         onClick={(e) => {

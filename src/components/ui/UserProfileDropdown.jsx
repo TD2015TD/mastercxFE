@@ -169,10 +169,16 @@ const UserProfileDropdown = ({ user = null }) => {
     window.location.reload();
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('auth-token');
-    localStorage.removeItem('user-session');
-    window.location.href = '/agent-login';
+  const handleLogout = async () => {
+    try {
+      await authService.logout();
+    } catch {
+      // Even if the API call fails, clear storage and redirect
+      localStorage.clear();
+      sessionStorage.clear();
+    } finally {
+      window.location.href = '/agent-login';
+    }
   };
 
   const handleProfileSettings = () => {
