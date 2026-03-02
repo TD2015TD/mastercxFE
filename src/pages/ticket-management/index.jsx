@@ -6,7 +6,6 @@ import Button from '../../components/ui/Button';
 import TicketList from './components/TicketList';
 import { ticketService } from '../../services/ticketService';
 import { authService } from '../../services/authService';
-import { exportToCsv } from '../../utils/exportCsv';
 
 const TicketManagement = () => {
   const navigate = useNavigate();
@@ -89,7 +88,6 @@ const TicketManagement = () => {
       { id: 'my-tickets', label: 'My Tickets', icon: 'User', count: myTickets },
       { id: 'unassigned', label: 'Unassigned', icon: 'AlertCircle', count: unassigned },
       { id: 'escalated', label: 'Escalated', icon: 'TrendingUp', count: escalated },
-      { id: 'search', label: 'Advanced Search', icon: 'Search' }
     ];
   };
 
@@ -106,16 +104,6 @@ const TicketManagement = () => {
         return <TicketList filter="unassigned" />;
       case 'escalated':
         return <TicketList filter="escalated" />;
-      case 'search':
-        return (
-          <div className="bg-card rounded-lg border border-border p-12 text-center">
-            <Icon name="Search" size={48} className="mx-auto mb-4 text-muted-foreground" />
-            <h3 className="text-lg font-semibold text-foreground mb-2">Advanced Search</h3>
-            <p className="text-muted-foreground mb-6">
-              Search feature coming soon. Use the search bar above to find tickets.
-            </p>
-          </div>
-        );
       default:
         return null;
     }
@@ -221,7 +209,6 @@ const TicketManagement = () => {
               {activeTab === 'my-tickets' && 'View tickets assigned to you for tracking and resolution.'}
               {activeTab === 'unassigned' && 'View unassigned tickets that need to be assigned to agents.'}
               {activeTab === 'escalated' && 'View escalated tickets that require immediate attention.'}
-              {activeTab === 'search' && 'Use advanced search filters to find specific tickets by various criteria.'}
             </p>
           </div>
 
@@ -230,50 +217,6 @@ const TicketManagement = () => {
             {renderTabContent()}
           </div>
 
-          {/* Quick Actions Panel */}
-          <div className="bg-card rounded-lg border border-border p-6">
-            <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center">
-              <Icon name="Zap" size={20} className="mr-2 text-primary" />
-              Quick Actions
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <Button 
-                variant="outline" 
-                className="justify-start" 
-                iconName="Plus" 
-                iconPosition="left"
-                onClick={() => navigate('/ticket-management/create')}
-              >
-                Create Ticket
-              </Button>
-              <Button 
-                variant="outline" 
-                className="justify-start" 
-                iconName="Search" 
-                iconPosition="left"
-                onClick={() => setActiveTab('search')}
-              >
-                Advanced Search
-              </Button>
-              <Button
-                variant="outline"
-                className="justify-start"
-                iconName="Download"
-                iconPosition="left"
-                onClick={() => document.querySelector('[data-export-tickets]')?.click()}
-              >
-                Export List
-              </Button>
-              <Button 
-                variant="outline" 
-                className="justify-start" 
-                iconName="Edit" 
-                iconPosition="left"
-              >
-                Bulk Update
-              </Button>
-            </div>
-          </div>
         </main>
       </div>
     </>
