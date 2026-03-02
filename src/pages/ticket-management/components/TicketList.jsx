@@ -32,6 +32,7 @@ const TicketList = ({ filter = 'all' }) => {
   const [categoryOptions, setCategoryOptions] = useState([]);
   const [channelOptions, setChannelOptions] = useState([]);
   const [customerContactsMap, setCustomerContactsMap] = useState({});
+  const [isExporting, setIsExporting] = useState(false);
   const debounceTimer = useRef(null);
 
   // Debounce search input
@@ -179,7 +180,7 @@ const TicketList = ({ filter = 'all' }) => {
 
   const handleExport = async () => {
     try {
-      setIsLoading(true);
+      setIsExporting(true);
 
       // Build params identical to the list filters, but request all matching records
       const params = buildQueryParams({ per_page: 10000, page: 1 });
@@ -213,7 +214,7 @@ const TicketList = ({ filter = 'all' }) => {
     } catch (error) {
       console.error('Error exporting tickets:', error);
     } finally {
-      setIsLoading(false);
+      setIsExporting(false);
     }
   };
 
@@ -246,7 +247,7 @@ const TicketList = ({ filter = 'all' }) => {
             iconName="Download"
             iconPosition="left"
             onClick={handleExport}
-            disabled={tickets.length === 0}
+            disabled={isExporting || tickets.length === 0}
             className="shrink-0"
           >
             Export
@@ -316,21 +317,21 @@ const TicketList = ({ filter = 'all' }) => {
           <div className="flex items-center gap-2">
             <Icon name="Calendar" size={16} className="text-muted-foreground shrink-0" />
             <input
-              type="date"
+              type="datetime-local"
               value={dateFrom}
               onChange={(e) => setDateFrom(e.target.value)}
               max={dateTo || undefined}
               className="h-10 rounded-md border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-              title="From date"
+              title="From date & time"
             />
             <span className="text-muted-foreground text-sm">–</span>
             <input
-              type="date"
+              type="datetime-local"
               value={dateTo}
               onChange={(e) => setDateTo(e.target.value)}
               min={dateFrom || undefined}
               className="h-10 rounded-md border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-              title="To date"
+              title="To date & time"
             />
           </div>
         </div>
