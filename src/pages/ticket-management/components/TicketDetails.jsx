@@ -249,10 +249,15 @@ const TicketDetails = ({ ticket, onUpdate }) => {
             ) : (
               <>
                 <div>
+                  <label className="text-sm font-medium text-muted-foreground">Channel</label>
+                  <p className="text-sm text-foreground mt-1 capitalize">{ticket?.channel?.replace('-', ' ') || '-'}</p>
+                </div>
+
+                <div>
                   <label className="text-sm font-medium text-muted-foreground">Priority</label>
                   <p className="text-sm text-foreground mt-1">{ticket?.priority}</p>
                 </div>
-                
+
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Department</label>
                   <p className="text-sm text-foreground mt-1">{ticket?.department}</p>

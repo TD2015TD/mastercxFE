@@ -60,6 +60,12 @@ const TicketHeader = ({ ticket, liveTimeRemaining, onStatusChange, onTransfer, o
               <Icon name="Building" size={16} />
               <span>{ticket?.department}</span>
             </div>
+            {ticket?.channel && (
+              <div className="flex items-center gap-1">
+                <Icon name="Radio" size={16} />
+                <span className="capitalize">{ticket.channel.replace('-', ' ')}</span>
+              </div>
+            )}
             <div className="flex items-center gap-1">
               <Icon name="Calendar" size={16} />
               <span>Created: {new Date(ticket.created_at)?.toLocaleDateString('en-GB')}</span>
