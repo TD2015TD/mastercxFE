@@ -651,8 +651,8 @@ const TicketCreateForm: React.FC<{
   };
 
   const validateForm = (): boolean => {
-    if (!formData.customer_name || !formData.customer_email) {
-      setError('Customer name and email are required');
+    if (!formData.customer_name) {
+      setError('Customer name is required');
       return false;
     }
     
@@ -661,8 +661,8 @@ const TicketCreateForm: React.FC<{
       return false;
     }
     
-    if (!formData.department || !formData.priority) {
-      setError('Department and priority are required');
+    if (!formData.department) {
+      setError('Department is required');
       return false;
     }
     
@@ -684,7 +684,7 @@ const TicketCreateForm: React.FC<{
       // Check if customer already exists by ID number or email
       const searchResult = await customerService.searchCustomer({
         id_no: formData.customer_id_no,
-        email: formData.customer_email
+        ...(formData.customer_email && { email: formData.customer_email })
       });
       
       if (searchResult.success && searchResult.data) {
@@ -702,7 +702,7 @@ const TicketCreateForm: React.FC<{
         // Create new customer
         const customerData = {
           name: formData.customer_name,
-          email: formData.customer_email,
+          ...(formData.customer_email && { email: formData.customer_email }),
           phone_number: fallbackPhone,
           id_type: formData.customer_id_type as Customer['id_type'],
           id_no: formData.customer_id_no,
@@ -806,7 +806,7 @@ const TicketCreateForm: React.FC<{
             <div className="flex items-center justify-center gap-3">
               <div className="flex-1 text-center">
                 <p className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-2">Ticket Number</p>
-                <p className="text-3xl md:text-4xl font-mono font-bold text-muted-foreground/50 tracking-tight">
+                <p className="text-base font-mono font-medium text-muted-foreground/50 tracking-tight">
                   Will be generated on submit
                 </p>
                 <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground mt-2">
@@ -846,11 +846,10 @@ const TicketCreateForm: React.FC<{
           />
           
           <Input
-            label="Email Address *"
+            label="Email Address"
             type="email"
             value={formData.customer_email}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('customer_email', e.target.value)}
-            required
             placeholder="customer@example.com"
           />
           
@@ -1074,13 +1073,15 @@ const TicketCreateForm: React.FC<{
             required
           />
           
-          <Select
-            label="Priority *"
-            value={formData.priority}
-            onChange={(value) => handleInputChange('priority', value as string)}
-            options={priorities.map(p => ({ value: p.value, label: p.label }))}
-            required
-          />
+          {/* Priority hidden — tickets are auto-closed on creation; kept for future use */}
+          <div className="hidden">
+            <Select
+              label="Priority"
+              value={formData.priority}
+              onChange={(value) => handleInputChange('priority', value as string)}
+              options={priorities.map(p => ({ value: p.value, label: p.label }))}
+            />
+          </div>
           
           <Select
             label="Category"
@@ -1104,19 +1105,25 @@ const TicketCreateForm: React.FC<{
             disabled={!formData.category || isLoadingSubcategories || subcategories.length === 0}
           />
           
-          <Select
-            label="Urgency"
-            value={formData.urgency}
-            onChange={(value) => handleInputChange('urgency', value as string)}
-            options={urgencyOptions}
-          />
-          
-          <Select
-            label="Impact"
-            value={formData.impact}
-            onChange={(value) => handleInputChange('impact', value as string)}
-            options={impactOptions}
-          />
+          {/* Urgency hidden — kept for future use */}
+          <div className="hidden">
+            <Select
+              label="Urgency"
+              value={formData.urgency}
+              onChange={(value) => handleInputChange('urgency', value as string)}
+              options={urgencyOptions}
+            />
+          </div>
+
+          {/* Impact hidden — kept for future use */}
+          <div className="hidden">
+            <Select
+              label="Impact"
+              value={formData.impact}
+              onChange={(value) => handleInputChange('impact', value as string)}
+              options={impactOptions}
+            />
+          </div>
         </div>
       </div>
 
@@ -1471,8 +1478,8 @@ const TicketCreateForm: React.FC<{
               <div className="w-20 h-20 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Icon name="CheckCircle" size={40} className="text-green-600 dark:text-green-400" />
               </div>
-              <h2 className="text-2xl font-semibold text-foreground mb-2">Ticket Created Successfully!</h2>
-              <p className="text-sm text-muted-foreground">Your ticket has been created and is ready for assignment</p>
+              <h2 className="text-2xl font-semibold text-foreground mb-2">Ticket Created &amp; Closed!</h2>
+              <p className="text-sm text-muted-foreground">Your ticket has been created and automatically closed</p>
             </div>
 
             {/* Content */}
@@ -1481,7 +1488,7 @@ const TicketCreateForm: React.FC<{
               <div className="bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border-2 border-primary/20 rounded-xl p-8 mb-6 shadow-lg">
                 <div className="text-center">
                   <span className="text-sm font-medium text-muted-foreground uppercase tracking-wide block mb-3">Ticket Number</span>
-                  <div className="text-5xl md:text-6xl font-mono font-bold text-primary mb-3 tracking-tight select-all">
+                  <div className="text-2xl md:text-3xl font-mono font-bold text-primary mb-3 tracking-tight select-all">
                     {createdTicket.ticket_number}
                   </div>
                   <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">

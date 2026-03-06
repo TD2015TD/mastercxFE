@@ -210,17 +210,20 @@ const TicketDetails = ({ ticket, onUpdate }) => {
           <div className="space-y-3">
             {isEditing ? (
               <>
-                <Select
-                  label="Priority"
-                  options={priorities.length > 0 ? priorities : [
-                    { value: 'P1', label: 'P1 - Critical' },
-                    { value: 'P2', label: 'P2 - High' },
-                    { value: 'P3', label: 'P3 - Medium' },
-                    { value: 'P4', label: 'P4 - Low' }
-                  ]}
-                  value={editData?.priority}
-                  onChange={(value) => setEditData({...editData, priority: value})}
-                />
+                {/* Priority hidden — auto-closed tickets; kept for future use */}
+                <div className="hidden">
+                  <Select
+                    label="Priority"
+                    options={priorities.length > 0 ? priorities : [
+                      { value: 'P1', label: 'P1 - Critical' },
+                      { value: 'P2', label: 'P2 - High' },
+                      { value: 'P3', label: 'P3 - Medium' },
+                      { value: 'P4', label: 'P4 - Low' }
+                    ]}
+                    value={editData?.priority}
+                    onChange={(value) => setEditData({...editData, priority: value})}
+                  />
+                </div>
                 
                 <Select
                   label="Department"
@@ -253,9 +256,12 @@ const TicketDetails = ({ ticket, onUpdate }) => {
                   <p className="text-sm text-foreground mt-1 capitalize">{ticket?.channel?.replace('-', ' ') || '-'}</p>
                 </div>
 
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Priority</label>
-                  <p className="text-sm text-foreground mt-1">{ticket?.priority}</p>
+                {/* Priority hidden — auto-closed tickets; kept for future use */}
+                <div className="hidden">
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Priority</label>
+                    <p className="text-sm text-foreground mt-1">{ticket?.priority}</p>
+                  </div>
                 </div>
 
                 <div>
@@ -277,8 +283,8 @@ const TicketDetails = ({ ticket, onUpdate }) => {
           </div>
         </div>
       </div>
-      {/* Priority Matrix */}
-      <div className="mt-6 p-4 bg-muted rounded-lg">
+      {/* Priority Matrix — hidden; kept for future use */}
+      <div className="hidden mt-6 p-4 bg-muted rounded-lg">
         <h4 className="font-medium text-foreground mb-3">Priority Matrix (Impact × Urgency)</h4>
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div>
