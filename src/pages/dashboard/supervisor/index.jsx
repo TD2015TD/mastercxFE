@@ -1,16 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
-import BreadcrumbNavigation from '../../../components/ui/BreadcrumbNavigation';
 import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
-import TelephonyBar from '../../../components/TelephonyBar';
-import DepartmentMetrics from './components/DepartmentMetrics';
 import AgentPerformancePanel from './components/AgentPerformancePanel';
 import SLAComplianceCenter from './components/SLAComplianceCenter';
-import WorkloadManagement from './components/WorkloadManagement';
 import RealtimeNotifications from './components/RealtimeNotifications';
 import QuickActions from './components/QuickActions';
-import { getSupervisorDashboardWidgets } from '../../../services/dashboardService';
+import { getQueueStats, getSlaStats, getAgentPerformance } from '../../../services/dashboardService';
 import { languageService } from '../../../services/languageService';
 
 const SupervisorDashboard = () => {
@@ -73,148 +69,85 @@ const SupervisorDashboard = () => {
     }
   }, []);
 
-  // Fetch dashboard data
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      console.log('fetchDashboardData called, userDepartment:', userDepartment);
-      if (!userDepartment) {
-        console.log('No department, skipping fetch');
-        return;
-      }
-
-      try {
-        setLoading(true);
-        console.log('Calling getSupervisorDashboardWidgets with department:', userDepartment);
-        const widgets = await getSupervisorDashboardWidgets(userDepartment);
-        console.log('Dashboard widgets response:', widgets);
-        
-        // Set widget errors separately
-        const errors = {};
-        if (widgets.queueError) errors.queue = widgets.queueError;
-        if (widgets.teamError) errors.team = widgets.teamError;
-        if (widgets.slaError) errors.sla = widgets.slaError;
-        if (widgets.agentsError) errors.agents = widgets.agentsError;
-        if (widgets.trendsError) errors.trends = widgets.trendsError;
-        setWidgetErrors(errors);
-        
-        // Set successful data
-        setDashboardData({
-          queue: widgets.queue || { waiting: 0, in_progress: 0, on_hold: 0, total: 0 },
-          team: widgets.team || { total_agents: 0, agents_online: 0, agents_available: 0, agents_busy: 0, agents_away: 0, data_source: 'error' },
-          sla: widgets.sla || { total_tickets: 0, sla_breaches_today: 0, compliance_rate: 0, by_priority: {}, warnings_count: 0, on_track: 0 },
-          agents: widgets.agents || [],
-          trends: widgets.trends || { tickets_by_hour: [], tickets_by_priority: {} },
-        });
-        
-        // Clear general error if at least one widget loaded
-        if (widgets.queue || widgets.team || widgets.sla || widgets.agents || widgets.trends) {
-          setError(null);
-        }
-      } catch (err) {
-        console.error('Error fetching dashboard data:', err);
-        console.error('Error response:', err.response);
-        setError(err.response?.data?.message || t('supervisor.dashboard.errorLoading'));
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchDashboardData();
-    
-    // Refresh every 30 seconds
-    const interval = setInterval(fetchDashboardData, 30000);
-    return () => clearInterval(interval);
-  }, [userDepartment]);
-
-  const handleRefresh = async () => {
+  // Fetch dashboard data — only real DB-backed widgets
+  const fetchDashboardData = async () => {
     if (!userDepartment) return;
-    
     try {
       setLoading(true);
-      const widgets = await getSupervisorDashboardWidgets(userDepartment);
-      
-      // Set widget errors separately
+      const [queueRes, slaRes, agentsRes] = await Promise.allSettled([
+        getQueueStats(userDepartment),
+        getSlaStats(userDepartment),
+        getAgentPerformance(userDepartment),
+      ]);
+
       const errors = {};
-      if (widgets.queueError) errors.queue = widgets.queueError;
-      if (widgets.teamError) errors.team = widgets.teamError;
-      if (widgets.slaError) errors.sla = widgets.slaError;
-      if (widgets.agentsError) errors.agents = widgets.agentsError;
-      if (widgets.trendsError) errors.trends = widgets.trendsError;
+      if (queueRes.status === 'rejected') errors.queue = queueRes.reason;
+      if (slaRes.status === 'rejected') errors.sla = slaRes.reason;
+      if (agentsRes.status === 'rejected') errors.agents = agentsRes.reason;
       setWidgetErrors(errors);
-      
-      // Set successful data
+
       setDashboardData({
-        queue: widgets.queue || { waiting: 0, in_progress: 0, on_hold: 0, total: 0 },
-        team: widgets.team || { total_agents: 0, agents_online: 0, agents_available: 0, agents_busy: 0, agents_away: 0, data_source: 'error' },
-        sla: widgets.sla || { total_tickets: 0, sla_breaches_today: 0, compliance_rate: 0, by_priority: {}, warnings_count: 0, on_track: 0 },
-        agents: widgets.agents || [],
-        trends: widgets.trends || { tickets_by_hour: [], tickets_by_priority: {} },
+        queue: queueRes.status === 'fulfilled' ? queueRes.value.data : { waiting: 0, in_progress: 0, on_hold: 0 },
+        sla: slaRes.status === 'fulfilled' ? slaRes.value.data : { total_tickets: 0, sla_breaches_today: 0, compliance_rate: 0, by_priority: {}, warnings_count: 0, on_track: 0 },
+        agents: agentsRes.status === 'fulfilled' ? agentsRes.value.data : [],
       });
+      setError(null);
     } catch (err) {
-      console.error('Error refreshing dashboard:', err);
+      console.error('Error fetching dashboard data:', err);
+      setError(err.response?.data?.message || 'Failed to load dashboard data');
     } finally {
       setLoading(false);
     }
   };
 
-  // Calculate stats from dashboard data
+  useEffect(() => {
+    fetchDashboardData();
+    const interval = setInterval(fetchDashboardData, 30000);
+    return () => clearInterval(interval);
+  }, [userDepartment]);
+
+  const handleRefresh = () => fetchDashboardData();
+
+  // Stats derived purely from DB data — no Mitel dependency
   const stats = dashboardData ? [
     {
-      label: t('supervisor.dashboard.stats.teamTickets'),
-      value: dashboardData.queue.waiting + dashboardData.queue.in_progress,
-      subtext: `${dashboardData.queue.waiting} ${t('supervisor.dashboard.stats.unassigned')}`,
+      label: 'Open Tickets',
+      value: (dashboardData.queue.waiting || 0) + (dashboardData.queue.in_progress || 0),
+      subtext: `${dashboardData.queue.waiting || 0} unassigned · ${dashboardData.queue.in_progress || 0} in progress`,
       icon: 'Ticket',
       color: 'text-blue-600',
       error: widgetErrors.queue,
-      dataSource: null,
     },
     {
-      label: t('supervisor.dashboard.stats.avgResponseTime'),
-      value: calculateAvgResponseTime(),
-      subtext: t('supervisor.dashboard.stats.target'),
-      icon: 'Clock',
+      label: 'On Hold',
+      value: dashboardData.queue.on_hold || 0,
+      subtext: 'Awaiting customer response',
+      icon: 'PauseCircle',
+      color: 'text-yellow-600',
+      error: widgetErrors.queue,
+    },
+    {
+      label: 'SLA Compliance',
+      value: `${dashboardData.sla.compliance_rate ?? 0}%`,
+      subtext: `${dashboardData.sla.total_tickets || 0} tickets tracked`,
+      icon: 'ShieldCheck',
       color: 'text-green-600',
-      error: widgetErrors.agents,
-      dataSource: null,
-    },
-    {
-      label: t('supervisor.dashboard.stats.teamSLA'),
-      value: `${dashboardData.sla.compliance_rate}%`,
-      subtext: getWeekComparison(),
-      icon: 'TrendingUp',
-      color: 'text-purple-600',
       error: widgetErrors.sla,
-      dataSource: null,
     },
     {
-      label: t('supervisor.dashboard.stats.agentsOnline'),
-      value: `${dashboardData.team.agents_online}/${dashboardData.team.total_agents}`,
-      subtext: `${dashboardData.team.agents_away} ${t('supervisor.dashboard.stats.onBreak')}`,
-      icon: 'Users',
-      color: 'text-orange-600',
-      error: widgetErrors.team,
-      dataSource: dashboardData.team.data_source,
-    }
+      label: 'SLA Breaches Today',
+      value: dashboardData.sla.sla_breaches_today || 0,
+      subtext: `${dashboardData.sla.warnings_count || 0} at-risk tickets`,
+      icon: 'AlertTriangle',
+      color: 'text-red-600',
+      error: widgetErrors.sla,
+    },
   ] : [];
-
-  function calculateAvgResponseTime() {
-    if (!dashboardData?.agents || dashboardData.agents.length === 0) return '0m';
-    const withTimes = dashboardData.agents.filter(a => a.avg_resolution_time > 0);
-    if (withTimes.length === 0) return '0m';
-    const avgMinutes = withTimes.reduce((sum, agent) => sum + (agent.avg_resolution_time || 0), 0) / withTimes.length;
-    return avgMinutes < 60 ? `${Math.round(avgMinutes)}m` : `${Math.round(avgMinutes / 60)}h`;
-  }
-
-  function getWeekComparison() {
-    return '';
-  }
 
   const tabs = [
     { id: 'overview', label: t('supervisor.dashboard.tabs.overview'), icon: 'LayoutDashboard' },
     { id: 'performance', label: t('supervisor.dashboard.tabs.performance'), icon: 'Users' },
     { id: 'sla', label: t('supervisor.dashboard.tabs.sla'), icon: 'Clock' },
-    { id: 'workload', label: t('supervisor.dashboard.tabs.workload'), icon: 'BarChart3' },
-    { id: 'monitoring', label: t('supervisor.dashboard.tabs.monitoring'), icon: 'Monitor' }
   ];
 
   const renderTabContent = () => {
@@ -222,7 +155,6 @@ const SupervisorDashboard = () => {
       case 'overview':
         return (
           <div className="space-y-6">
-            <DepartmentMetrics data={dashboardData} />
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
               <div className="xl:col-span-2 space-y-6">
                 <AgentPerformancePanel data={dashboardData?.agents || []} />
@@ -241,17 +173,6 @@ const SupervisorDashboard = () => {
       
       case 'sla':
         return <SLAComplianceCenter data={dashboardData?.sla} />;
-      
-      case 'workload':
-        return <WorkloadManagement data={dashboardData} />;
-      
-      case 'monitoring':
-        return (
-          <div className="space-y-6">
-            <RealtimeNotifications />
-            <AgentPerformancePanel data={dashboardData?.agents || []} />
-          </div>
-        );
       
       default:
         return null;
@@ -379,8 +300,6 @@ const SupervisorDashboard = () => {
               {activeTab === 'overview' && t('supervisor.dashboard.tabDescriptions.overview')}
               {activeTab === 'performance' && t('supervisor.dashboard.tabDescriptions.performance')}
               {activeTab === 'sla' && t('supervisor.dashboard.tabDescriptions.sla')}
-              {activeTab === 'workload' && t('supervisor.dashboard.tabDescriptions.workload')}
-              {activeTab === 'monitoring' && t('supervisor.dashboard.tabDescriptions.monitoring')}
             </p>
           </div>
 

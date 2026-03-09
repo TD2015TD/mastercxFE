@@ -84,8 +84,8 @@ const SLAComplianceCenter = ({ data }) => {
 
   const slaMetrics = {
     overall: {
-      compliance: data?.compliance_rate || 0,
-      target: 95.0,
+      compliance: data?.compliance_rate ?? null,
+      target: null, // no overall target — per-priority targets come from DB config
       breaches: data?.sla_breaches_today || 0,
       warnings: data?.warnings_count || 0,
       onTrack: data?.on_track || 0,
@@ -93,29 +93,29 @@ const SLAComplianceCenter = ({ data }) => {
     byPriority: data?.by_priority ? [
       {
         priority: 'P1',
-        compliance: data.by_priority.P1?.compliance || 0,
-        target: data.by_priority.P1?.target || 99.0,
+        compliance: data.by_priority.P1?.compliance ?? null,
+        target: data.by_priority.P1?.target ?? null,
         count: data.by_priority.P1?.count || 0,
         breaches: data.by_priority.P1?.breaches || 0,
       },
       {
         priority: 'P2',
-        compliance: data.by_priority.P2?.compliance || 0,
-        target: data.by_priority.P2?.target || 97.0,
+        compliance: data.by_priority.P2?.compliance ?? null,
+        target: data.by_priority.P2?.target ?? null,
         count: data.by_priority.P2?.count || 0,
         breaches: data.by_priority.P2?.breaches || 0,
       },
       {
         priority: 'P3',
-        compliance: data.by_priority.P3?.compliance || 0,
-        target: data.by_priority.P3?.target || 95.0,
+        compliance: data.by_priority.P3?.compliance ?? null,
+        target: data.by_priority.P3?.target ?? null,
         count: data.by_priority.P3?.count || 0,
         breaches: data.by_priority.P3?.breaches || 0,
       },
       {
         priority: 'P4',
-        compliance: data.by_priority.P4?.compliance || 0,
-        target: data.by_priority.P4?.target || 90.0,
+        compliance: data.by_priority.P4?.compliance ?? null,
+        target: data.by_priority.P4?.target ?? null,
         count: data.by_priority.P4?.count || 0,
         breaches: data.by_priority.P4?.breaches || 0,
       },
@@ -197,9 +197,9 @@ const SLAComplianceCenter = ({ data }) => {
           <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div className="text-center p-4 bg-muted/30 rounded-lg">
-                <div className="text-2xl font-bold text-foreground">{slaMetrics?.overall?.compliance}%</div>
+                <div className="text-2xl font-bold text-foreground">{slaMetrics?.overall?.compliance != null ? `${slaMetrics.overall.compliance}%` : '—'}</div>
                 <div className="text-sm text-muted-foreground">Overall Compliance</div>
-                <div className="text-xs text-muted-foreground mt-1">Target: {slaMetrics?.overall?.target}%</div>
+                <div className="text-xs text-muted-foreground mt-1">{slaMetrics?.overall?.target != null ? `Target: ${slaMetrics.overall.target}%` : 'Target: Not set'}</div>
               </div>
               <div className="text-center p-4 bg-error/10 rounded-lg">
                 <div className="text-2xl font-bold text-error">{slaMetrics?.overall?.breaches}</div>
@@ -228,15 +228,17 @@ const SLAComplianceCenter = ({ data }) => {
                     </div>
                     <div className="flex items-center space-x-4">
                       <div className="text-right">
-                        <div className="text-sm font-medium text-foreground">{item?.compliance}%</div>
-                        <div className="text-xs text-muted-foreground">Target: {item?.target}%</div>
+                        <div className="text-sm font-medium text-foreground">{item?.compliance != null ? `${item.compliance}%` : '—'}</div>
+                        <div className="text-xs text-muted-foreground">{item?.target != null ? `Target: ${item.target}%` : 'Target: Not set'}</div>
                       </div>
                       <div className="w-20 bg-muted rounded-full h-2">
                         <div
                           className={`h-2 rounded-full ${
-                            item?.compliance >= item?.target ? 'bg-success' : 'bg-warning'
+                            item?.compliance != null && item?.target != null
+                              ? (item.compliance >= item.target ? 'bg-success' : 'bg-warning')
+                              : 'bg-muted-foreground'
                           }`}
-                          style={{ width: `${Math.min(item?.compliance, 100)}%` }}
+                          style={{ width: `${item?.compliance != null ? Math.min(item.compliance, 100) : 0}%` }}
                         ></div>
                       </div>
                     </div>

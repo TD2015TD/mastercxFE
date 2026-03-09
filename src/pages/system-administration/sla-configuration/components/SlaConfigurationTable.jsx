@@ -109,6 +109,7 @@ const SlaConfigurationTable = forwardRef((props, ref) => {
     department: '',
     priority: 'P3',
     duration_minutes: 1440,
+    compliance_target: null,
     business_hours_only: true,
     pause_on_hold: true,
     pause_on_pending: true,
@@ -165,6 +166,7 @@ const SlaConfigurationTable = forwardRef((props, ref) => {
       department: '',
       priority: 'P3',
       duration_minutes: 1440,
+      compliance_target: null,
       business_hours_only: true,
       pause_on_hold: true,
       pause_on_pending: true,
@@ -183,6 +185,7 @@ const SlaConfigurationTable = forwardRef((props, ref) => {
       department: config.department,
       priority: config.priority,
       duration_minutes: config.duration_minutes,
+      compliance_target: config.compliance_target ?? null,
       business_hours_only: config.business_hours_only,
       pause_on_hold: config.pause_on_hold,
       pause_on_pending: config.pause_on_pending,
@@ -396,6 +399,9 @@ const SlaConfigurationTable = forwardRef((props, ref) => {
                   {t('sla.configuration.escalationThreshold') || 'Escalation'}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  {'Compliance Target'}
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                   {t('sla.configuration.status') || 'Status'}
                 </th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">
@@ -458,6 +464,13 @@ const SlaConfigurationTable = forwardRef((props, ref) => {
                       </div>
                       <span className="text-sm font-medium text-foreground">{config.escalation_threshold_percent}%</span>
                     </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    {config.compliance_target != null ? (
+                      <span className="text-sm font-semibold text-foreground">{config.compliance_target}%</span>
+                    ) : (
+                      <span className="text-xs text-muted-foreground italic">Not set</span>
+                    )}
                   </td>
                   <td className="px-6 py-4">
                     {config.is_active ? (
@@ -570,6 +583,19 @@ const SlaConfigurationTable = forwardRef((props, ref) => {
               value={formData.escalation_threshold_percent}
               onChange={(e) => setFormData({ ...formData, escalation_threshold_percent: parseInt(e.target.value) })}
               placeholder={t('sla.configuration.escalationPlaceholder')}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 gap-4">
+            <Input
+              label="Compliance Target (%)"
+              type="number"
+              min="0"
+              max="100"
+              step="0.01"
+              value={formData.compliance_target ?? ''}
+              onChange={(e) => setFormData({ ...formData, compliance_target: e.target.value !== '' ? parseFloat(e.target.value) : null })}
+              placeholder="e.g. 95.00 — leave blank if no target"
             />
           </div>
 
