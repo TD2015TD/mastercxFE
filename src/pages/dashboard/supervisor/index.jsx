@@ -4,7 +4,6 @@ import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
 import AgentPerformancePanel from './components/AgentPerformancePanel';
 import SLAComplianceCenter from './components/SLAComplianceCenter';
-import RealtimeNotifications from './components/RealtimeNotifications';
 import QuickActions from './components/QuickActions';
 import { getQueueStats, getSlaStats, getAgentPerformance } from '../../../services/dashboardService';
 import { languageService } from '../../../services/languageService';
@@ -161,7 +160,6 @@ const SupervisorDashboard = () => {
                 <SLAComplianceCenter data={dashboardData?.sla} />
               </div>
               <div className="space-y-6">
-                <RealtimeNotifications />
                 <QuickActions />
               </div>
             </div>
