@@ -9,7 +9,8 @@ const TicketCreatePage: React.FC = () => {
 
   // Extract query parameters that can be passed from MiTel
   const callId = searchParams.get('call_id') || searchParams.get('callId');
-  const caseId = searchParams.get('case_id') || searchParams.get('caseId') || searchParams.get('ID_Number');
+  // MiCC sends CaseID (exact case), also support legacy variants
+  const caseId = searchParams.get('CaseID') || searchParams.get('case_id') || searchParams.get('caseId') || searchParams.get('ID_Number');
   const phoneNumber = searchParams.get('Phone_Number');
 
   const queryParams = {
