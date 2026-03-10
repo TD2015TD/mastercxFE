@@ -27,9 +27,9 @@ export const getSupervisorDashboard = async (department: string) => {
 /**
  * Get queue statistics widget
  */
-export const getQueueStats = async (department: string) => {
+export const getQueueStats = async (department?: string | null) => {
   const response = await api.get('/dashboard/queue-stats', {
-    params: { department },
+    params: department ? { department } : {},
   });
   return response.data;
 };
@@ -47,9 +47,9 @@ export const getTeamStats = async (department: string) => {
 /**
  * Get SLA statistics widget
  */
-export const getSlaStats = async (department: string) => {
+export const getSlaStats = async (department?: string | null) => {
   const response = await api.get('/dashboard/sla-stats', {
-    params: { department },
+    params: department ? { department } : {},
   });
   return response.data;
 };
@@ -57,9 +57,9 @@ export const getSlaStats = async (department: string) => {
 /**
  * Get agent performance widget
  */
-export const getAgentPerformance = async (department: string) => {
+export const getAgentPerformance = async (department?: string | null) => {
   const response = await api.get('/dashboard/agent-performance', {
-    params: { department },
+    params: department ? { department } : {},
   });
   return response.data;
 };

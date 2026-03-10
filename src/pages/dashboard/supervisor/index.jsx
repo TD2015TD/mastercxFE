@@ -48,23 +48,18 @@ const SupervisorDashboard = () => {
   // Get user department from session
   useEffect(() => {
     const userSession = localStorage.getItem('user-session');
-    console.log('User session:', userSession);
     if (userSession) {
       try {
         const userData = JSON.parse(userSession);
-        console.log('Parsed user data:', userData);
-        console.log('User department:', userData.department);
-        
-        // Use department if available, otherwise use a default
-        const dept = userData.agent?.department || userData.department || 'General';
-        setUserDepartment(dept);
+        // supervisor may not have an agent record — use department if available, else null (= all departments)
+        const dept = userData.agent?.department || userData.department || null;
+        setUserDepartment(dept ?? 'all');
       } catch (err) {
         console.error('Error parsing user session:', err);
-        setError(t('supervisor.dashboard.errorLoading'));
+        setUserDepartment('all');
       }
     } else {
-      console.error('No user session found');
-      setError(t('supervisor.dashboard.noSession'));
+      setUserDepartment('all');
     }
   }, []);
 
@@ -73,10 +68,12 @@ const SupervisorDashboard = () => {
     if (!userDepartment) return;
     try {
       setLoading(true);
+      // Pass department only when a real department is selected (not 'all')
+      const dept = userDepartment === 'all' ? undefined : userDepartment;
       const [queueRes, slaRes, agentsRes] = await Promise.allSettled([
-        getQueueStats(userDepartment),
-        getSlaStats(userDepartment),
-        getAgentPerformance(userDepartment),
+        getQueueStats(dept),
+        getSlaStats(dept),
+        getAgentPerformance(dept),
       ]);
 
       const errors = {};

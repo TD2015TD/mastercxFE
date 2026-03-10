@@ -103,6 +103,13 @@ const TicketCreateForm: React.FC<{
   const [subcategories, setSubcategories] = useState<Category[]>([]);
   const [isLoadingCategories, setIsLoadingCategories] = useState(false);
   const [isLoadingSubcategories, setIsLoadingSubcategories] = useState(false);
+  const [draftRestored, setDraftRestored] = useState(false);
+
+  // Draft localStorage key scoped to the MiCC CaseID so it survives page reloads
+  // and can be restored when the same CaseID arrives on transfer
+  const draftKey = initialData?.caseId
+    ? `ticket_draft_${initialData.caseId}`
+    : 'ticket_draft';
 
   const [formData, setFormData] = useState<TicketFormData>({
     customer_name: '',
@@ -263,6 +270,40 @@ const TicketCreateForm: React.FC<{
       console.error('Error auto-assigning agent:', err);
     }
   };
+
+  // Auto-restore draft when CaseID matches a saved draft
+  // Runs after lookups are ready so departments / categories can be populated
+  useEffect(() => {
+    if (draftRestored) return;
+    const saved = localStorage.getItem(draftKey);
+    if (!saved) return;
+    try {
+      const parsed = JSON.parse(saved);
+      if (parsed?.formData) {
+        setFormData(prev => ({ ...prev, ...parsed.formData }));
+        if (parsed.contactEntries?.length > 0) {
+          setContactEntries(parsed.contactEntries);
+        }
+        setDraftRestored(true);
+        toast.info('Draft restored from previous session', { autoClose: 4000 });
+      }
+    } catch {
+      // ignore corrupt draft
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draftKey, contactTypeLookups.length]);
+
+  // Auto-save draft on every form change (debounced 1.5 s)
+  useEffect(() => {
+    const hasContent =
+      formData.subject || formData.description || formData.department ||
+      formData.customer_name;
+    if (!hasContent) return;
+    const t = setTimeout(() => {
+      localStorage.setItem(draftKey, JSON.stringify({ formData, contactEntries }));
+    }, 1500);
+    return () => clearTimeout(t);
+  }, [draftKey, formData, contactEntries]);
 
   // Load lookups on mount
   useEffect(() => {
@@ -756,6 +797,9 @@ const TicketCreateForm: React.FC<{
       const response = await ticketService.createTicket(ticketData as Parameters<typeof ticketService.createTicket>[0]);
 
       if (response.success) {
+        // Clear the draft — ticket has been properly created
+        localStorage.removeItem(draftKey);
+
         // Show success modal with ticket number
         setCreatedTicket({
           id: response.data.id,
@@ -792,9 +836,8 @@ const TicketCreateForm: React.FC<{
   };
 
   const handleSaveDraft = () => {
-    // Save to localStorage as draft
-    localStorage.setItem('ticket_draft', JSON.stringify(formData));
-    toast.success('Draft saved successfully!');
+    localStorage.setItem(draftKey, JSON.stringify({ formData, contactEntries }));
+    toast.success('Draft saved! It will be restored if the same Case ID is re-opened.');
   };
 
   return (
