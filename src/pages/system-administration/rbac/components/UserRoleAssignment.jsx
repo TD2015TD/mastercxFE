@@ -1,10 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Icon from '../../../../components/AppIcon';
 import Button from '../../../../components/ui/Button';
 import Input from '../../../../components/ui/Input';
 import Modal from '../../../../components/ui/Modal';
 import Select from '../../../../components/ui/Select';
 import { exportToCsv } from '../../../../utils/exportCsv';
+import { getUsers, getRoles, updateUser } from '../../../../services/userService';
+import { toast } from 'react-toastify';
+
+const ROLE_COLORS = { admin: 'red', supervisor: 'blue', agent: 'green', customer: 'gray' };
 
 const UserRoleAssignment = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -12,127 +16,112 @@ const UserRoleAssignment = () => {
   const [filterStatus, setFilterStatus] = useState('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
+  const [newRoleId, setNewRoleId] = useState(null);
+  const [saving, setSaving] = useState(false);
 
-  const roles = [
-    { value: 'admin', label: 'Administrator', color: 'red' },
-    { value: 'supervisor', label: 'Supervisor', color: 'blue' },
-    { value: 'agent', label: 'Agent', color: 'green' },
-    { value: 'customer', label: 'Customer', color: 'gray' }
-  ];
+  const [users, setUsers] = useState([]);
+  const [roles, setRoles] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [pagination, setPagination] = useState({ current_page: 1, total: 0, per_page: 50 });
 
-  const [users, setUsers] = useState([
-    {
-      id: 1,
-      name: 'Ahmad Abdullah',
-      email: 'ahmad.abdullah@jkdm.gov.my',
-      role: 'admin',
-      department: 'IT Department',
-      status: 'active',
-      lastLogin: '2024-11-30 09:15:23',
-      createdAt: '2024-01-15'
-    },
-    {
-      id: 2,
-      name: 'Siti Nurhaliza',
-      email: 'siti.nurhaliza@jkdm.gov.my',
-      role: 'supervisor',
-      department: 'Customer Service',
-      status: 'active',
-      lastLogin: '2024-11-30 08:45:12',
-      createdAt: '2024-02-20'
-    },
-    {
-      id: 3,
-      name: 'Muhammad Ali',
-      email: 'muhammad.ali@jkdm.gov.my',
-      role: 'agent',
-      department: 'Customer Service',
-      status: 'active',
-      lastLogin: '2024-11-30 09:30:45',
-      createdAt: '2024-03-10'
-    },
-    {
-      id: 4,
-      name: 'Fatimah Zahra',
-      email: 'fatimah.zahra@jkdm.gov.my',
-      role: 'agent',
-      department: 'Customer Service',
-      status: 'active',
-      lastLogin: '2024-11-29 17:22:10',
-      createdAt: '2024-03-12'
-    },
-    {
-      id: 5,
-      name: 'Kumar Raj',
-      email: 'kumar.raj@jkdm.gov.my',
-      role: 'supervisor',
-      department: 'Technical Support',
-      status: 'active',
-      lastLogin: '2024-11-30 07:55:33',
-      createdAt: '2024-02-28'
-    },
-    {
-      id: 6,
-      name: 'Lee Wei Ming',
-      email: 'lee.weiming@jkdm.gov.my',
-      role: 'agent',
-      department: 'Technical Support',
-      status: 'inactive',
-      lastLogin: '2024-11-20 14:10:00',
-      createdAt: '2024-04-05'
+  useEffect(() => {
+    fetchRoles();
+  }, []);
+
+  useEffect(() => {
+    fetchUsers();
+  }, [searchQuery, filterRole, filterStatus, pagination.current_page]);
+
+  const fetchRoles = async () => {
+    try {
+      const res = await getRoles();
+      const list = res.data ?? res;
+      setRoles(Array.isArray(list) ? list : []);
+    } catch (err) {
+      console.error('Failed to load roles:', err);
     }
-  ]);
-
-  const getRoleColor = (roleValue) => {
-    const role = roles.find(r => r.value === roleValue);
-    return role?.color || 'gray';
   };
 
-  const getRoleLabel = (roleValue) => {
-    const role = roles.find(r => r.value === roleValue);
-    return role?.label || roleValue;
+  const fetchUsers = async () => {
+    try {
+      setLoading(true);
+      const filterRoleId = filterRole !== 'all'
+        ? roles.find(r => r.slug === filterRole)?.id
+        : undefined;
+      const res = await getUsers({
+        search: searchQuery || undefined,
+        role_id: filterRoleId,
+        status: filterStatus !== 'all' ? filterStatus : undefined,
+        page: pagination.current_page,
+        per_page: pagination.per_page,
+      });
+      if (res.success) {
+        setUsers(res.data.data);
+        setPagination(p => ({ ...p, total: res.data.total, current_page: res.data.current_page }));
+      }
+    } catch (err) {
+      console.error('Failed to load users:', err);
+      toast.error('Failed to load users');
+    } finally {
+      setLoading(false);
+    }
   };
+
+  const getRoleColor = (slug) => ROLE_COLORS[slug] || 'gray';
+  const getRoleLabel = (slug) => roles.find(r => r.slug === slug)?.name || slug || '—';
 
   const handleChangeRole = (user) => {
     setSelectedUser(user);
+    setNewRoleId(user.role?.id ?? null);
     setIsModalOpen(true);
   };
 
-  const handleSaveRoleChange = () => {
-    // TODO: API call to update user role
-    console.log('Updating role for user:', selectedUser);
-    setIsModalOpen(false);
+  const handleSaveRoleChange = async () => {
+    if (!newRoleId || !selectedUser) return;
+    try {
+      setSaving(true);
+      await updateUser(selectedUser.id, { role_id: newRoleId });
+      toast.success(`Role updated for ${selectedUser.name}`);
+      setIsModalOpen(false);
+      fetchUsers();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update role');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleExportUserList = () => {
     const rows = [
       ['Name', 'Email', 'Role', 'Department', 'Status', 'Last Login', 'Created At'],
-      ...users.map(u => [u.name, u.email, u.role, u.department, u.status, u.lastLogin, u.createdAt])
+      ...users.map(u => [
+        u.name,
+        u.email,
+        u.role?.name || '',
+        u.agent?.department || '',
+        u.status,
+        u.last_login || '',
+        u.created_at || '',
+      ])
     ];
     exportToCsv(rows, 'user-role-list');
   };
 
-  const handleBulkRoleChange = () => {
-    // TODO: Implement bulk role assignment
-    console.log('Bulk role change');
-  };
-
   const filteredUsers = users.filter(user => {
-    const matchesSearch = 
+    const dept = user.agent?.department || '';
+    const matchesSearch =
       user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.department.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesRole = filterRole === 'all' || user.role === filterRole;
+      dept.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesRole = filterRole === 'all' || user.role?.slug === filterRole;
     const matchesStatus = filterStatus === 'all' || user.status === filterStatus;
-
     return matchesSearch && matchesRole && matchesStatus;
   });
 
   const getRoleStats = () => {
     const stats = {};
     roles.forEach(role => {
-      stats[role.value] = users.filter(u => u.role === role.value).length;
+      stats[role.slug] = users.filter(u => u.role?.slug === role.slug).length;
     });
     return stats;
   };
@@ -144,13 +133,13 @@ const UserRoleAssignment = () => {
       {/* Stats Overview */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {roles.map(role => (
-          <div key={role.value} className="bg-card rounded-lg border border-border p-4">
+          <div key={role.id} className="bg-card rounded-lg border border-border p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground mb-1">{role.label}</p>
-                <p className="text-2xl font-bold text-foreground">{roleStats[role.value]}</p>
+                <p className="text-sm text-muted-foreground mb-1">{role.name}</p>
+                <p className="text-2xl font-bold text-foreground">{roleStats[role.slug] ?? 0}</p>
               </div>
-              <Icon name="Shield" size={24} className={`text-${role.color}-600`} />
+              <Icon name="Shield" size={24} className={`text-${getRoleColor(role.slug)}-600`} />
             </div>
           </div>
         ))}
@@ -173,7 +162,7 @@ const UserRoleAssignment = () => {
           >
             <option value="all">All Roles</option>
             {roles.map(role => (
-              <option key={role.value} value={role.value}>{role.label}</option>
+              <option key={role.id} value={role.slug}>{role.name}</option>
             ))}
           </Select>
           <Select
@@ -217,7 +206,13 @@ const UserRoleAssignment = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {filteredUsers.map((user) => (
+              {loading ? (
+                <tr>
+                  <td colSpan="7" className="py-10 text-center">
+                    <Icon name="Loader" size={24} className="animate-spin text-primary mx-auto" />
+                  </td>
+                </tr>
+              ) : filteredUsers.map((user) => (
                 <tr key={user.id} className="hover:bg-muted/30 transition-colors">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <input type="checkbox" className="w-4 h-4 rounded border-border" />
@@ -236,12 +231,12 @@ const UserRoleAssignment = () => {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <p className="text-sm text-foreground">{user.department}</p>
+                    <p className="text-sm text-foreground">{user.agent?.department || <span className="text-muted-foreground">—</span>}</p>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-${getRoleColor(user.role)}-100 text-${getRoleColor(user.role)}-800 dark:bg-${getRoleColor(user.role)}-900/30 dark:text-${getRoleColor(user.role)}-400`}>
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-${getRoleColor(user.role?.slug)}-100 text-${getRoleColor(user.role?.slug)}-800 dark:bg-${getRoleColor(user.role?.slug)}-900/30 dark:text-${getRoleColor(user.role?.slug)}-400`}>
                       <Icon name="Shield" size={12} className="mr-1" />
-                      {getRoleLabel(user.role)}
+                      {user.role?.name || '—'}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -258,7 +253,7 @@ const UserRoleAssignment = () => {
                     )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
-                    {new Date(user.lastLogin).toLocaleString()}
+                    {user.last_login ? new Date(user.last_login).toLocaleString() : <span className="text-muted-foreground">Never</span>}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <Button
@@ -281,13 +276,25 @@ const UserRoleAssignment = () => {
         <div className="bg-muted/30 px-6 py-4 border-t border-border">
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
-              Showing {filteredUsers.length} of {users.length} users
+              Showing {filteredUsers.length} of {pagination.total} users
             </p>
             <div className="flex items-center space-x-2">
-              <Button variant="outline" size="sm" iconName="ChevronLeft">
+              <Button
+                variant="outline"
+                size="sm"
+                iconName="ChevronLeft"
+                disabled={pagination.current_page <= 1}
+                onClick={() => setPagination(p => ({ ...p, current_page: p.current_page - 1 }))}
+              >
                 Previous
               </Button>
-              <Button variant="outline" size="sm" iconName="ChevronRight">
+              <Button
+                variant="outline"
+                size="sm"
+                iconName="ChevronRight"
+                disabled={pagination.current_page * pagination.per_page >= pagination.total}
+                onClick={() => setPagination(p => ({ ...p, current_page: p.current_page + 1 }))}
+              >
                 Next
               </Button>
             </div>
@@ -302,14 +309,8 @@ const UserRoleAssignment = () => {
           Bulk Actions
         </h3>
         <div className="flex items-center space-x-3">
-          <Button variant="outline" iconName="UserPlus" iconPosition="left" onClick={handleBulkRoleChange}>
-            Bulk Role Assignment
-          </Button>
           <Button variant="outline" iconName="Download" iconPosition="left" onClick={handleExportUserList}>
             Export User List
-          </Button>
-          <Button variant="outline" iconName="Upload" iconPosition="left">
-            Import Users
           </Button>
         </div>
       </div>
@@ -333,7 +334,7 @@ const UserRoleAssignment = () => {
                 <div>
                   <p className="font-semibold text-foreground">{selectedUser.name}</p>
                   <p className="text-sm text-muted-foreground">{selectedUser.email}</p>
-                  <p className="text-xs text-muted-foreground mt-1">{selectedUser.department}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{selectedUser.agent?.department || '—'}</p>
                 </div>
               </div>
             </div>
@@ -343,9 +344,9 @@ const UserRoleAssignment = () => {
                 Current Role
               </label>
               <div className="bg-muted/30 rounded-lg p-3">
-                <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium bg-${getRoleColor(selectedUser.role)}-100 text-${getRoleColor(selectedUser.role)}-800 dark:bg-${getRoleColor(selectedUser.role)}-900/30 dark:text-${getRoleColor(selectedUser.role)}-400`}>
+                <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium bg-${getRoleColor(selectedUser.role?.slug)}-100 text-${getRoleColor(selectedUser.role?.slug)}-800 dark:bg-${getRoleColor(selectedUser.role?.slug)}-900/30 dark:text-${getRoleColor(selectedUser.role?.slug)}-400`}>
                   <Icon name="Shield" size={14} className="mr-2" />
-                  {getRoleLabel(selectedUser.role)}
+                  {selectedUser.role?.name || '—'}
                 </span>
               </div>
             </div>
@@ -354,9 +355,12 @@ const UserRoleAssignment = () => {
               <label className="block text-sm font-medium text-foreground mb-2">
                 New Role
               </label>
-              <Select defaultValue={selectedUser.role}>
+              <Select
+                value={newRoleId ?? ''}
+                onChange={(e) => setNewRoleId(Number(e.target.value))}
+              >
                 {roles.map(role => (
-                  <option key={role.value} value={role.value}>{role.label}</option>
+                  <option key={role.id} value={role.id}>{role.name}</option>
                 ))}
               </Select>
             </div>
@@ -371,11 +375,11 @@ const UserRoleAssignment = () => {
             </div>
 
             <div className="flex justify-end space-x-3 pt-4">
-              <Button variant="outline" onClick={() => setIsModalOpen(false)}>
+              <Button variant="outline" onClick={() => setIsModalOpen(false)} disabled={saving}>
                 Cancel
               </Button>
-              <Button variant="default" onClick={handleSaveRoleChange}>
-                Update Role
+              <Button variant="default" onClick={handleSaveRoleChange} disabled={saving}>
+                {saving ? 'Saving...' : 'Update Role'}
               </Button>
             </div>
           </div>

@@ -77,6 +77,14 @@ export const getUsers = async (filters?: UserFilters) => {
 };
 
 /**
+ * Get all roles
+ */
+export const getRoles = async () => {
+  const response = await api.get('/roles');
+  return response.data;
+};
+
+/**
  * Get a single user by ID
  */
 export const getUser = async (id: number) => {
