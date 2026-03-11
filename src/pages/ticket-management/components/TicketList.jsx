@@ -5,6 +5,7 @@ import { contactService } from '../../../services/contactService';
 import { getLookupsByType } from '../../../services/lookupService';
 import categoryService from '../../../services/categoryService';
 import { authService } from '../../../services/authService';
+import { agentService } from '../../../services/agentService';
 import { exportToCsv } from '../../../utils/exportCsv';
 import { getColorClasses } from '../../../utils/colorUtils';
 import Icon from '../../../components/AppIcon';
@@ -21,6 +22,7 @@ const TicketList = ({ filter = 'all' }) => {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState('all');
+  const [assignedToFilter, setAssignedToFilter] = useState('all');
   const [departmentFilter, setDepartmentFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [channelFilter, setChannelFilter] = useState('all');
@@ -28,6 +30,7 @@ const TicketList = ({ filter = 'all' }) => {
   const [dateTo, setDateTo] = useState('');
   const [statusOptions, setStatusOptions] = useState([]);
   const [priorityOptions, setPriorityOptions] = useState([]);
+  const [agentOptions, setAgentOptions] = useState([]);
   const [departmentOptions, setDepartmentOptions] = useState([]);
   const [categoryOptions, setCategoryOptions] = useState([]);
   const [channelOptions, setChannelOptions] = useState([]);
@@ -58,7 +61,7 @@ const TicketList = ({ filter = 'all' }) => {
 
   useEffect(() => {
     loadTickets();
-  }, [filter, statusFilter, priorityFilter, departmentFilter, categoryFilter, channelFilter, debouncedSearch, dateFrom, dateTo, currentPage]);
+  }, [filter, statusFilter, priorityFilter, assignedToFilter, departmentFilter, categoryFilter, channelFilter, debouncedSearch, dateFrom, dateTo, currentPage]);
 
   const loadLookups = async () => {
     try {
@@ -82,6 +85,14 @@ const TicketList = ({ filter = 'all' }) => {
       setCategoryOptions(Array.isArray(cats) ? cats : []);
     } catch (error) {
       console.error('Error loading categories:', error);
+    }
+
+    try {
+      const agentResponse = await agentService.getAgents({ per_page: 200, status: 'active' });
+      const agents = agentResponse?.data?.data || agentResponse?.data || [];
+      setAgentOptions(Array.isArray(agents) ? agents : []);
+    } catch (error) {
+      console.error('Error loading agents:', error);
     }
   };
 
@@ -125,6 +136,7 @@ const TicketList = ({ filter = 'all' }) => {
 
     if (statusFilter !== 'all') params.status = statusFilter;
     if (priorityFilter !== 'all') params.priority = priorityFilter;
+    if (assignedToFilter !== 'all' && filter !== 'my-tickets') params.assigned_to = assignedToFilter;
     if (departmentFilter !== 'all') params.department = departmentFilter;
     if (categoryFilter !== 'all') params.category = categoryFilter;
     if (channelFilter !== 'all') params.channel = channelFilter;
@@ -179,12 +191,13 @@ const TicketList = ({ filter = 'all' }) => {
     return getColorClasses(statusOption?.color);
   };
 
-  const hasActiveFilters = statusFilter !== 'all' || priorityFilter !== 'all' || departmentFilter !== 'all' || categoryFilter !== 'all' || channelFilter !== 'all' || searchTerm || dateFrom || dateTo;
+  const hasActiveFilters = statusFilter !== 'all' || priorityFilter !== 'all' || assignedToFilter !== 'all' || departmentFilter !== 'all' || categoryFilter !== 'all' || channelFilter !== 'all' || searchTerm || dateFrom || dateTo;
 
   const clearFilters = () => {
     setSearchTerm('');
     setStatusFilter('all');
     setPriorityFilter('all');
+    setAssignedToFilter('all');
     setDepartmentFilter('all');
     setCategoryFilter('all');
     setChannelFilter('all');
@@ -301,13 +314,13 @@ const TicketList = ({ filter = 'all' }) => {
             className="w-40"
           />
           <Select
-            value={priorityFilter}
-            onChange={(value) => { setPriorityFilter(value); setCurrentPage(1); }}
+            value={assignedToFilter}
+            onChange={(value) => { setAssignedToFilter(value); setCurrentPage(1); }}
             options={[
-              { value: 'all', label: 'All Priority' },
-              ...priorityOptions.map(p => ({ value: p.code, label: p.name }))
+              { value: 'all', label: 'All Assigned To' },
+              ...agentOptions.map(a => ({ value: String(a.id), label: a.user?.name || a.employee_id || String(a.id) }))
             ]}
-            className="w-40"
+            className="w-44"
           />
           <Select
             value={departmentFilter}
