@@ -1,15 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Icon from '../AppIcon';
-import { menuService } from '../../services/menuService';
 import cxLogo from '../../assets/cxlogo.png';
 
 const NavigationSidebar = ({ isCollapsed = false, onToggleCollapse, userRole = 'agent' }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const [isMobile, setIsMobile] = useState(false);
-  const [navigationItems, setNavigationItems] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const checkMobile = () => {
@@ -21,74 +18,28 @@ const NavigationSidebar = ({ isCollapsed = false, onToggleCollapse, userRole = '
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // Fetch menu items from API
-  useEffect(() => {
-    const fetchMenuItems = async () => {
-      setIsLoading(true);
-      try {
-        const items = await menuService.getMenuItems();
-        setNavigationItems(items);
-      } catch (error) {
-        console.error('Failed to load menu items:', error);
-        // Fallback to default menu items if API fails
-        setNavigationItems(getDefaultMenuItems());
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  // Role-based static menus — simple and predictable
+  const getMenuItems = (role) => {
+    const isSupervisorOrAbove = role === 'supervisor' || role === 'admin' || role === 'super_admin' || role === 'super admin';
 
-    fetchMenuItems();
-  }, [userRole]);
-
-  // Default menu items as fallback
-  const getDefaultMenuItems = () => [
-    {
-      label: 'Dashboard',
-      path: userRole === 'supervisor' 
-        ? '/supervisor-dashboard' 
-        : (userRole === 'admin' || userRole === 'super admin')
-          ? '/system-administration'
-          : '/agent-dashboard',
-      icon: 'LayoutDashboard',
-      tooltip: 'View your daily workspace and active assignments'
-    },
-    {
-      label: 'Tickets',
-      path: '/ticket-management',
-      icon: 'Ticket',
-      tooltip: 'Manage customer tickets and cases'
-    },
-    {
-      label: 'Customer 360',
-      path: '/customer-360-profile',
-      icon: 'Users',
-      tooltip: 'Complete customer profile and interaction history'
-    },
-    {
-      label: 'Knowledge Base',
-      path: '/knowledge-base-portal',
-      icon: 'BookOpen',
-      tooltip: 'Access articles and documentation'
-    },
-    {
-      label: 'Analytics',
-      path: '/analytics-and-reporting',
-      icon: 'BarChart3',
-      tooltip: 'Performance monitoring and reports'
-    },
-    {
-      label: 'Administration',
-      path: '/system-administration',
-      icon: 'Settings',
-      tooltip: 'System configuration and user management'
-    },
-    {
-      label: 'Citizen Portal',
-      path: '/citizen-self-service-portal',
-      icon: 'Globe',
-      tooltip: 'Public self-service interface'
+    if (isSupervisorOrAbove) {
+      return [
+        { label: 'Dashboard', path: '/supervisor-dashboard', icon: 'LayoutDashboard', tooltip: 'Supervisor dashboard overview' },
+        { label: 'Tickets', path: '/ticket-management', icon: 'Ticket', tooltip: 'Manage customer tickets' },
+        { label: 'Customer 360', path: '/customer-360-profile', icon: 'Users', tooltip: 'Complete customer profile' },
+        { label: 'Administration', path: '/system-administration', icon: 'Settings', tooltip: 'System configuration and user management' },
+      ];
     }
-  ];
+
+    // Default: agent / user
+    return [
+      { label: 'Dashboard', path: '/agent-dashboard', icon: 'LayoutDashboard', tooltip: 'View your daily workspace' },
+      { label: 'Tickets', path: '/ticket-management', icon: 'Ticket', tooltip: 'Manage customer tickets' },
+      { label: 'Customer 360', path: '/customer-360-profile', icon: 'Users', tooltip: 'Complete customer profile' },
+    ];
+  };
+
+  const navigationItems = getMenuItems(userRole);
 
   const handleNavigation = (path) => {
     navigate(path);
@@ -97,19 +48,6 @@ const NavigationSidebar = ({ isCollapsed = false, onToggleCollapse, userRole = '
   const isActive = (path) => {
     return location?.pathname === path;
   };
-
-  // Show loading state
-  if (isLoading) {
-    return (
-      <nav className={`fixed top-0 left-0 h-full bg-card border-r border-border z-[1000] transition-all duration-300 ease-in-out ${
-        isCollapsed ? 'w-16' : 'w-60'
-      }`}>
-        <div className="flex items-center justify-center h-full">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-        </div>
-      </nav>
-    );
-  }
 
   if (isMobile) {
     return (

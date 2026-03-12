@@ -7,6 +7,7 @@ import { Checkbox } from '../../../components/ui/Checkbox';
 import Icon from '../../../components/AppIcon';
 import {
   getUsers,
+  getRoles,
   bulkActivateUsers,
   bulkDeactivateUsers,
   bulkDeleteUsers,
@@ -17,8 +18,8 @@ import { toast } from 'react-toastify';
 const UserManagementPanel = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedDepartment, setSelectedDepartment] = useState('');
   const [selectedRole, setSelectedRole] = useState('');
+  const [roleOptions, setRoleOptions] = useState([{ value: '', label: 'All Roles' }]);
   const [selectedUsers, setSelectedUsers] = useState([]);
   const [showAddUserModal, setShowAddUserModal] = useState(false);
   const [users, setUsers] = useState([]);
@@ -29,6 +30,24 @@ const UserManagementPanel = () => {
     total: 0,
     per_page: 15,
   });
+
+  // Load roles from API on mount
+  useEffect(() => {
+    const loadRoles = async () => {
+      try {
+        const res = await getRoles();
+        const rolesData = res.data?.data || res.data || [];
+        const options = [
+          { value: '', label: 'All Roles' },
+          ...rolesData.map(r => ({ value: String(r.id), label: r.name }))
+        ];
+        setRoleOptions(options);
+      } catch (err) {
+        console.error('Error loading roles:', err);
+      }
+    };
+    loadRoles();
+  }, []);
 
   // Load users on component mount and when filters change
   useEffect(() => {
@@ -42,7 +61,7 @@ const UserManagementPanel = () => {
       
       const filters = {
         search: searchTerm || undefined,
-        role_id: selectedRole || undefined,
+        role_id: selectedRole ? Number(selectedRole) : undefined,
         page: pagination.current_page,
         per_page: pagination.per_page,
       };
@@ -123,11 +142,7 @@ const UserManagementPanel = () => {
   { value: 'it-operations', label: 'IT Operations' }];
 
 
-  const roles = [
-  { value: '', label: 'All Roles' },
-  { value: 'agent', label: 'Agent' },
-  { value: 'supervisor', label: 'Supervisor' },
-  { value: 'admin', label: 'Administrator' }];
+  const roles = roleOptions;
 
 
   const handleUserSelection = (userId, checked) => {
@@ -201,18 +216,12 @@ const UserManagementPanel = () => {
         </div>
 
         {/* Filters */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Input
             type="search"
             placeholder="Search users..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e?.target?.value)} />
-
-          <Select
-            placeholder="Filter by department"
-            options={departments}
-            value={selectedDepartment}
-            onChange={setSelectedDepartment} />
 
           <Select
             placeholder="Filter by role"
