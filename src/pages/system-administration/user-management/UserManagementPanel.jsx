@@ -17,10 +17,12 @@ import { toast } from 'react-toastify';
 
 const UserManagementPanel = () => {
   const navigate = useNavigate();
+
+  // ─── State ───────────────────────────────────────────────────────────
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedRole, setSelectedRole] = useState('');
-  const [roleOptions, setRoleOptions] = useState([{ value: '', label: 'All Roles' }]);
-  const [selectedUsers, setSelectedUsers] = useState([]);
+  const [selectedRole, setSelectedRole] = useState('');        // stores role id as string; cast to Number before API call
+  const [roleOptions, setRoleOptions] = useState([{ value: '', label: 'All Roles' }]); // populated from /api/v1/roles
+  const [selectedUsers, setSelectedUsers] = useState([]);      // user ids for bulk actions
   const [showAddUserModal, setShowAddUserModal] = useState(false);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -30,8 +32,10 @@ const UserManagementPanel = () => {
     total: 0,
     per_page: 15,
   });
+  // ─────────────────────────────────────────────────────────────────────
 
-  // Load roles from API on mount
+  // ─── Effects ──────────────────────────────────────────────────────────
+  // Load roles from API on mount to populate the role filter dropdown
   useEffect(() => {
     const loadRoles = async () => {
       try {
@@ -49,11 +53,14 @@ const UserManagementPanel = () => {
     loadRoles();
   }, []);
 
-  // Load users on component mount and when filters change
+  // Re-fetch user list whenever search term, role filter, or page changes
   useEffect(() => {
     fetchUsers();
   }, [searchTerm, selectedRole, pagination.current_page]);
+  // ─────────────────────────────────────────────────────────────────────
 
+  // ─── Data Fetching ─────────────────────────────────────────────────────
+  // Fetches the paginated user list using current filter/search/page state
   const fetchUsers = async () => {
     try {
       setLoading(true);
@@ -84,6 +91,7 @@ const UserManagementPanel = () => {
     }
   };
 
+  // ─── Bulk Action Handlers ────────────────────────────────────────────
   const handleBulkActivate = async () => {
     try {
       await bulkActivateUsers(selectedUsers);
@@ -122,6 +130,8 @@ const UserManagementPanel = () => {
     }
   };
 
+  // ─── Row-level Action Handlers ───────────────────────────────────────
+  // Toggles a single user between 'active' and 'inactive'
   const handleToggleUserStatus = async (userId, currentStatus) => {
     try {
       const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
@@ -134,17 +144,22 @@ const UserManagementPanel = () => {
     }
   };
 
-  const departments = [
-  { value: '', label: 'All Departments' },
-  { value: 'customer-service', label: 'Customer Service' },
-  { value: 'customs-operations', label: 'Customs Operations' },
-  { value: 'trade-compliance', label: 'Trade Compliance' },
-  { value: 'it-operations', label: 'IT Operations' }];
+  // ─── Filter Options ────────────────────────────────────────────────────
+  // NOTE: Department filter is not rendered in the UI — kept here in case
+  //       filtering by department is re-introduced later.
+  // const departments = [
+  //   { value: '', label: 'All Departments' },
+  //   { value: 'customer-service', label: 'Customer Service' },
+  //   { value: 'customs-operations', label: 'Customs Operations' },
+  //   { value: 'trade-compliance', label: 'Trade Compliance' },
+  //   { value: 'it-operations', label: 'IT Operations' },
+  // ];
 
-
+  // Alias so JSX reads naturally; roleOptions is the source of truth
   const roles = roleOptions;
 
 
+  // ─── Selection Helpers ────────────────────────────────────────────────
   const handleUserSelection = (userId, checked) => {
     if (checked) {
       setSelectedUsers([...selectedUsers, userId]);
@@ -161,6 +176,8 @@ const UserManagementPanel = () => {
     }
   };
 
+  // ─── Rendering Utilities ─────────────────────────────────────────────
+  // Returns a colour-coded badge element for the user's status
   const getStatusBadge = (status) => {
     const statusConfig = {
       'active': 'bg-success/10 text-success',
@@ -174,6 +191,7 @@ const UserManagementPanel = () => {
 
   };
 
+  // Formats an ISO date string to a human-readable MY locale datetime
   const formatLastLogin = (dateString) => {
     if (!dateString) return 'Never';
     const date = new Date(dateString);
