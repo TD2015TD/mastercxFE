@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Button from '../../../components/ui/Button';
 import Input from '../../../components/ui/Input';
@@ -20,6 +20,8 @@ const UserManagementPanel = () => {
 
   // ─── State ───────────────────────────────────────────────────────────
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const searchDebounceTimer = useRef(null);
   const [selectedRole, setSelectedRole] = useState('');        // stores role id as string; cast to Number before API call
   const [roleOptions, setRoleOptions] = useState([{ value: '', label: 'All Roles' }]); // populated from /api/v1/roles
   const [selectedUsers, setSelectedUsers] = useState([]);      // user ids for bulk actions
@@ -27,14 +29,27 @@ const UserManagementPanel = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [openMoreMenu, setOpenMoreMenu] = useState(null);      // user id of currently open More dropdown
+  const moreMenuRef = useRef(null);
   const [pagination, setPagination] = useState({
     current_page: 1,
     total: 0,
     per_page: 15,
+    last_page: 1,
   });
   // ─────────────────────────────────────────────────────────────────────
 
   // ─── Effects ──────────────────────────────────────────────────────────
+  // Debounce search input
+  useEffect(() => {
+    if (searchDebounceTimer.current) clearTimeout(searchDebounceTimer.current);
+    searchDebounceTimer.current = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+      setPagination(prev => ({ ...prev, current_page: 1 }));
+    }, 400);
+    return () => clearTimeout(searchDebounceTimer.current);
+  }, [searchTerm]);
+
   // Load roles from API on mount to populate the role filter dropdown
   useEffect(() => {
     const loadRoles = async () => {
@@ -53,35 +68,47 @@ const UserManagementPanel = () => {
     loadRoles();
   }, []);
 
-  // Re-fetch user list whenever search term, role filter, or page changes
+  // Re-fetch user list whenever debounced search, role filter, or page changes
   useEffect(() => {
     fetchUsers();
-  }, [searchTerm, selectedRole, pagination.current_page]);
+  }, [debouncedSearch, selectedRole, pagination.current_page]);
+
+  // Close More dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (moreMenuRef.current && !moreMenuRef.current.contains(e.target)) {
+        setOpenMoreMenu(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
   // ─────────────────────────────────────────────────────────────────────
 
   // ─── Data Fetching ─────────────────────────────────────────────────────
-  // Fetches the paginated user list using current filter/search/page state
   const fetchUsers = async () => {
     try {
       setLoading(true);
       setError(null);
-      
+
       const filters = {
-        search: searchTerm || undefined,
+        search: debouncedSearch || undefined,
         role_id: selectedRole ? Number(selectedRole) : undefined,
         page: pagination.current_page,
         per_page: pagination.per_page,
       };
 
       const response = await getUsers(filters);
-      
+
       if (response.success) {
         setUsers(response.data.data);
-        setPagination({
+        setPagination(prev => ({
+          ...prev,
           current_page: response.data.current_page,
           total: response.data.total,
           per_page: response.data.per_page,
-        });
+          last_page: response.data.last_page || 1,
+        }));
       }
     } catch (err) {
       console.error('Error fetching users:', err);
@@ -131,12 +158,12 @@ const UserManagementPanel = () => {
   };
 
   // ─── Row-level Action Handlers ───────────────────────────────────────
-  // Toggles a single user between 'active' and 'inactive'
   const handleToggleUserStatus = async (userId, currentStatus) => {
     try {
       const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
       await updateUserStatus(userId, newStatus);
       toast.success('User status updated successfully');
+      setOpenMoreMenu(null);
       fetchUsers();
     } catch (err) {
       console.error('Error updating user status:', err);
@@ -144,20 +171,22 @@ const UserManagementPanel = () => {
     }
   };
 
-  // ─── Filter Options ────────────────────────────────────────────────────
-  // NOTE: Department filter is not rendered in the UI — kept here in case
-  //       filtering by department is re-introduced later.
-  // const departments = [
-  //   { value: '', label: 'All Departments' },
-  //   { value: 'customer-service', label: 'Customer Service' },
-  //   { value: 'customs-operations', label: 'Customs Operations' },
-  //   { value: 'trade-compliance', label: 'Trade Compliance' },
-  //   { value: 'it-operations', label: 'IT Operations' },
-  // ];
+  const handleDeleteUser = async (userId) => {
+    if (!confirm('Are you sure you want to delete this user?')) return;
+    try {
+      await bulkDeleteUsers([userId]);
+      toast.success('User deleted successfully');
+      setOpenMoreMenu(null);
+      fetchUsers();
+    } catch (err) {
+      console.error('Error deleting user:', err);
+      toast.error('Failed to delete user');
+    }
+  };
 
+  // ─── Filter Options ────────────────────────────────────────────────────
   // Alias so JSX reads naturally; roleOptions is the source of truth
   const roles = roleOptions;
-
 
   // ─── Selection Helpers ────────────────────────────────────────────────
   const handleUserSelection = (userId, checked) => {
@@ -177,7 +206,6 @@ const UserManagementPanel = () => {
   };
 
   // ─── Rendering Utilities ─────────────────────────────────────────────
-  // Returns a colour-coded badge element for the user's status
   const getStatusBadge = (status) => {
     const statusConfig = {
       'active': 'bg-success/10 text-success',
@@ -188,10 +216,8 @@ const UserManagementPanel = () => {
       <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusConfig?.[status?.toLowerCase()]}`}>
         {status}
       </span>);
-
   };
 
-  // Formats an ISO date string to a human-readable MY locale datetime
   const formatLastLogin = (dateString) => {
     if (!dateString) return 'Never';
     const date = new Date(dateString);
@@ -202,6 +228,15 @@ const UserManagementPanel = () => {
       hour: '2-digit',
       minute: '2-digit'
     });
+  };
+
+  // Compute page numbers (sliding window ±2)
+  const getPageNumbers = () => {
+    const start = Math.max(1, pagination.current_page - 2);
+    const end = Math.min(pagination.last_page, pagination.current_page + 2);
+    const pages = [];
+    for (let i = start; i <= end; i++) pages.push(i);
+    return pages;
   };
 
   if (loading && !users.length) {
@@ -228,7 +263,6 @@ const UserManagementPanel = () => {
             iconName="UserPlus"
             iconPosition="left"
             onClick={() => navigate('/system-administration/users/create')}>
-
             Add User
           </Button>
         </div>
@@ -245,10 +279,13 @@ const UserManagementPanel = () => {
             placeholder="Filter by role"
             options={roles}
             value={selectedRole}
-            onChange={setSelectedRole} />
-
+            onChange={(value) => {
+              setSelectedRole(value);
+              setPagination(prev => ({ ...prev, current_page: 1 }));
+            }} />
         </div>
       </div>
+
       <div className="p-6">
         {/* Bulk Actions */}
         {selectedUsers?.length > 0 &&
@@ -288,10 +325,9 @@ const UserManagementPanel = () => {
               <tr className="border-b border-border">
                 <th className="text-left py-3 px-4">
                   <Checkbox
-                    checked={selectedUsers?.length === users?.length}
+                    checked={selectedUsers?.length === users?.length && users?.length > 0}
                     indeterminate={selectedUsers?.length > 0 && selectedUsers?.length < users?.length}
                     onChange={(e) => handleSelectAll(e?.target?.checked)} />
-
                 </th>
                 <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">User</th>
                 <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Role</th>
@@ -321,7 +357,6 @@ const UserManagementPanel = () => {
                     <Checkbox
                     checked={selectedUsers?.includes(user?.id)}
                     onChange={(e) => handleUserSelection(user?.id, e?.target?.checked)} />
-
                   </td>
                   <td className="py-3 px-4">
                     <div className="flex items-center space-x-3">
@@ -342,16 +377,48 @@ const UserManagementPanel = () => {
                   </td>
                   <td className="py-3 px-4">
                     <div className="flex items-center space-x-2">
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         iconName="Edit"
                         onClick={() => navigate(`/system-administration/users/${user?.id}/edit`)}>
                         Edit
                       </Button>
-                      <Button variant="ghost" size="sm" iconName="MoreHorizontal">
-                        More
-                      </Button>
+                      {/* More dropdown */}
+                      <div className="relative" ref={openMoreMenu === user?.id ? moreMenuRef : null}>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          iconName="MoreHorizontal"
+                          onClick={() => setOpenMoreMenu(openMoreMenu === user?.id ? null : user?.id)}>
+                          More
+                        </Button>
+                        {openMoreMenu === user?.id && (
+                          <div className="absolute right-0 mt-1 w-44 bg-card border border-border rounded-lg shadow-lg z-50">
+                            <button
+                              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors rounded-t-lg"
+                              onClick={() => {
+                                setOpenMoreMenu(null);
+                                navigate(`/system-administration/users/${user?.id}/edit`);
+                              }}>
+                              <Icon name="Eye" size={15} />
+                              View Profile
+                            </button>
+                            <button
+                              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors"
+                              onClick={() => handleToggleUserStatus(user?.id, user?.status)}>
+                              <Icon name={user?.status === 'active' ? 'UserX' : 'UserCheck'} size={15} />
+                              {user?.status === 'active' ? 'Deactivate' : 'Activate'}
+                            </button>
+                            <button
+                              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-error hover:bg-error/10 transition-colors rounded-b-lg"
+                              onClick={() => handleDeleteUser(user?.id)}>
+                              <Icon name="Trash2" size={15} />
+                              Delete User
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </td>
                 </tr>
@@ -359,6 +426,57 @@ const UserManagementPanel = () => {
             </tbody>
           </table>
         </div>
+
+        {/* Pagination */}
+        {!loading && pagination.last_page > 1 && (
+          <div className="mt-4 flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">
+              Showing {((pagination.current_page - 1) * pagination.per_page) + 1}–{Math.min(pagination.current_page * pagination.per_page, pagination.total)} of {pagination.total} users
+            </p>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={pagination.current_page === 1}
+                onClick={() => setPagination(prev => ({ ...prev, current_page: 1 }))}>
+                «
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={pagination.current_page === 1}
+                onClick={() => setPagination(prev => ({ ...prev, current_page: prev.current_page - 1 }))}>
+                ‹
+              </Button>
+              {getPageNumbers().map(page => (
+                <button
+                  key={page}
+                  onClick={() => setPagination(prev => ({ ...prev, current_page: page }))}
+                  className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+                    pagination.current_page === page
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-foreground hover:bg-muted'
+                  }`}>
+                  {page}
+                </button>
+              ))}
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={pagination.current_page === pagination.last_page}
+                onClick={() => setPagination(prev => ({ ...prev, current_page: prev.current_page + 1 }))}>
+                ›
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={pagination.current_page === pagination.last_page}
+                onClick={() => setPagination(prev => ({ ...prev, current_page: pagination.last_page }))}>
+                »
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     </div>);
 
