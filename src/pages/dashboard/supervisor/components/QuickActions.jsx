@@ -7,14 +7,6 @@ const QuickActions = () => {
 
   const quickActions = [
     {
-      id: 1,
-      title: "Generate Reports",
-      description: "View performance analytics and reports",
-      icon: "BarChart3",
-      color: "text-primary bg-primary/10",
-      action: () => navigate('/analytics-and-reporting')
-    },
-    {
       id: 2,
       title: "Manage Tickets",
       description: "View and manage all department tickets",

@@ -59,6 +59,19 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
     const [isOpen, setIsOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
 
+    // Close this dropdown when another Select is opened
+    useEffect(() => {
+        const handleOtherOpened = (e: CustomEvent<{ id: string }>) => {
+            if (e.detail.id !== selectId && isOpen) {
+                setIsOpen(false);
+                setSearchTerm("");
+                onOpenChange?.(false);
+            }
+        };
+        window.addEventListener('crm-select-opened', handleOtherOpened as EventListener);
+        return () => window.removeEventListener('crm-select-opened', handleOtherOpened as EventListener);
+    }, [isOpen, selectId, onOpenChange]);
+
     // Generate unique ID if not provided
     const selectId = id || `select-${Math.random()?.toString(36)?.substr(2, 9)}`;
 
@@ -90,7 +103,9 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
             const newIsOpen = !isOpen;
             setIsOpen(newIsOpen);
             onOpenChange?.(newIsOpen);
-            if (!newIsOpen) {
+            if (newIsOpen) {
+                window.dispatchEvent(new CustomEvent('crm-select-opened', { detail: { id: selectId } }));
+            } else {
                 setSearchTerm("");
             }
         }

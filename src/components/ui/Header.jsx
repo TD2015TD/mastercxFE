@@ -30,11 +30,6 @@ const Header = ({ user = null, onMenuToggle }) => {
       roles: ['agent', 'supervisor', 'admin', 'super admin']
     },
     {
-      label: 'Knowledge Base',
-      path: '/knowledge-base-portal',
-      roles: ['agent', 'supervisor', 'admin', 'super admin']
-    },
-    {
       label: 'Reports',
       path: '/analytics-and-reporting',
       roles: ['supervisor', 'admin', 'super admin']
@@ -48,19 +43,9 @@ const Header = ({ user = null, onMenuToggle }) => {
       roles: ['agent', 'supervisor', 'admin', 'super admin']
     },
     {
-      label: 'Directory Search',
-      path: '/directory-search-and-browsing',
-      roles: ['agent', 'supervisor', 'admin', 'super admin']
-    },
-    {
       label: 'Administration',
       path: '/system-administration',
       roles: ['admin', 'super admin']
-    },
-    {
-      label: 'Citizen Portal',
-      path: '/citizen-self-service-portal',
-      roles: ['agent', 'supervisor', 'admin', 'super admin']
     }
   ];
 
@@ -222,8 +207,6 @@ const Header = ({ user = null, onMenuToggle }) => {
               <span className="text-xs">Ctrl+/</span>
             </button>
 
-            <ConversationNotification onConversationEvent={handleConversationEvent} />
-            <NotificationCenter />
             <UserProfileDropdown user={user} />
           </div>
         </div>

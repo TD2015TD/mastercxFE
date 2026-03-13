@@ -745,8 +745,8 @@ const TicketCreateForm: React.FC<{
           name: formData.customer_name,
           ...(formData.customer_email && { email: formData.customer_email }),
           phone_number: fallbackPhone,
-          id_type: formData.customer_id_type as Customer['id_type'],
-          id_no: formData.customer_id_no,
+          ...(formData.customer_id_type && { id_type: formData.customer_id_type as Customer['id_type'] }),
+          ...(formData.customer_id_no && { id_no: formData.customer_id_no }),
           customer_type: 'individual' as const,
           status: 'active' as const,
           preferred_language: 'en' as const,
@@ -775,8 +775,8 @@ const TicketCreateForm: React.FC<{
         // Ticket classification
         priority: formData.priority,
         department: formData.department,
-        category: formData.category,
-        sub_category: formData.sub_category,
+        category: formData.category || undefined,
+        sub_category: formData.sub_category || undefined,
         urgency: formData.urgency,
         impact: formData.impact,
 

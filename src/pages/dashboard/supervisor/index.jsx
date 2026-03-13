@@ -122,22 +122,6 @@ const SupervisorDashboard = () => {
       color: 'text-yellow-600',
       error: widgetErrors.queue,
     },
-    {
-      label: 'SLA Compliance',
-      value: `${dashboardData.sla.compliance_rate ?? 0}%`,
-      subtext: `${dashboardData.sla.total_tickets || 0} tickets tracked`,
-      icon: 'ShieldCheck',
-      color: 'text-green-600',
-      error: widgetErrors.sla,
-    },
-    {
-      label: 'SLA Breaches Today',
-      value: dashboardData.sla.sla_breaches_today || 0,
-      subtext: `${dashboardData.sla.warnings_count || 0} at-risk tickets`,
-      icon: 'AlertTriangle',
-      color: 'text-red-600',
-      error: widgetErrors.sla,
-    },
   ] : [];
 
   const tabs = [

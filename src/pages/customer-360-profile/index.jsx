@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { Helmet } from 'react-helmet-async';
@@ -15,6 +15,8 @@ const CustomerListingPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const searchDebounceTimer = useRef(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [filters, setFilters] = useState({
@@ -29,16 +31,26 @@ const CustomerListingPage = () => {
     last_page: 1
   });
 
+  // Debounce search input
+  useEffect(() => {
+    if (searchDebounceTimer.current) clearTimeout(searchDebounceTimer.current);
+    searchDebounceTimer.current = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+      setPagination(prev => ({ ...prev, current_page: 1 }));
+    }, 400);
+    return () => clearTimeout(searchDebounceTimer.current);
+  }, [searchQuery]);
+
   useEffect(() => {
     loadCustomers();
-  }, [pagination.current_page, filters]);
+  }, [pagination.current_page, filters, debouncedSearch]);
 
   const loadCustomers = async () => {
     try {
       setIsLoading(true);
       setError(null);
       const response = await customerService.getCustomers({
-        search: searchQuery,
+        search: debouncedSearch,
         page: pagination.current_page,
         per_page: pagination.per_page,
         ...filters
@@ -77,8 +89,8 @@ const CustomerListingPage = () => {
 
   const handleSearch = (e) => {
     e.preventDefault();
+    setDebouncedSearch(searchQuery);
     setPagination(prev => ({ ...prev, current_page: 1 }));
-    loadCustomers();
   };
 
   const handleFilterChange = (key, value) => {
@@ -152,18 +164,6 @@ const CustomerListingPage = () => {
       value: customers.filter(c => c.status === 'active').length.toString(),
       icon: 'UserCheck',
       color: 'text-green-600'
-    },
-    {
-      label: 'Business Accounts',
-      value: customers.filter(c => c.customer_type === 'business').length.toString(),
-      icon: 'Building',
-      color: 'text-purple-600'
-    },
-    {
-      label: 'Individual Accounts',
-      value: customers.filter(c => c.customer_type === 'individual').length.toString(),
-      icon: 'User',
-      color: 'text-orange-600'
     }
   ];
 
@@ -220,7 +220,7 @@ const CustomerListingPage = () => {
           {/* Search and Filters */}
           <div className="bg-card rounded-lg border border-border p-6 mb-6">
             <form onSubmit={handleSearch} className="space-y-4">
-              <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                 {/* Search Input */}
                 <div className="lg:col-span-2">
                   <label className="block text-sm font-medium text-foreground mb-2">
@@ -236,22 +236,6 @@ const CustomerListingPage = () => {
                       className="w-full pl-10 pr-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                     />
                   </div>
-                </div>
-
-                {/* Customer Type Filter */}
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">
-                    Customer Type
-                  </label>
-                  <select
-                    value={filters.customer_type}
-                    onChange={(e) => handleFilterChange('customer_type', e.target.value)}
-                    className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                  >
-                    <option value="">All Types</option>
-                    <option value="individual">Individual</option>
-                    <option value="business">Business</option>
-                  </select>
                 </div>
 
                 {/* Status Filter */}
@@ -281,6 +265,7 @@ const CustomerListingPage = () => {
                   variant="outline" 
                   onClick={() => {
                     setSearchQuery('');
+                    setDebouncedSearch('');
                     setFilters({ customer_type: '', status: '', id_type: '' });
                     setPagination(prev => ({ ...prev, current_page: 1 }));
                   }}

@@ -66,13 +66,6 @@ const TicketManagement = () => {
         subtext: totalTickets > 0 ? `${((breached / totalTickets) * 100).toFixed(1)}% of total` : '0% of total',
         icon: 'Clock',
         color: 'text-orange-600'
-      },
-      {
-        label: 'Escalations',
-        value: escalated.toString(),
-        subtext: totalTickets > 0 ? `${((escalated / totalTickets) * 100).toFixed(1)}% of total` : '0% of total',
-        icon: 'TrendingUp',
-        color: 'text-purple-600'
       }
     ];
   };
@@ -87,7 +80,6 @@ const TicketManagement = () => {
       { id: 'all', label: 'All Tickets', icon: 'List', count: tickets.length },
       { id: 'my-tickets', label: 'My Tickets', icon: 'User', count: myTickets },
       { id: 'unassigned', label: 'Unassigned', icon: 'AlertCircle', count: unassigned },
-      { id: 'escalated', label: 'Escalated', icon: 'TrendingUp', count: escalated },
     ];
   };
 

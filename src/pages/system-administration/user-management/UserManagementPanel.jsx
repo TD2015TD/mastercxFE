@@ -218,17 +218,6 @@ const UserManagementPanel = () => {
       </span>);
   };
 
-  const formatLastLogin = (dateString) => {
-    if (!dateString) return 'Never';
-    const date = new Date(dateString);
-    return date?.toLocaleDateString('en-MY', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
 
   // Compute page numbers (sliding window ±2)
   const getPageNumbers = () => {
@@ -340,13 +329,13 @@ const UserManagementPanel = () => {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan="7" className="py-8 text-center">
+                  <td colSpan="8" className="py-8 text-center">
                     <Icon name="Loader" size={24} className="animate-spin text-primary mx-auto" />
                   </td>
                 </tr>
               ) : users.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="py-8 text-center text-muted-foreground">
+                  <td colSpan="8" className="py-8 text-center text-muted-foreground">
                     No users found
                   </td>
                 </tr>
@@ -373,7 +362,9 @@ const UserManagementPanel = () => {
                   <td className="py-3 px-4 text-sm text-foreground">{user?.agent?.department || 'N/A'}</td>
                   <td className="py-3 px-4">{getStatusBadge(user?.status)}</td>
                   <td className="py-3 px-4 text-sm text-muted-foreground">
-                    {formatLastLogin(user?.last_login)}
+                    {user?.last_login_at
+                      ? new Date(user.last_login_at).toLocaleString('en-MY', { dateStyle: 'short', timeStyle: 'short' })
+                      : 'Never'}
                   </td>
                   <td className="py-3 px-4">
                     <div className="flex items-center space-x-2">

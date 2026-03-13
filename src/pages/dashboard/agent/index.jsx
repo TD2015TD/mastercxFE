@@ -90,12 +90,6 @@ const AgentDashboard = () => {
       icon: 'TrendingUp',
       description: 'View your performance metrics and KPIs'
     },
-    {
-      id: 'knowledge',
-      label: 'Knowledge Base',
-      icon: 'BookOpen',
-      description: 'Quick access to articles and documentation'
-    },
   ];
 
   const renderTabContent = () => {

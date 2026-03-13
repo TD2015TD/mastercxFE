@@ -411,21 +411,14 @@ const TicketDetailPage = () => {
                   >
                     Add Attachment
                   </Button>
-                  <Button 
-                    variant="outline" 
-                    fullWidth 
-                    iconName="Users" 
+                  <Button
+                    variant="outline"
+                    fullWidth
+                    iconName="Users"
                     iconPosition="left"
+                    onClick={handleTransfer}
                   >
                     Transfer
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    fullWidth 
-                    iconName="TrendingUp" 
-                    iconPosition="left"
-                  >
-                    Escalate
                   </Button>
                 </div>
               </div>

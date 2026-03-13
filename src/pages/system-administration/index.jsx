@@ -25,6 +25,17 @@ import { exportToCsv } from '../../utils/exportCsv';
 
 const SystemAdministration = () => {
   const navigate = useNavigate();
+
+  // Get current user role to restrict tab access
+  const currentUserRole = (() => {
+    try {
+      const userData = JSON.parse(localStorage.getItem('user-session') || '{}');
+      if (typeof userData.role === 'string') return userData.role;
+      return userData.role?.slug || userData.role?.name || 'agent';
+    } catch { return 'agent'; }
+  })();
+  const isSupervisor = currentUserRole === 'supervisor';
+
   const [currentLanguage, setCurrentLanguage] = useState('en');
   const [translations, setTranslations] = useState({});
   const [activeTab, setActiveTab] = useState('users');
@@ -94,7 +105,7 @@ const SystemAdministration = () => {
     }
   };
 
-  const tabs = [
+  const allTabs = [
     { id: 'users', label: t('systemAdmin.tabs.users'), icon: 'Users', description: t('systemAdmin.tabs.usersDesc') },
     { id: 'rbac', label: 'RBAC Management', icon: 'Shield', description: 'Manage roles, permissions, and menu assignments' },
     { id: 'sla', label: 'SLA Management', icon: 'Clock', description: 'Configure and monitor Service Level Agreements' },
@@ -102,6 +113,8 @@ const SystemAdministration = () => {
     { id: 'system', label: t('systemAdmin.tabs.system'), icon: 'Settings', description: t('systemAdmin.tabs.systemDesc') },
     { id: 'health', label: t('systemAdmin.tabs.health'), icon: 'Activity', description: t('systemAdmin.tabs.healthDesc') }
   ];
+  // Supervisors can only access users and health tabs
+  const tabs = isSupervisor ? allTabs.filter(t => t.id === 'users' || t.id === 'health') : allTabs;
 
   const statsData = [
     {
@@ -118,22 +131,6 @@ const SystemAdministration = () => {
       change: "+0.2%",
       changeType: "increase",
       icon: "Activity",
-      color: "text-success"
-    },
-    {
-      title: t('systemAdmin.stats.securityScore'),
-      value: loading ? "..." : systemStats.securityScore,
-      change: "+2",
-      changeType: "increase",
-      icon: "Shield",
-      color: "text-success"
-    },
-    {
-      title: t('systemAdmin.stats.complianceRate'),
-      value: loading ? "..." : systemStats.complianceRate,
-      change: "0%",
-      changeType: "stable",
-      icon: "CheckCircle",
       color: "text-success"
     }
   ];

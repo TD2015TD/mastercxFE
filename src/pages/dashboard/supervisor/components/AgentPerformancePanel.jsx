@@ -135,7 +135,7 @@ const AgentPerformancePanel = ({ data = [] }) => {
                 </div>
                 <div className="text-center">
                   <div className="font-medium text-foreground">{agent?.avgResponseTime}</div>
-                  <div className="text-muted-foreground">{t('supervisor.dashboard.agentPerformance.avgResponse')}</div>
+                  <div className="text-muted-foreground">Avg Resolution</div>
                 </div>
                 <div className="text-center">
                   <div className="font-medium text-foreground">{agent?.resolutionRate}</div>
