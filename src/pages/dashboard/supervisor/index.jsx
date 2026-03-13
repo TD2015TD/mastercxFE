@@ -143,7 +143,6 @@ const SupervisorDashboard = () => {
   const tabs = [
     { id: 'overview', label: t('supervisor.dashboard.tabs.overview'), icon: 'LayoutDashboard' },
     { id: 'performance', label: t('supervisor.dashboard.tabs.performance'), icon: 'Users' },
-    { id: 'sla', label: t('supervisor.dashboard.tabs.sla'), icon: 'Clock' },
   ];
 
   const renderTabContent = () => {
