@@ -390,7 +390,7 @@ const TicketList = ({ filter = 'all' }) => {
                   <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Case ID</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Subject</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Customer</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Priority</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase hidden">Priority</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Status</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Assigned To</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Updated</th>
@@ -436,7 +436,7 @@ const TicketList = ({ filter = 'all' }) => {
                         </div>
                       )}
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4 hidden">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPriorityColor(ticket.priority)}`}>
                         {ticket.priority}
                       </span>

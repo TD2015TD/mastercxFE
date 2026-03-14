@@ -172,7 +172,7 @@ const AgentDashboard = () => {
             </div>
           </div>
 
-          <div className="bg-card rounded-lg border border-border p-6">
+          {/* <div className="bg-card rounded-lg border border-border p-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">SLA Compliance</p>
@@ -185,7 +185,7 @@ const AgentDashboard = () => {
                 <Icon name="Target" size={24} className="text-orange-600 dark:text-orange-400" />
               </div>
             </div>
-          </div>
+          </div> */}
         </div>
 
         {/* Navigation Tabs */}
