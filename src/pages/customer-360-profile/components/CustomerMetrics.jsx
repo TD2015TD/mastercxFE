@@ -12,33 +12,7 @@ const CustomerMetrics = ({ metrics }) => {
       change: metrics?.ticketsTrend,
       changeType: metrics?.ticketsTrend > 0 ? 'increase' : 'decrease'
     },
-    {
-      title: 'Avg Resolution Time',
-      value: metrics?.avgResolutionTime,
-      icon: 'Clock',
-      color: 'text-green-600',
-      bgColor: 'bg-green-50',
-      change: metrics?.resolutionTrend,
-      changeType: metrics?.resolutionTrend < 0 ? 'improvement' : 'decline'
-    },
-    {
-      title: 'Satisfaction Score',
-      value: `${metrics?.satisfactionScore}/5`,
-      icon: 'Star',
-      color: 'text-yellow-600',
-      bgColor: 'bg-yellow-50',
-      change: metrics?.satisfactionTrend,
-      changeType: metrics?.satisfactionTrend > 0 ? 'increase' : 'decrease'
-    },
-    {
-      title: 'SLA Compliance',
-      value: `${metrics?.slaCompliance}%`,
-      icon: 'Target',
-      color: 'text-purple-600',
-      bgColor: 'bg-purple-50',
-      change: metrics?.slaTrend,
-      changeType: metrics?.slaTrend > 0 ? 'increase' : 'decrease'
-    }
+    // Hidden: Avg Resolution Time, Satisfaction Score, SLA Compliance
   ];
 
   const getChangeIcon = (changeType) => {

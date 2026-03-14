@@ -382,33 +382,7 @@ const CustomerDetailPage = () => {
             {renderTabContent()}
           </div>
 
-          {/* Quick Actions Panel */}
-          <div className="bg-card rounded-lg border border-border p-6">
-            <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center">
-              <Icon name="Zap" size={20} className="mr-2 text-primary" />
-              Quick Actions
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <Button 
-                variant="outline" 
-                className="justify-start" 
-                iconName="Plus" 
-                iconPosition="left"
-                onClick={handleCreateTicket}
-              >
-                Create Ticket
-              </Button>
-              <Button variant="outline" className="justify-start" iconName="MessageSquare" iconPosition="left">
-                Log Interaction
-              </Button>
-              <Button variant="outline" className="justify-start" iconName="Mail" iconPosition="left">
-                Send Email
-              </Button>
-              <Button variant="outline" className="justify-start" iconName="StickyNote" iconPosition="left">
-                Add Note
-              </Button>
-            </div>
-          </div>
+          {/* Quick Actions Panel — hidden */}
         </main>
 
         {/* Edit Profile Modal */}

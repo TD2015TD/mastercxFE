@@ -32,7 +32,7 @@ const Header = ({ user = null, onMenuToggle }) => {
     {
       label: 'Reports',
       path: '/analytics-and-reporting',
-      roles: ['supervisor', 'admin', 'super admin']
+      roles: ['admin', 'super admin']
     }
   ];
 
