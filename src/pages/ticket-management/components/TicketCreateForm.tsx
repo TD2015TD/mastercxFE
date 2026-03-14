@@ -732,12 +732,6 @@ const TicketCreateForm: React.FC<{
         // Customer exists, use their ID
         customerId = searchResult.data.id;
       } else {
-        const phoneTypeIds = contactTypeLookups
-          .filter((type) => type.code === 'phone' || type.code === 'mobile')
-          .map((type) => String(type.id));
-        const firstPhoneContact = contactEntries.find((entry) =>
-          phoneTypeIds.includes(entry.contact_type_id) && entry.value?.trim()
-        );
         // Create new customer
         const customerData = {
           name: formData.customer_name,
