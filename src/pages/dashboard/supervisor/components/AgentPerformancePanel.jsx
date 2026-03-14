@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Icon from '../../../../components/AppIcon';
 import { languageService } from '../../../../services/languageService';
 
 const AgentPerformancePanel = ({ data = [] }) => {
+  const navigate = useNavigate();
   const [selectedTimeframe, setSelectedTimeframe] = useState('today');
   const [translations, setTranslations] = useState({});
 
@@ -148,7 +150,11 @@ const AgentPerformancePanel = ({ data = [] }) => {
                   </div>
                   <div className="text-muted-foreground">{t('supervisor.dashboard.agentPerformance.quality')}</div>
                 </div>
-                <button className="p-2 hover:bg-muted rounded-md transition-colors duration-200">
+                <button
+                  className="p-2 hover:bg-muted rounded-md transition-colors duration-200"
+                  onClick={() => navigate(`/agent-management?agentId=${agent.id}`)}
+                  title="View agent details"
+                >
                   <Icon name="ChevronRight" size={16} className="text-muted-foreground" />
                 </button>
               </div>

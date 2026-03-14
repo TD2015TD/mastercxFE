@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Box,
   Button,
@@ -71,9 +72,24 @@ const AgentManagement = () => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
 
+  const [searchParams] = useSearchParams();
+  const autoOpenDone = useRef(false);
+
   useEffect(() => {
     fetchAgents();
   }, [page, departmentFilter, statusFilter, availabilityFilter]);
+
+  useEffect(() => {
+    if (autoOpenDone.current) return;
+    const agentId = searchParams.get('agentId');
+    if (agentId && agents.length > 0) {
+      const agent = agents.find(a => String(a.id) === String(agentId));
+      if (agent) {
+        autoOpenDone.current = true;
+        handleViewDetails(agent);
+      }
+    }
+  }, [agents, searchParams]);
 
   const fetchAgents = async () => {
     try {

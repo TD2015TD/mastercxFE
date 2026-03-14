@@ -60,13 +60,13 @@ const TicketManagement = () => {
         icon: 'AlertCircle',
         color: 'text-red-600'
       },
-      {
-        label: 'SLA Breaches',
-        value: breached.toString(),
-        subtext: totalTickets > 0 ? `${((breached / totalTickets) * 100).toFixed(1)}% of total` : '0% of total',
-        icon: 'Clock',
-        color: 'text-orange-600'
-      }
+      // {
+      //   label: 'SLA Breaches',
+      //   value: breached.toString(),
+      //   subtext: totalTickets > 0 ? `${((breached / totalTickets) * 100).toFixed(1)}% of total` : '0% of total',
+      //   icon: 'Clock',
+      //   color: 'text-orange-600'
+      // }
     ];
   };
 

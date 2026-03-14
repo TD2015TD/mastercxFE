@@ -137,7 +137,7 @@ const SupervisorDashboard = () => {
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
               <div className="xl:col-span-2 space-y-6">
                 <AgentPerformancePanel data={dashboardData?.agents || []} />
-                <SLAComplianceCenter data={dashboardData?.sla} />
+                {/* <SLAComplianceCenter data={dashboardData?.sla} /> */}
               </div>
               <div className="space-y-6">
                 <QuickActions />
