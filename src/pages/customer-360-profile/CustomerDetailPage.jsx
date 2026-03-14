@@ -68,8 +68,29 @@ const CustomerDetailPage = () => {
       icon: 'Ticket',
       color: 'text-blue-600'
     },
-    // Hidden: Satisfaction Score
-    // Hidden: Last Interaction
+    {
+      label: 'Satisfaction Score',
+      value: customer?.satisfaction_rating != null
+        ? `${parseFloat(customer.satisfaction_rating).toFixed(1)}/5`
+        : 'N/A',
+      subtext: customer?.satisfaction_rating != null ? 'Based on resolved tickets' : 'No ratings yet',
+      icon: 'Star',
+      color: 'text-yellow-500'
+    },
+    {
+      label: 'Last Interaction',
+      value: customer?.last_contact_at
+        ? new Date(customer.last_contact_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+        : 'N/A',
+      subtext: customer?.last_contact_at
+        ? (() => {
+            const days = Math.floor((new Date() - new Date(customer.last_contact_at)) / 86400000);
+            return days === 0 ? 'Today' : days === 1 ? 'Yesterday' : `${days} days ago`;
+          })()
+        : 'No contact yet',
+      icon: 'Clock',
+      color: 'text-green-600'
+    },
     {
       label: 'Customer Since',
       value: customer?.created_at 
