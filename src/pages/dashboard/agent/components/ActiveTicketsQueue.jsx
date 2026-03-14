@@ -236,7 +236,7 @@ const ActiveTicketsQueue = ({ fullView = false }) => {
         </div>
 
         {/* Priority Filters */}
-        <div className="flex items-center space-x-2">
+        {/* <div className="flex items-center space-x-2">
           <span className="text-sm text-muted-foreground">Priority:</span>
           <button
             onClick={() => handlePriorityFilter('all')}
@@ -260,7 +260,7 @@ const ActiveTicketsQueue = ({ fullView = false }) => {
               {priority.name}
             </button>
           ))}
-        </div>
+        </div> */}
       </div>
       {/* Table */}
       <div className="overflow-x-auto">
@@ -284,7 +284,7 @@ const ActiveTicketsQueue = ({ fullView = false }) => {
                   <Icon name="ArrowUpDown" size={14} />
                 </button>
               </th>
-              <th className="text-left p-4">
+              {/* <th className="text-left p-4">
                 <button
                   onClick={() => handleSort('priority')}
                   className="flex items-center space-x-1 text-sm font-medium text-muted-foreground hover:text-foreground"
@@ -292,11 +292,11 @@ const ActiveTicketsQueue = ({ fullView = false }) => {
                   <span>Priority</span>
                   <Icon name="ArrowUpDown" size={14} />
                 </button>
-              </th>
+              </th> */}
               <th className="text-left p-4">Customer</th>
               <th className="text-left p-4">Subject</th>
               <th className="text-left p-4">Status</th>
-              <th className="text-left p-4">
+              {/* <th className="text-left p-4">
                 <button
                   onClick={() => handleSort('sla_remaining_minutes')}
                   className="flex items-center space-x-1 text-sm font-medium text-muted-foreground hover:text-foreground"
@@ -304,7 +304,7 @@ const ActiveTicketsQueue = ({ fullView = false }) => {
                   <span>SLA Remaining</span>
                   <Icon name="ArrowUpDown" size={14} />
                 </button>
-              </th>
+              </th> */}
               <th className="text-left p-4">Actions</th>
             </tr>
           </thead>
