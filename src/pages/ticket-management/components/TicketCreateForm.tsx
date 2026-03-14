@@ -88,7 +88,7 @@ const TicketCreateForm: React.FC<{
   
   // Lookups
   const [priorities, setPriorities] = useState<Array<{ value: string; label: string; hours: number }>>([]);
-  const [departments, setDepartments] = useState<string[]>([]);
+  const [departments, setDepartments] = useState<Array<{ code: string; name: string }>>([]);
   const [channelOptions, setChannelOptions] = useState<Array<{ value: string; label: string }>>([]);
   const [urgencyOptions, setUrgencyOptions] = useState<Array<{ value: string; label: string }>>([]);
   const [impactOptions, setImpactOptions] = useState<Array<{ value: string; label: string }>>([]);
@@ -230,7 +230,11 @@ const TicketCreateForm: React.FC<{
     if (initialData) {
       setFormData(prev => ({
         ...prev,
-        ...(initialData.customerId && { customer_id_no: initialData.customerId }),
+        // Populate customer name/email directly from URL params
+        ...(initialData.customerName && { customer_name: initialData.customerName }),
+        ...(initialData.customerEmail && { customer_email: initialData.customerEmail }),
+        // Note: initialData.customerId is the DB primary key, NOT a government ID number.
+        // It is handled separately in the fetch-by-ID useEffect below.
         ...(initialData.channel && { channel: initialData.channel as 'phone' | 'email' | 'chat' | 'web' | 'walk-in' }),
         ...(initialData.subject && { subject: initialData.subject }),
         ...(initialData.priority && { priority: initialData.priority }),
@@ -251,6 +255,32 @@ const TicketCreateForm: React.FC<{
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialData, currentUser]);
+
+  // When a DB customer ID is passed in the URL, fetch the full customer record
+  // so the form shows correct name/email and skips duplicate creation on submit.
+  useEffect(() => {
+    if (!initialData?.customerId || selectedCustomer) return;
+    const dbId = Number(initialData.customerId);
+    if (!dbId) return;
+    customerService.getCustomer(dbId).then(res => {
+      if (res.success && res.data) {
+        const c = res.data;
+        setSelectedCustomer(c as Customer);
+        setFormData(prev => ({
+          ...prev,
+          customer_name: c.name || prev.customer_name,
+          customer_email: c.email || prev.customer_email,
+          customer_id_type: c.id_type || prev.customer_id_type,
+          customer_id_no: c.id_no || prev.customer_id_no,
+        }));
+        if (c.id) {
+          fetchCustomerNotes(c.id);
+          loadCustomerContacts(c.id);
+        }
+      }
+    }).catch(err => console.error('Error fetching customer by id:', err));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialData?.customerId]);
 
   const handleAutoAssignment = async (mitelAgentId: string) => {
     // Only auto-assign for agent role (not super_admin/admin/supervisor)
@@ -640,7 +670,7 @@ const TicketCreateForm: React.FC<{
         lookupService.getLookupsByType('contact_type').catch(() => [])
       ]);
 
-      setDepartments(deptData.map((d) => d.name));
+      setDepartments(deptData.map((d) => ({ code: d.code, name: d.name })));
       
       const mappedPrios = prioData.map((p) => {
         let metadata: { hours?: number } = {};
@@ -721,7 +751,11 @@ const TicketCreateForm: React.FC<{
     try {
       // Step 1: Create or find customer first
       let customerId: number;
-      
+
+      // If a customer was already resolved (via URL customerId or phone lookup), use them directly
+      if (selectedCustomer?.id) {
+        customerId = selectedCustomer.id;
+      } else {
       // Check if customer already exists by ID number or email
       const searchResult = await customerService.searchCustomer({
         id_no: formData.customer_id_no,
@@ -752,7 +786,8 @@ const TicketCreateForm: React.FC<{
         
         customerId = customerResponse.data.id;
       }
-      
+      } // end of customer lookup/create block
+
       // Step 2: Create contacts (if provided)
       await createContactsForCustomer(customerId);
 
@@ -1102,7 +1137,7 @@ const TicketCreateForm: React.FC<{
             onChange={(value) => handleInputChange('department', value as string)}
             options={[
               { value: '', label: 'Select Department' },
-              ...departments.map(dept => ({ value: dept, label: dept }))
+              ...departments.map(dept => ({ value: dept.code, label: dept.name }))
             ]}
             required
           />

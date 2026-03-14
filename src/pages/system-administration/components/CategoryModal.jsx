@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import api from '../../../services/api';
+import { getDepartments } from '../../../services/lookupService';
 import Button from '../../../components/ui/Button';
 
 const CategoryModal = ({ category, categories, onClose, onSave }) => {
@@ -26,28 +27,11 @@ const CategoryModal = ({ category, categories, onClose, onSave }) => {
 
   const loadDepartments = async () => {
     try {
-      const response = await api.get('/categories');
-      const allCategories = response.data.data || [];
-      
-      // Filter only parent categories (parent_id is null)
-      const parentCategories = allCategories.filter(cat => cat.parent_id === null);
-      
-      // Get distinct departments (case-insensitive) from parent categories only
-      const deptMap = new Map();
-      parentCategories.forEach(cat => {
-        if (cat.department) {
-          const lowerDept = cat.department.toLowerCase();
-          if (!deptMap.has(lowerDept)) {
-            deptMap.set(lowerDept, cat.department);
-          }
-        }
-      });
-      
-      const distinctDepts = Array.from(deptMap.values()).map(dept => ({
-        value: dept,
-        label: dept
+      const deptLookups = await getDepartments();
+      const distinctDepts = deptLookups.map(d => ({
+        value: d.code,
+        label: d.name
       }));
-      
       setDepartments(distinctDepts);
     } catch (error) {
       console.error('Error loading departments:', error);
