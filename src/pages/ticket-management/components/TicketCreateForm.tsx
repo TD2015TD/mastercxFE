@@ -738,13 +738,10 @@ const TicketCreateForm: React.FC<{
         const firstPhoneContact = contactEntries.find((entry) =>
           phoneTypeIds.includes(entry.contact_type_id) && entry.value?.trim()
         );
-        const fallbackPhone = firstPhoneContact?.value || '0000000000';
-
         // Create new customer
         const customerData = {
           name: formData.customer_name,
           ...(formData.customer_email && { email: formData.customer_email }),
-          phone_number: fallbackPhone,
           ...(formData.customer_id_type && { id_type: formData.customer_id_type as Customer['id_type'] }),
           ...(formData.customer_id_no && { id_no: formData.customer_id_no }),
           customer_type: 'individual' as const,
