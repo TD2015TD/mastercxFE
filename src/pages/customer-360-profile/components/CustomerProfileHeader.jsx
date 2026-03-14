@@ -128,15 +128,7 @@ const CustomerProfileHeader = ({ customer, customerContacts = [], onEdit, onCrea
           >
             Create Ticket
           </Button>
-          <Button
-            variant="outline"
-            iconName="Calendar"
-            iconPosition="left"
-            onClick={onScheduleCallback}
-            className="w-full"
-          >
-            Schedule Callback
-          </Button>
+          {/* Schedule Callback — hidden */}
           <Button
             variant="ghost"
             iconName="Edit"

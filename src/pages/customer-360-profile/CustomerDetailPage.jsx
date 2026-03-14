@@ -68,27 +68,8 @@ const CustomerDetailPage = () => {
       icon: 'Ticket',
       color: 'text-blue-600'
     },
-    {
-      label: 'Satisfaction Score',
-      value: customer?.satisfaction_rating || 'N/A',
-      subtext: 'Out of 5.0',
-      icon: 'Star',
-      color: 'text-yellow-600'
-    },
-    {
-      label: 'Last Interaction',
-      value: customer?.last_contact_at 
-        ? (() => {
-            const days = Math.floor((new Date() - new Date(customer.last_contact_at)) / (1000 * 60 * 60 * 24));
-            return days === 0 ? 'Today' : `${days} days ago`;
-          })()
-        : 'N/A',
-      subtext: customer?.last_contact_at 
-        ? new Date(customer.last_contact_at).toLocaleDateString('en-GB')
-        : 'No interactions',
-      icon: 'Clock',
-      color: 'text-green-600'
-    },
+    // Hidden: Satisfaction Score
+    // Hidden: Last Interaction
     {
       label: 'Customer Since',
       value: customer?.created_at 
