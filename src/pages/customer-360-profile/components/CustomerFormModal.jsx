@@ -221,7 +221,7 @@ const CustomerFormModal = ({ isOpen, onClose, onSave, customer = null, isLoading
   ];
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[1100] p-4 overflow-y-auto">
       <div className="bg-card rounded-lg shadow-xl max-w-4xl w-full my-8 max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border">
