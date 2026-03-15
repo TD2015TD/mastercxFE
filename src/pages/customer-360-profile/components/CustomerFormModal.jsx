@@ -158,14 +158,8 @@ const CustomerFormModal = ({ isOpen, onClose, onSave, customer = null, isLoading
       newErrors.name = 'Name is required';
     }
 
-    if (!formData.email.trim()) {
-      newErrors.email = 'Email is required';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+    if (formData.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       newErrors.email = 'Invalid email format';
-    }
-
-    if (!formData.id_no.trim()) {
-      newErrors.id_no = 'ID number is required';
     }
 
     setErrors(newErrors);
@@ -262,7 +256,7 @@ const CustomerFormModal = ({ isOpen, onClose, onSave, customer = null, isLoading
                 </div>
 
                 <Input
-                  label="Email Address *"
+                  label="Email Address"
                   type="email"
                   value={formData.email}
                   onChange={(e) => handleChange('email', e.target.value)}
@@ -272,7 +266,7 @@ const CustomerFormModal = ({ isOpen, onClose, onSave, customer = null, isLoading
                 />
 
                 <Select
-                  label="ID Type *"
+                  label="ID Type"
                   value={formData.id_type}
                   onChange={(value) => handleChange('id_type', value)}
                   options={idTypeOptions}
@@ -280,7 +274,7 @@ const CustomerFormModal = ({ isOpen, onClose, onSave, customer = null, isLoading
                 />
 
                 <Input
-                  label="ID Number *"
+                  label="ID Number"
                   type="text"
                   value={formData.id_no}
                   onChange={(e) => handleChange('id_no', e.target.value)}
