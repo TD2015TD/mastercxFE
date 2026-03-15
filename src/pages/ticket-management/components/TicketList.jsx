@@ -197,20 +197,25 @@ const TicketList = ({ filter = 'all' }) => {
       }
 
       const rows = [
-        ['Ticket ID', 'Case ID', 'Subject', 'Customer', 'Email', 'Priority', 'Status', 'Assigned To', 'Department', 'Category', 'Channel'],
-        ...((Array.isArray(exportTickets) ? exportTickets : []).map(t => [
-          t.ticket_number,
-          t.case_id || '',
-          t.subject,
-          t.customer?.name || '',
-          t.customer?.email || '',
-          t.priority,
-          t.status,
-          t.assigned_agent?.user?.name || t.assigned_agent?.employee_id || 'Unassigned',
-          t.department || '',
-          t.category || '',
-          t.channel || '',
-        ]))
+        ['Ticket ID', 'Case ID', 'Subject', 'Customer', 'Email', 'Priority', 'Status', 'Assigned To', 'Department', 'Category', 'Channel', 'Created At', 'Updated At'],
+        ...((Array.isArray(exportTickets) ? exportTickets : []).map(t => {
+          const fmt = (d) => d ? new Date(d).toLocaleString('en-MY', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }) : '';
+          return [
+            t.ticket_number,
+            t.case_id || '',
+            t.subject,
+            t.customer?.name || '',
+            t.customer?.email || '',
+            t.priority,
+            t.status,
+            t.assigned_agent?.user?.name || t.assigned_agent?.employee_id || 'Unassigned',
+            t.department || '',
+            t.category || '',
+            t.channel || '',
+            fmt(t.created_at),
+            fmt(t.updated_at),
+          ];
+        }))
       ];
 
       exportToCsv(rows, 'tickets');
