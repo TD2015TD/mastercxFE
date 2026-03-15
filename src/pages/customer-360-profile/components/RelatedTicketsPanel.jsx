@@ -125,12 +125,12 @@ const RelatedTicketsPanel = ({ customerId }) => {
             </p>
           </div>
           
-          <div className="flex flex-col sm:flex-row gap-3">
+          <div className="flex flex-col gap-2 w-full sm:w-48">
             {/* Status Filter */}
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e?.target?.value)}
-              className="px-3 py-2 border border-border rounded-md bg-background text-foreground text-sm"
+              className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground text-sm"
             >
               {statusOptions?.map(status => (
                 <option key={status} value={status}>
@@ -143,7 +143,7 @@ const RelatedTicketsPanel = ({ customerId }) => {
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e?.target?.value)}
-              className="px-3 py-2 border border-border rounded-md bg-background text-foreground text-sm"
+              className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground text-sm"
             >
               {sortOptions?.map(option => (
                 <option key={option?.value} value={option?.value}>
