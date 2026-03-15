@@ -222,7 +222,7 @@ const CustomerFormModal = ({ isOpen, onClose, onSave, customer = null, isLoading
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-      <div className="bg-card rounded-lg shadow-xl max-w-4xl w-full my-8">
+      <div className="bg-card rounded-lg shadow-xl max-w-4xl w-full my-8 max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border">
           <h2 className="text-xl font-semibold text-foreground flex items-center gap-2">
@@ -240,8 +240,8 @@ const CustomerFormModal = ({ isOpen, onClose, onSave, customer = null, isLoading
         </div>
 
         {/* Body */}
-        <form onSubmit={handleSubmit} className="p-6">
-          <div className="space-y-6">
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+          <div className="space-y-6 overflow-y-auto flex-1 p-6">
             {/* Basic Information */}
             <div>
               <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
@@ -499,7 +499,7 @@ const CustomerFormModal = ({ isOpen, onClose, onSave, customer = null, isLoading
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-end gap-3 mt-6 pt-6 border-t border-border">
+          <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-border flex-shrink-0">
             <Button
               type="button"
               variant="outline"
