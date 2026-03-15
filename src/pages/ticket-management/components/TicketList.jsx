@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ticketService } from '../../../services/ticketService';
-import { contactService } from '../../../services/contactService';
 import { getLookupsByType } from '../../../services/lookupService';
 import categoryService from '../../../services/categoryService';
 import { authService } from '../../../services/authService';
@@ -51,7 +50,7 @@ const TicketList = ({ filter = 'all' }) => {
     debounceTimer.current = setTimeout(() => {
       setDebouncedSearch(searchTerm);
       setCurrentPage(1);
-    }, 400);
+    }, 700);
     return () => clearTimeout(debounceTimer.current);
   }, [searchTerm]);
 
@@ -148,37 +147,15 @@ const TicketList = ({ filter = 'all' }) => {
   };
 
   useEffect(() => {
-    const loadContactsForVisibleCustomers = async () => {
-      const customerIds = Array.from(new Set(
-        (tickets || [])
-          .map((ticket) => ticket?.customer?.id)
-          .filter(Boolean)
-      ));
-
-      if (customerIds.length === 0) {
-        setCustomerContactsMap({});
-        return;
+    // Build contacts map from the eager-loaded customer.contacts bundled in each ticket
+    const nextMap = {};
+    (tickets || []).forEach((ticket) => {
+      const customerId = ticket?.customer?.id;
+      if (customerId && ticket.customer.contacts) {
+        nextMap[customerId] = ticket.customer.contacts;
       }
-
-      try {
-        const contactResults = await Promise.all(
-          customerIds.map(async (customerId) => {
-            const response = await contactService.getCustomerContacts(customerId, { per_page: 50 });
-            return [customerId, response?.data || []];
-          })
-        );
-
-        const nextMap = {};
-        contactResults.forEach(([customerId, contacts]) => {
-          nextMap[customerId] = contacts;
-        });
-        setCustomerContactsMap(nextMap);
-      } catch (error) {
-        console.error('Error loading contacts for ticket list:', error);
-      }
-    };
-
-    loadContactsForVisibleCustomers();
+    });
+    setCustomerContactsMap(nextMap);
   }, [tickets]);
 
   const getPriorityColor = (priority) => {

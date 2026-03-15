@@ -37,7 +37,7 @@ const CustomerListingPage = () => {
     searchDebounceTimer.current = setTimeout(() => {
       setDebouncedSearch(searchQuery);
       setPagination(prev => ({ ...prev, current_page: 1 }));
-    }, 400);
+    }, 700);
     return () => clearTimeout(searchDebounceTimer.current);
   }, [searchQuery]);
 
