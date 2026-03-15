@@ -197,7 +197,7 @@ const TicketList = ({ filter = 'all' }) => {
       }
 
       const rows = [
-        ['Ticket ID', 'Case ID', 'Subject', 'Customer', 'Email', 'Priority', 'Status', 'Assigned To', 'Department', 'Category', 'Channel', 'Created At', 'Updated At'],
+        ['Ticket ID', 'Case ID', 'Subject', 'Customer', 'Email', 'Priority', 'Status', 'Assigned To', 'Department', 'Category', 'Channel'],
         ...((Array.isArray(exportTickets) ? exportTickets : []).map(t => [
           t.ticket_number,
           t.case_id || '',
@@ -210,8 +210,6 @@ const TicketList = ({ filter = 'all' }) => {
           t.department || '',
           t.category || '',
           t.channel || '',
-          t.created_at,
-          t.updated_at,
         ]))
       ];
 
