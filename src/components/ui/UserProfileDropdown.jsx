@@ -377,13 +377,13 @@ const UserProfileDropdown = ({ user = null }) => {
           {/* Menu Items */}
           <div className="py-2">
             {/* Profile Settings */}
-            <button
+            {/* <button
               onClick={handleProfileSettings}
               className="w-full flex items-center space-x-3 px-4 py-2 text-sm text-popover-foreground hover:bg-muted transition-colors duration-200"
             >
               <Icon name="User" size={16} />
               <span>Profile Settings</span>
-            </button>
+            </button> */}
 
             {/* Language Selection */}
             <div className="px-4 py-2">
