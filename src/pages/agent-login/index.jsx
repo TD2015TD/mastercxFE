@@ -110,9 +110,9 @@ const AgentLogin = () => {
           <div className="w-full max-w-md mx-auto lg:mx-0">
             <div className="bg-card p-8 rounded-2xl border border-border shadow-xl">
               {/* Language Toggle */}
-              <div className="flex justify-end mb-6">
+              {/* <div className="flex justify-end mb-6">
                 <LanguageToggle />
-              </div>
+              </div> */}
 
               {/* Mobile Header */}
               <div className="lg:hidden mb-8">

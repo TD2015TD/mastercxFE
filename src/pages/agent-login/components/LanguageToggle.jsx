@@ -7,7 +7,7 @@ const LanguageToggle = () => {
   const [currentLanguage, setCurrentLanguage] = useState('en');
   const [languages, setLanguages] = useState([
     { code: 'en', name: 'English', flag: '🇺🇸' },
-    { code: 'ms', name: 'Bahasa Malaysia', flag: '🇲🇾' }
+    // { code: 'ms', name: 'Bahasa Malaysia', flag: '🇲🇾' }
   ]);
 
   useEffect(() => {

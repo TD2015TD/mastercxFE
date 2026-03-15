@@ -4,7 +4,7 @@ import React from 'react';
 const LanguageToggle = ({ currentLanguage, onLanguageChange }) => {
   const languages = [
     { code: 'en', name: 'English', flag: '🇺🇸' },
-    { code: 'ms', name: 'Bahasa Malaysia', flag: '🇲🇾' }
+    // { code: 'ms', name: 'Bahasa Malaysia', flag: '🇲🇾' }
   ];
 
   return (

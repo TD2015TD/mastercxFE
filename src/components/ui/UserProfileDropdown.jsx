@@ -309,7 +309,7 @@ const UserProfileDropdown = ({ user = null }) => {
 
   const languages = [
     { code: 'en', name: 'English', flag: '🇺🇸' },
-    { code: 'ms', name: 'Bahasa Malaysia', flag: '🇲🇾' }
+    // { code: 'ms', name: 'Bahasa Malaysia', flag: '🇲🇾' }
   ];
 
   return (
