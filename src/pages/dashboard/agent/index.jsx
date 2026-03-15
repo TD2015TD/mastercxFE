@@ -247,7 +247,7 @@ const AgentDashboard = () => {
             >
               Find Customer
             </Button>
-            <Button
+            {/* <Button
               variant="outline"
               iconName="BookOpen"
               iconPosition="left"
@@ -264,7 +264,7 @@ const AgentDashboard = () => {
               onClick={() => navigate('/analytics-and-reporting')}
             >
               View Reports
-            </Button>
+            </Button> */}
           </div>
         </div>
       </div>
