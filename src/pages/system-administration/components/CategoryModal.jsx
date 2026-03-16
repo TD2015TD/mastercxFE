@@ -132,6 +132,7 @@ const CategoryModal = ({ category, categories, onClose, onSave }) => {
             <div>
               <label className="block text-sm font-medium mb-1">Parent Category</label>
               <select
+                size={10}
                 value={formData.parent_id ? String(formData.parent_id) : ''}
                 onChange={(e) => setFormData({ ...formData, parent_id: e.target.value ? parseInt(e.target.value) : null })}
                 className="w-full px-3 py-2 border border-border rounded-md"
