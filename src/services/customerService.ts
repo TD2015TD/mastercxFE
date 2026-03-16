@@ -95,7 +95,7 @@ export const customerService = {
   },
 
   // Search customer
-  searchCustomer: async (params: { email?: string; id_no?: string }) => {
+  searchCustomer: async (params: { email?: string; id_no?: string; phone?: string }) => {
     const response = await api.post('/customers/search', params);
     return response.data;
   },

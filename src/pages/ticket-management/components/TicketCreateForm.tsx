@@ -756,10 +756,18 @@ const TicketCreateForm: React.FC<{
       if (selectedCustomer?.id) {
         customerId = selectedCustomer.id;
       } else {
-      // Check if customer already exists by ID number or email
+      // Extract phone number from contact entries
+      const phoneTypeIds = contactTypeLookups
+        .filter(t => t.code?.toLowerCase() === 'phone' || t.code?.toLowerCase() === 'mobile')
+        .map(t => String(t.id));
+      const phoneEntry = contactEntries.find(e => phoneTypeIds.includes(e.contact_type_id) && e.value?.trim());
+      const phoneValue = phoneEntry?.value?.trim();
+
+      // Check if customer already exists by phone, email, or ID number
       const searchResult = await customerService.searchCustomer({
-        id_no: formData.customer_id_no,
-        ...(formData.customer_email && { email: formData.customer_email })
+        ...(phoneValue && { phone: phoneValue }),
+        ...(formData.customer_email?.trim() && { email: formData.customer_email.trim() }),
+        ...(formData.customer_id_no?.trim() && { id_no: formData.customer_id_no.trim() }),
       });
       
       if (searchResult.success && searchResult.data) {
