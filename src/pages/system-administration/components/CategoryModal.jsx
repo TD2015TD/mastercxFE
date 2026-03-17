@@ -131,17 +131,23 @@ const CategoryModal = ({ category, categories, onClose, onSave }) => {
           {formData.department && (
             <div>
               <label className="block text-sm font-medium mb-1">Parent Category</label>
-              <select
-                size={10}
-                value={formData.parent_id ? String(formData.parent_id) : ''}
-                onChange={(e) => setFormData({ ...formData, parent_id: e.target.value ? parseInt(e.target.value) : null })}
-                className="w-full px-3 py-2 border border-border rounded-md"
-              >
-                <option value="">None (This will be a Level 1 category)</option>
+              <div className="w-full border border-border rounded-md overflow-y-auto" style={{ height: '200px' }}>
+                <div
+                  className={`px-3 py-2 cursor-pointer text-sm ${!formData.parent_id ? 'bg-primary text-primary-foreground' : 'hover:bg-accent'}`}
+                  onClick={() => setFormData({ ...formData, parent_id: null })}
+                >
+                  None (This will be a Level 1 category)
+                </div>
                 {availableParents.map(cat => (
-                  <option key={cat.id} value={cat.id}>{cat.name}</option>
+                  <div
+                    key={cat.id}
+                    className={`px-3 py-2 cursor-pointer text-sm ${formData.parent_id === cat.id ? 'bg-primary text-primary-foreground' : 'hover:bg-accent'}`}
+                    onClick={() => setFormData({ ...formData, parent_id: cat.id })}
+                  >
+                    {cat.name}
+                  </div>
                 ))}
-              </select>
+              </div>
               <p className="text-xs text-muted-foreground mt-1">
                 {formData.parent_id ? 'This will be a Level 2 sub-category' : 'This will be a Level 1 parent category'}
               </p>
