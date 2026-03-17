@@ -12,6 +12,7 @@ const TicketManagement = () => {
   const currentUser = authService.getCurrentUser();
   const [activeTab, setActiveTab] = useState('all');
   const [tickets, setTickets] = useState([]);
+  const [totalCount, setTotalCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
 
   // Load tickets on mount
@@ -25,6 +26,7 @@ const TicketManagement = () => {
       const response = await ticketService.getTickets();
       if (response.success) {
         setTickets(response.data.data || []);
+        setTotalCount(response.data.total || 0);
       }
     } catch (error) {
       console.error('Error loading tickets:', error);
@@ -35,7 +37,7 @@ const TicketManagement = () => {
 
   // Calculate statistics from tickets
   const calculateStats = () => {
-    const totalTickets = tickets.length;
+    const totalTickets = totalCount;
     const unassigned = tickets.filter(t => !t.assigned_to).length;
     const breached = tickets.filter(t => t.sla_breached).length;
     const escalated = tickets.filter(t => t.status === 'Escalated').length;
