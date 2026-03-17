@@ -125,8 +125,13 @@ const TicketList = ({ filter = 'all' }) => {
     const params = { page: currentPage, per_page: perPage };
 
     // Apply tab-level filter
-    if (filter === 'my-tickets' && currentUser?.agent?.id) {
-      params.assigned_to = currentUser.agent.id;
+    if (filter === 'my-tickets') {
+      if (currentUser?.agent?.id) {
+        params.assigned_to = currentUser.agent.id;
+      } else {
+        // User has no agent record — return nothing for "My Tickets"
+        params.assigned_to = -1;
+      }
     } else if (filter === 'unassigned') {
       params.unassigned = 1;
     } else if (filter === 'escalated') {

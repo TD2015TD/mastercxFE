@@ -11,82 +11,68 @@ const TicketManagement = () => {
   const navigate = useNavigate();
   const currentUser = authService.getCurrentUser();
   const [activeTab, setActiveTab] = useState('all');
-  const [tickets, setTickets] = useState([]);
   const [totalCount, setTotalCount] = useState(0);
+  const [myTicketsCount, setMyTicketsCount] = useState(0);
+  const [unassignedCount, setUnassignedCount] = useState(0);
+  const [todayCount, setTodayCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Load tickets on mount
+  // Load real counts from API on mount
   useEffect(() => {
-    loadTickets();
+    loadCounts();
   }, []);
 
-  const loadTickets = async () => {
+  const loadCounts = async () => {
     try {
       setIsLoading(true);
-      const response = await ticketService.getTickets();
-      if (response.success) {
-        setTickets(response.data.data || []);
-        setTotalCount(response.data.total || 0);
+      const today = new Date().toISOString().split('T')[0];
+
+      const requests = [
+        ticketService.getTickets({ per_page: 1, page: 1 }),
+        ticketService.getTickets({ per_page: 1, page: 1, unassigned: 1 }),
+        ticketService.getTickets({ per_page: 1, page: 1, date_from: today, date_to: today }),
+      ];
+
+      if (currentUser?.agent?.id) {
+        requests.push(ticketService.getTickets({ per_page: 1, page: 1, assigned_to: currentUser.agent.id }));
       }
+
+      const [allRes, unassignedRes, todayRes, myRes] = await Promise.all(requests);
+
+      if (allRes.success) setTotalCount(allRes.data.total || 0);
+      if (unassignedRes.success) setUnassignedCount(unassignedRes.data.total || 0);
+      if (todayRes.success) setTodayCount(todayRes.data.total || 0);
+      if (myRes?.success) setMyTicketsCount(myRes.data.total || 0);
     } catch (error) {
-      console.error('Error loading tickets:', error);
+      console.error('Error loading ticket counts:', error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Calculate statistics from tickets
-  const calculateStats = () => {
-    const totalTickets = totalCount;
-    const unassigned = tickets.filter(t => !t.assigned_to).length;
-    const breached = tickets.filter(t => t.sla_breached).length;
-    const escalated = tickets.filter(t => t.status === 'Escalated').length;
-    const todayTickets = tickets.filter(t => {
-      const createdDate = new Date(t.created_at);
-      const today = new Date();
-      return createdDate.toDateString() === today.toDateString();
-    }).length;
+  // Calculate statistics
+  const stats = [
+    {
+      label: 'Total Tickets',
+      value: totalCount.toString(),
+      subtext: `+${todayCount} today`,
+      icon: 'Ticket',
+      color: 'text-blue-600'
+    },
+    {
+      label: 'Unassigned',
+      value: unassignedCount.toString(),
+      subtext: unassignedCount > 0 ? 'Needs attention' : 'All assigned',
+      icon: 'AlertCircle',
+      color: 'text-red-600'
+    },
+  ];
 
-    return [
-      {
-        label: 'Total Tickets',
-        value: totalTickets.toString(),
-        subtext: `+${todayTickets} today`,
-        icon: 'Ticket',
-        color: 'text-blue-600'
-      },
-      {
-        label: 'Unassigned',
-        value: unassigned.toString(),
-        subtext: unassigned > 0 ? 'Needs attention' : 'All assigned',
-        icon: 'AlertCircle',
-        color: 'text-red-600'
-      },
-      // {
-      //   label: 'SLA Breaches',
-      //   value: breached.toString(),
-      //   subtext: totalTickets > 0 ? `${((breached / totalTickets) * 100).toFixed(1)}% of total` : '0% of total',
-      //   icon: 'Clock',
-      //   color: 'text-orange-600'
-      // }
-    ];
-  };
-
-  // Calculate tab counts
-  const calculateTabCounts = () => {
-    const myTickets = currentUser?.agent?.id ? tickets.filter(t => t.assigned_to === currentUser.agent.id).length : 0;
-    const unassigned = tickets.filter(t => !t.assigned_to).length;
-    const escalated = tickets.filter(t => t.status === 'Escalated').length;
-
-    return [
-      { id: 'all', label: 'All Tickets', icon: 'List', count: tickets.length },
-      { id: 'my-tickets', label: 'My Tickets', icon: 'User', count: myTickets },
-      { id: 'unassigned', label: 'Unassigned', icon: 'AlertCircle', count: unassigned },
-    ];
-  };
-
-  const stats = calculateStats();
-  const tabs = calculateTabCounts();
+  const tabs = [
+    { id: 'all', label: 'All Tickets', icon: 'List', count: totalCount },
+    { id: 'my-tickets', label: 'My Tickets', icon: 'User', count: myTicketsCount },
+    { id: 'unassigned', label: 'Unassigned', icon: 'AlertCircle', count: unassignedCount },
+  ];
 
   const renderTabContent = () => {
     switch (activeTab) {
