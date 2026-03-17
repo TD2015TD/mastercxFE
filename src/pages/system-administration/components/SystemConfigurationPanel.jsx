@@ -429,6 +429,7 @@ const SystemConfigurationPanel = () => {
             setShowCategoryModal(false);
             setEditingItem(null);
             loadCategories();
+            loadAllCategories();
           }}
         />
       )}

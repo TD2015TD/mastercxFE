@@ -46,6 +46,14 @@ api.interceptors.response.use(
   },
   (error) => {
     if (error.response?.status === 401) {
+      const requestUrl = error.config?.url || '';
+
+      // Don't redirect on auth endpoints (login, register, etc.)
+      // — let those errors bubble up to the caller (e.g. LoginForm)
+      if (requestUrl.includes('/auth/')) {
+        return Promise.reject(error);
+      }
+
       const message = error.response.data?.message || '';
 
       // Check if token expired and cannot be refreshed
@@ -71,5 +79,6 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
 
 export default api;

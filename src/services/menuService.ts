@@ -40,6 +40,13 @@ apiClient.interceptors.response.use(
   },
   (error) => {
     if (error.response?.status === 401) {
+      const requestUrl = error.config?.url || '';
+
+      // Don't redirect on auth endpoints — let errors bubble up to the caller
+      if (requestUrl.includes('/auth/')) {
+        return Promise.reject(error);
+      }
+
       // Clear tokens and redirect to login
       localStorage.removeItem('jwt_token');
       localStorage.removeItem('mitel_token');

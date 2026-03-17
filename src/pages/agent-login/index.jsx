@@ -17,10 +17,14 @@ const AgentLogin = () => {
     if (authToken && userSession) {
       try {
         const session = JSON.parse(userSession);
+        // Role can be stored as a string or as an object { slug, name }
+        const roleSlug = typeof session?.role === 'string'
+          ? session.role
+          : session?.role?.slug || 'agent';
         // Navigate based on user role
-        if (session?.role === 'supervisor') {
+        if (roleSlug === 'supervisor' || roleSlug === 'super_admin') {
           navigate('/supervisor-dashboard');
-        } else if (session?.role === 'admin') {
+        } else if (roleSlug === 'admin') {
           navigate('/system-administration');
         } else {
           navigate('/agent-dashboard');
