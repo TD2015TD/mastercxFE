@@ -115,7 +115,7 @@ const TicketHeader = ({ ticket, liveTimeRemaining, onStatusChange, onTransfer, o
             >
               Transfer
             </Button>
-            <Button
+            {/* <Button
               variant="default"
               size="sm"
               iconName="Check"
@@ -123,7 +123,7 @@ const TicketHeader = ({ ticket, liveTimeRemaining, onStatusChange, onTransfer, o
               onClick={onClose}
             >
               Close Ticket
-            </Button>
+            </Button> */}
           </div>
         </div>
       </div>
