@@ -116,7 +116,7 @@ const TicketManagement = () => {
                   variant="outline" 
                   iconName="RefreshCw" 
                   iconPosition="left"
-                  onClick={loadTickets}
+                  onClick={loadCounts}
                   disabled={isLoading}
                 >
                   {isLoading ? 'Loading...' : 'Refresh'}
