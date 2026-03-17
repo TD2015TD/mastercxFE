@@ -26,11 +26,12 @@ const TicketManagement = () => {
     try {
       setIsLoading(true);
       const today = new Date().toISOString().split('T')[0];
+      const todayEnd = `${today} 23:59:59`;
 
       const requests = [
         ticketService.getTickets({ per_page: 1, page: 1 }),
         ticketService.getTickets({ per_page: 1, page: 1, unassigned: 1 }),
-        ticketService.getTickets({ per_page: 1, page: 1, date_from: today, date_to: today }),
+        ticketService.getTickets({ per_page: 1, page: 1, date_from: today, date_to: todayEnd }),
       ];
 
       if (currentUser?.agent?.id) {
