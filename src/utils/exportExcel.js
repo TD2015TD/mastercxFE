@@ -50,9 +50,11 @@ export async function exportToExcel({ rows, filename, title = 'Ticket Report', l
     sheet.getRow(r).height = 18;
   }
 
+  // Pin column A width to exactly fit the CX logo (120px ≈ 17.14 chars)
+  sheet.getColumn(1).width = 17.14;
+
   // Use fixed pixel size so images are never stretched.
-  // ExcelJS uses EMUs internally; tl only + ext keeps the natural ratio.
-  // cxlogo on the left — 120×72 px
+  // cxlogo on the left — 120×72 px starting at col A
   if (cxImageId !== null) {
     sheet.addImage(cxImageId, {
       tl: { col: 0, row: 0 },
@@ -61,10 +63,10 @@ export async function exportToExcel({ rows, filename, title = 'Ticket Report', l
     });
   }
 
-  // custom (Kastam) logo on the right — 100×72 px, placed after a gap
+  // custom (Kastam) logo immediately to the right — starts at col B (col: 1), no gap
   if (customImageId !== null) {
     sheet.addImage(customImageId, {
-      tl: { col: 3, row: 0 },
+      tl: { col: 1, row: 0 },
       ext: { width: 100, height: 72 },
       editAs: 'oneCell',
     });
