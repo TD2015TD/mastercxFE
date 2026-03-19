@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { toast } from 'react-toastify';
 import api from '../../../services/api';
 import { getDepartments } from '../../../services/lookupService';
 import Button from '../../../components/ui/Button';
 
-const CategoryModal = ({ category, categories, onClose, onSave }) => {
+const CategoryModal = ({ category, onClose, onSave }) => {
   const [formData, setFormData] = useState({
     name: category?.name || '',
     name_ms: category?.name_ms || '',
@@ -20,10 +20,79 @@ const CategoryModal = ({ category, categories, onClose, onSave }) => {
   const [loading, setLoading] = useState(false);
   const [departments, setDepartments] = useState([]);
 
+  // Lazy-loaded parent categories state
+  const [parentList, setParentList] = useState([]);
+  const [parentPage, setParentPage] = useState(1);
+  const [parentHasMore, setParentHasMore] = useState(false);
+  const [parentLoading, setParentLoading] = useState(false);
+  const sentinelRef = useRef(null);
+  const listRef = useRef(null);
+
   // Load departments on mount
   useEffect(() => {
     loadDepartments();
   }, []);
+
+  // Reset and reload parent list when department changes
+  useEffect(() => {
+    if (!formData.department) {
+      setParentList([]);
+      setParentPage(1);
+      setParentHasMore(false);
+      return;
+    }
+    setParentList([]);
+    setParentPage(1);
+    setParentHasMore(true);
+  }, [formData.department]);
+
+  // Fetch a page of parent categories
+  const fetchParentPage = useCallback(async (page, department) => {
+    if (!department) return;
+    setParentLoading(true);
+    try {
+      const response = await api.get('/categories', {
+        params: {
+          roots_only: true,
+          department,
+          per_page: 15,
+          page,
+          sort_by: 'name',
+          is_active: true,
+        },
+      });
+      const data = response.data;
+      const items = (data.data || []).filter(cat => cat.id !== category?.id);
+      setParentList(prev => page === 1 ? items : [...prev, ...items]);
+      setParentHasMore(data.current_page < data.last_page);
+    } catch (err) {
+      console.error('Error loading parent categories:', err);
+    } finally {
+      setParentLoading(false);
+    }
+  }, [category?.id]);
+
+  // Trigger fetch when page or department changes
+  useEffect(() => {
+    if (formData.department && parentPage >= 1) {
+      fetchParentPage(parentPage, formData.department);
+    }
+  }, [parentPage, formData.department, fetchParentPage]);
+
+  // IntersectionObserver for infinite scroll sentinel
+  useEffect(() => {
+    if (!sentinelRef.current) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && parentHasMore && !parentLoading) {
+          setParentPage(prev => prev + 1);
+        }
+      },
+      { root: listRef.current, threshold: 0.1 }
+    );
+    observer.observe(sentinelRef.current);
+    return () => observer.disconnect();
+  }, [parentHasMore, parentLoading]);
 
   const loadDepartments = async () => {
     try {
@@ -45,8 +114,8 @@ const CategoryModal = ({ category, categories, onClose, onSave }) => {
       // Automatically set level based on parent
       const submitData = { ...formData };
       if (submitData.parent_id) {
-        const parent = categories.find(cat => cat.id.toString() === submitData.parent_id.toString());
-        submitData.level = parent ? parent.level + 1 : 2;
+        const parent = parentList.find(cat => cat.id.toString() === submitData.parent_id.toString());
+        submitData.level = parent ? (parent.level ?? 1) + 1 : 2;
       } else {
         submitData.level = 1;
       }
@@ -65,13 +134,6 @@ const CategoryModal = ({ category, categories, onClose, onSave }) => {
       setLoading(false);
     }
   };
-
-  // Filter to show only Level 1 categories (parent_id is null)
-  const availableParents = categories.filter(cat => 
-    cat.parent_id === null &&
-    cat.department === formData.department &&
-    cat.id !== category?.id
-  );
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -131,14 +193,18 @@ const CategoryModal = ({ category, categories, onClose, onSave }) => {
           {formData.department && (
             <div>
               <label className="block text-sm font-medium mb-1">Parent Category</label>
-              <div className="w-full border border-border rounded-md overflow-y-auto" style={{ height: '200px' }}>
+              <div
+                ref={listRef}
+                className="w-full border border-border rounded-md overflow-y-auto"
+                style={{ height: '200px' }}
+              >
                 <div
                   className={`px-3 py-2 cursor-pointer text-sm ${!formData.parent_id ? 'bg-primary text-primary-foreground' : 'hover:bg-accent'}`}
                   onClick={() => setFormData({ ...formData, parent_id: null })}
                 >
                   None (This will be a Level 1 category)
                 </div>
-                {availableParents.map(cat => (
+                {parentList.map(cat => (
                   <div
                     key={cat.id}
                     className={`px-3 py-2 cursor-pointer text-sm ${formData.parent_id === cat.id ? 'bg-primary text-primary-foreground' : 'hover:bg-accent'}`}
@@ -147,6 +213,10 @@ const CategoryModal = ({ category, categories, onClose, onSave }) => {
                     {cat.name}
                   </div>
                 ))}
+                {/* Sentinel for infinite scroll */}
+                <div ref={sentinelRef} className="py-1 text-center">
+                  {parentLoading && <span className="text-xs text-muted-foreground">Loading...</span>}
+                </div>
               </div>
               <p className="text-xs text-muted-foreground mt-1">
                 {formData.parent_id ? 'This will be a Level 2 sub-category' : 'This will be a Level 1 parent category'}
