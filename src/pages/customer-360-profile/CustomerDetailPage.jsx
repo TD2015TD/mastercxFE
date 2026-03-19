@@ -128,6 +128,10 @@ const CustomerDetailPage = () => {
     try {
       const { contacts = [], ...customerPayload } = formData;
 
+      // Convert empty strings to null for optional fields so backend nullable validation passes
+      if (customerPayload.email === '') customerPayload.email = null;
+      if (customerPayload.id_no === '') customerPayload.id_no = null;
+
       const response = await customerService.updateCustomer(parseInt(id), customerPayload);
       
       if (response.success) {
