@@ -50,23 +50,21 @@ export async function exportToExcel({ rows, filename, title = 'Ticket Report', l
     sheet.getRow(r).height = 18;
   }
 
-  // Pin column A width to exactly fit the CX logo (120px ≈ 17.14 chars)
-  sheet.getColumn(1).width = 17.14;
-
-  // Use fixed pixel size so images are never stretched.
-  // cxlogo on the left — 120×72 px starting at col A
+  // Use EMU offsets (1px = 9525 EMU) for pixel-perfect side-by-side placement,
+  // independent of column widths.
+  // cxlogo on the left — 120×72 px starting at pixel 0
   if (cxImageId !== null) {
     sheet.addImage(cxImageId, {
-      tl: { col: 0, row: 0 },
+      tl: { nativeCol: 0, nativeColOff: 0, nativeRow: 0, nativeRowOff: 0 },
       ext: { width: 120, height: 72 },
       editAs: 'oneCell',
     });
   }
 
-  // custom (Kastam) logo immediately to the right — starts at col B (col: 1), no gap
+  // custom (Kastam) logo immediately adjacent — starts at exactly 120px from left (120 * 9525 EMU)
   if (customImageId !== null) {
     sheet.addImage(customImageId, {
-      tl: { col: 1, row: 0 },
+      tl: { nativeCol: 0, nativeColOff: 120 * 9525, nativeRow: 0, nativeRowOff: 0 },
       ext: { width: 100, height: 72 },
       editAs: 'oneCell',
     });
