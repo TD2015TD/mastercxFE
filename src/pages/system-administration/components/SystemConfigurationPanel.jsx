@@ -15,6 +15,7 @@ import SupersetConfiguration from '../superset-configuration/SupersetConfigurati
 const SystemConfigurationPanel = () => {
   const [activeTab, setActiveTab] = useState('categories');
   const [categories, setCategories] = useState([]);
+  const [allCategories, setAllCategories] = useState([]);
   const [lookups, setLookups] = useState({});
   const [loading, setLoading] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
@@ -53,15 +54,16 @@ const SystemConfigurationPanel = () => {
 
   const loadAllCategories = async () => {
     try {
-      const response = await api.get('/categories');
-      const allCategories = response.data.data || [];
-      
+      const response = await api.get('/categories', { params: { per_page: 10000 } });
+      const fetchedCategories = response.data.data || [];
+      setAllCategories(fetchedCategories);
+
       // Filter only parent categories (parent_id is null)
-      const parentCategories = allCategories.filter(cat => cat.parent_id === null);
+      const parentCategories = fetchedCategories.filter(cat => cat.parent_id === null);
       
       // Get distinct departments (case-insensitive) from parent categories only
       const deptMap = new Map();
-      parentCategories.forEach(cat => {
+      fetchedCategories.forEach(cat => {
         if (cat.department) {
           const lowerDept = cat.department.toLowerCase();
           if (!deptMap.has(lowerDept)) {
@@ -420,7 +422,7 @@ const SystemConfigurationPanel = () => {
       {showCategoryModal && (
         <CategoryModal
           category={editingItem}
-          categories={categories}
+          categories={allCategories}
           onClose={() => {
             setShowCategoryModal(false);
             setEditingItem(null);
