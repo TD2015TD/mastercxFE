@@ -26,6 +26,7 @@
     "clsx": "^2.1.1",
     "d3": "^7.9.0",
     "date-fns": "^4.1.0",
+    "exceljs": "^4.4.0",
     "framer-motion": "^12.23.24",
     "json-edit-react": "https://github.com/CarlosNZ/json-edit-react/archive/refs/tags/v1.29.0.tar.gz",
     "jssip": "^3.10.6",

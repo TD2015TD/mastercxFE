@@ -5,7 +5,7 @@ import { getLookupsByType } from '../../../services/lookupService';
 import categoryService from '../../../services/categoryService';
 import { authService } from '../../../services/authService';
 import { agentService } from '../../../services/agentService';
-import { exportToCsv } from '../../../utils/exportCsv';
+import { exportToExcel } from '../../../utils/exportExcel';
 import { getColorClasses } from '../../../utils/colorUtils';
 import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
@@ -223,7 +223,7 @@ const TicketList = ({ filter = 'all' }) => {
         }))
       ];
 
-      exportToCsv(rows, 'tickets');
+      await exportToExcel({ rows, filename: 'tickets', title: 'Ticket Management Report' });
     } catch (error) {
       console.error('Error exporting tickets:', error);
     } finally {
