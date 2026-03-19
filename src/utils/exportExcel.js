@@ -61,10 +61,10 @@ export async function exportToExcel({ rows, filename, title = 'Ticket Report', l
     });
   }
 
-  // custom (Kastam) logo immediately adjacent — starts at exactly 120px from left (120 * 9525 EMU)
+  // custom (Kastam) logo immediately adjacent — starts at exactly 140px from left (120px CX logo + 20px gap)
   if (customImageId !== null) {
     sheet.addImage(customImageId, {
-      tl: { nativeCol: 0, nativeColOff: 120 * 9525, nativeRow: 0, nativeRowOff: 0 },
+      tl: { nativeCol: 0, nativeColOff: 140 * 9525, nativeRow: 0, nativeRowOff: 0 },
       ext: { width: 100, height: 72 },
       editAs: 'oneCell',
     });
