@@ -21,20 +21,24 @@ export async function exportToExcel({ rows, filename, title = 'Ticket Report', l
   const dataRows = rows.slice(1);
   const colCount = headers.length;
 
-  // ── Logo ──────────────────────────────────────────────────────────────────
-  const logoSrc = logoUrl || '/assets/cxlogo.png';
-  let imageId = null;
-  try {
-    const response = await fetch(logoSrc);
-    if (response.ok) {
-      const arrayBuffer = await response.arrayBuffer();
-      const ext = logoSrc.split('.').pop().toLowerCase();
-      const mime = ext === 'png' ? 'png' : ext === 'jpg' || ext === 'jpeg' ? 'jpeg' : 'png';
-      imageId = workbook.addImage({ buffer: arrayBuffer, extension: mime });
+  // ── Logos (cxlogo left, custom right) ────────────────────────────────────
+  const fetchImage = async (src) => {
+    try {
+      const res = await fetch(src);
+      if (!res.ok) return null;
+      const buf = await res.arrayBuffer();
+      const ext = src.split('.').pop().toLowerCase();
+      const mime = ext === 'jpeg' || ext === 'jpg' ? 'jpeg' : 'png';
+      return workbook.addImage({ buffer: buf, extension: mime });
+    } catch {
+      return null;
     }
-  } catch (e) {
-    console.warn('Logo could not be loaded for Excel export:', e);
-  }
+  };
+
+  const [cxImageId, customImageId] = await Promise.all([
+    fetchImage(logoUrl || '/assets/cxlogo.png'),
+    fetchImage('/assets/custom.png'),
+  ]);
 
   // Reserve rows 1-4 for logo + title block; data starts at row 6
   const LOGO_ROWS = 4;
@@ -46,10 +50,20 @@ export async function exportToExcel({ rows, filename, title = 'Ticket Report', l
     sheet.getRow(r).height = 18;
   }
 
-  if (imageId !== null) {
-    sheet.addImage(imageId, {
+  // cxlogo on the left (cols 0-2)
+  if (cxImageId !== null) {
+    sheet.addImage(cxImageId, {
       tl: { col: 0, row: 0 },
       br: { col: 2, row: LOGO_ROWS },
+      editAs: 'oneCell',
+    });
+  }
+
+  // custom logo on the right (cols 3-5)
+  if (customImageId !== null) {
+    sheet.addImage(customImageId, {
+      tl: { col: 3, row: 0 },
+      br: { col: 5, row: LOGO_ROWS },
       editAs: 'oneCell',
     });
   }
