@@ -45,25 +45,27 @@ export async function exportToExcel({ rows, filename, title = 'Ticket Report', l
   const TITLE_ROW = 5;
   const HEADER_ROW = 6;
 
-  // Set row heights for the logo area
+  // Set row heights for the logo area (72px total = 4 × 18pt)
   for (let r = 1; r <= LOGO_ROWS; r++) {
     sheet.getRow(r).height = 18;
   }
 
-  // cxlogo on the left (cols 0-2)
+  // Use fixed pixel size so images are never stretched.
+  // ExcelJS uses EMUs internally; tl only + ext keeps the natural ratio.
+  // cxlogo on the left — 120×72 px
   if (cxImageId !== null) {
     sheet.addImage(cxImageId, {
       tl: { col: 0, row: 0 },
-      br: { col: 2, row: LOGO_ROWS },
+      ext: { width: 120, height: 72 },
       editAs: 'oneCell',
     });
   }
 
-  // custom logo on the right (cols 3-5)
+  // custom (Kastam) logo on the right — 100×72 px, placed after a gap
   if (customImageId !== null) {
     sheet.addImage(customImageId, {
       tl: { col: 3, row: 0 },
-      br: { col: 5, row: LOGO_ROWS },
+      ext: { width: 100, height: 72 },
       editAs: 'oneCell',
     });
   }
