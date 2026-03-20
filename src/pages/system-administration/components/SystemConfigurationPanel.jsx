@@ -27,6 +27,8 @@ const SystemConfigurationPanel = () => {
   const [lookupTypes, setLookupTypes] = useState([{ value: 'all', label: 'All Types' }]);
   const [departments, setDepartments] = useState([{ value: 'all', label: 'All Departments' }]);
   const [parentCategories, setParentCategories] = useState([{ value: 'all', label: 'All Categories' }]);
+  const [catCurrentPage, setCatCurrentPage] = useState(1);
+  const CAT_PER_PAGE = 15;
 
   const tabs = [
     { id: 'categories', label: 'Categories & Sub-categories', icon: 'FolderTree' },
@@ -51,6 +53,11 @@ const SystemConfigurationPanel = () => {
       loadLookups();
     }
   }, [activeTab, selectedDepartment, selectedParent, selectedLookupType]);
+
+  // Reset to page 1 whenever the category list filters change
+  useEffect(() => {
+    setCatCurrentPage(1);
+  }, [selectedDepartment, selectedParent]);
 
   const loadAllCategories = async () => {
     try {
@@ -260,7 +267,7 @@ const SystemConfigurationPanel = () => {
               </tr>
             </thead>
             <tbody>
-              {categories.map((category) => (
+              {categories.slice((catCurrentPage - 1) * CAT_PER_PAGE, catCurrentPage * CAT_PER_PAGE).map((category) => (
                 <tr key={category.id} className="border-b border-border hover:bg-muted/50">
                   <td className="py-3 px-4 text-sm text-foreground font-mono">{category.code}</td>
                   <td className="py-3 px-4 text-sm text-foreground">{category.name}</td>
@@ -286,6 +293,56 @@ const SystemConfigurationPanel = () => {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Pagination */}
+      {!loading && categories.length > CAT_PER_PAGE && (
+        <div className="flex items-center justify-between pt-4 border-t border-border">
+          <p className="text-sm text-muted-foreground">
+            Showing {Math.min((catCurrentPage - 1) * CAT_PER_PAGE + 1, categories.length)}–{Math.min(catCurrentPage * CAT_PER_PAGE, categories.length)} of {categories.length}
+          </p>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="outline"
+              size="sm"
+              iconName="ChevronLeft"
+              disabled={catCurrentPage === 1}
+              onClick={() => setCatCurrentPage(p => p - 1)}
+            />
+            {Array.from({ length: Math.ceil(categories.length / CAT_PER_PAGE) }, (_, i) => i + 1)
+              .filter(p => p === 1 || p === Math.ceil(categories.length / CAT_PER_PAGE) || Math.abs(p - catCurrentPage) <= 2)
+              .reduce((acc, p, idx, arr) => {
+                if (idx > 0 && p - arr[idx - 1] > 1) acc.push('...');
+                acc.push(p);
+                return acc;
+              }, [])
+              .map((p, idx) =>
+                p === '...' ? (
+                  <span key={`ellipsis-${idx}`} className="px-2 text-muted-foreground text-sm">…</span>
+                ) : (
+                  <button
+                    key={p}
+                    onClick={() => setCatCurrentPage(p)}
+                    className={`px-3 py-1 rounded text-sm ${
+                      p === catCurrentPage
+                        ? 'bg-primary text-primary-foreground font-medium'
+                        : 'border border-border hover:bg-muted'
+                    }`}
+                  >
+                    {p}
+                  </button>
+                )
+              )
+            }
+            <Button
+              variant="outline"
+              size="sm"
+              iconName="ChevronRight"
+              disabled={catCurrentPage === Math.ceil(categories.length / CAT_PER_PAGE)}
+              onClick={() => setCatCurrentPage(p => p + 1)}
+            />
+          </div>
         </div>
       )}
     </div>

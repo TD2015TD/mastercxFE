@@ -6,6 +6,7 @@ import categoryService from '../../../services/categoryService';
 import { authService } from '../../../services/authService';
 import { agentService } from '../../../services/agentService';
 import { exportToExcel } from '../../../utils/exportExcel';
+import { exportToPdf } from '../../../utils/exportPdf';
 import { getColorClasses } from '../../../utils/colorUtils';
 import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
@@ -35,6 +36,7 @@ const TicketList = ({ filter = 'all' }) => {
   const [channelOptions, setChannelOptions] = useState([]);
   const [customerContactsMap, setCustomerContactsMap] = useState({});
   const [isExporting, setIsExporting] = useState(false);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -231,6 +233,43 @@ const TicketList = ({ filter = 'all' }) => {
     }
   };
 
+  const handleExportPdf = async () => {
+    try {
+      setIsExportingPdf(true);
+      const params = buildQueryParams({ per_page: 10000, page: 1 });
+      const response = await ticketService.getTickets(params);
+      let exportTickets = [];
+      if (response && response.data) {
+        exportTickets = response.data.data || response.data;
+      }
+      const rows = [
+        ['Ticket ID', 'Case ID', 'Subject', 'Customer', 'Email', 'Priority', 'Status', 'Assigned To', 'Department', 'Category', 'Channel', 'Created At'],
+        ...((Array.isArray(exportTickets) ? exportTickets : []).map(t => {
+          const fmt = (d) => d ? new Date(d).toLocaleString('en-MY', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }) : '';
+          return [
+            t.ticket_number,
+            t.case_id || '',
+            t.subject,
+            t.customer?.name || '',
+            t.customer?.email || '',
+            t.priority,
+            t.status,
+            t.assigned_agent?.user?.name || t.assigned_agent?.employee_id || 'Unassigned',
+            t.department || '',
+            t.category || '',
+            t.channel || '',
+            fmt(t.created_at),
+          ];
+        }))
+      ];
+      await exportToPdf({ rows, filename: 'tickets', title: 'Ticket Management Report' });
+    } catch (error) {
+      console.error('Error exporting PDF:', error);
+    } finally {
+      setIsExportingPdf(false);
+    }
+  };
+
   // Compute sliding window of page numbers (current ±2)
   const getPageNumbers = () => {
     const start = Math.max(1, currentPage - 2);
@@ -272,7 +311,18 @@ const TicketList = ({ filter = 'all' }) => {
             disabled={isExporting || tickets.length === 0}
             className="shrink-0"
           >
-            Export
+            {isExporting ? 'Exporting...' : 'Export'}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            iconName="FileText"
+            iconPosition="left"
+            onClick={handleExportPdf}
+            disabled={isExportingPdf || tickets.length === 0}
+            className="shrink-0"
+          >
+            {isExportingPdf ? 'Exporting...' : 'PDF'}
           </Button>
           {hasActiveFilters && (
             <Button
