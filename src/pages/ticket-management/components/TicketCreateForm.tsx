@@ -874,6 +874,56 @@ const TicketCreateForm: React.FC<{
     toast.success('Draft saved! It will be restored if the same Case ID is re-opened.');
   };
 
+  // Reset form to initial state and reload all dropdown data
+  const resetForm = () => {
+    // Reset all form data
+    setFormData({
+      customer_name: '',
+      customer_email: '',
+      customer_id_type: 'MyKad',
+      customer_id_no: '',
+      priority: 'P3',
+      department: '',
+      category: '',
+      sub_category: '',
+      urgency: 'Medium',
+      impact: 'Low',
+      subject: '',
+      description: '',
+      channel: 'phone',
+      source: '',
+      tags: [],
+      custom_fields: {}
+    });
+
+    // Reset contact entries to default
+    if (contactTypeLookups.length > 0) {
+      const defaultPhoneType = contactTypeLookups.find((type) => type.code === 'phone') || contactTypeLookups[0];
+      setContactEntries([{ contact_type_id: String(defaultPhoneType.id), value: '', is_primary: true }]);
+    } else {
+      setContactEntries([]);
+    }
+
+    // Reset customer-related states
+    setSelectedCustomer(null);
+    setPinnedNotes([]);
+    setPhoneSearchResults([]);
+    setShowPhoneDropdown(false);
+    setSelectedAgent(null);
+    
+    // Reset categories and subcategories
+    setCategories([]);
+    setSubcategories([]);
+    
+    // Clear any error messages
+    setError(null);
+    
+    // Reload all dropdown data to ensure fresh data
+    loadLookups();
+    
+    console.log('✅ Form reset complete with fresh dropdown data');
+  };
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Header */}
@@ -1548,7 +1598,17 @@ const TicketCreateForm: React.FC<{
 
       {/* Success Modal */}
       {showSuccessModal && createdTicket && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div 
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+          onClick={(e) => {
+            // Close modal when clicking on backdrop (not the modal content)
+            if (e.target === e.currentTarget) {
+              setShowSuccessModal(false);
+              setCreatedTicket(null);
+              resetForm();
+            }
+          }}
+        >
           <div className="bg-card border border-border rounded-lg shadow-2xl w-full max-w-md">
             {/* Header */}
             <div className="text-center p-8 border-b border-border">
@@ -1585,6 +1645,8 @@ const TicketCreateForm: React.FC<{
                     } else {
                       navigate(`/ticket-management/${createdTicket.id}`);
                     }
+                    // Reset form so user can create another ticket later
+                    setTimeout(resetForm, 300); // Small delay to ensure smooth transition
                   }}
                   fullWidth
                   iconName="ExternalLink"
@@ -1596,8 +1658,9 @@ const TicketCreateForm: React.FC<{
                   onClick={() => {
                     setShowSuccessModal(false);
                     setCreatedTicket(null);
-                    // Optionally reset form here if needed
-                    window.location.reload(); // Simple way to create another ticket
+                    // Reset form properly instead of reloading page
+                    resetForm();
+                    toast.info('Form reset. Ready to create another ticket.', { autoClose: 2000 });
                   }}
                   variant="outline"
                   fullWidth
