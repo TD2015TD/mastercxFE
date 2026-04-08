@@ -83,8 +83,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           isCollapsed ? 'ml-16' : 'ml-60'
         }`}
       >
-        {/* Header - user is non-null here */}
-        {/* @ts-expect-error - Type definition not properly recognized for JSX component */}
+        {/* Header */}
         <Header user={user} />
 
         {/* Page Content */}
