@@ -75,7 +75,9 @@ const TicketList = ({ filter = 'all' }) => {
       setStatusOptions(statuses);
       setPriorityOptions(priorities);
       setDepartmentOptions(departments);
-      setChannelOptions(channels);
+      // Filter channels to show only Phone, Email, and LiveChat
+      const allowedChannels = ['phone', 'email', 'chat'];
+      setChannelOptions(channels.filter(ch => allowedChannels.includes(ch.code.toLowerCase())));
     } catch (error) {
       console.error('Error loading lookups:', error);
     }

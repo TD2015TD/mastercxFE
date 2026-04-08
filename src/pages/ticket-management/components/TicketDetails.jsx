@@ -3,6 +3,7 @@ import { toast } from 'react-toastify';
 import { ticketService } from '../../../services/ticketService';
 import lookupService from '../../../services/lookupService';
 import { contactService } from '../../../services/contactService';
+import { agentService } from '../../../services/agentService';
 import Button from '../../../components/ui/Button';
 import Input from '../../../components/ui/Input';
 import Select from '../../../components/ui/Select';
@@ -13,13 +14,20 @@ const TicketDetails = ({ ticket, onUpdate }) => {
   const [departments, setDepartments] = useState([]);
   const [priorities, setPriorities] = useState([]);
   const [customerContacts, setCustomerContacts] = useState([]);
+  const [agents, setAgents] = useState([]);
+  const [isLoadingAgents, setIsLoadingAgents] = useState(false);
   
   const [editData, setEditData] = useState({
     priority: ticket?.priority,
     department: ticket?.department,
-    assignedTo: ticket?.assignedTo,
+    assignedTo: ticket?.assigned_to,
     category: ticket?.category
   });
+
+  // Load agents on mount for better performance
+  React.useEffect(() => {
+    loadAgents();
+  }, []);
 
   // Load lookups when entering edit mode
   React.useEffect(() => {
@@ -46,6 +54,24 @@ const TicketDetails = ({ ticket, onUpdate }) => {
 
     loadCustomerContacts();
   }, [ticket?.customer?.id]);
+
+  const loadAgents = async () => {
+    try {
+      setIsLoadingAgents(true);
+      const response = await agentService.getAgents({
+        status: 'active',
+        per_page: 100
+      });
+      if (response.success) {
+        const agentsList = response.data.data || response.data;
+        setAgents(agentsList);
+      }
+    } catch (err) {
+      console.error('Error loading agents:', err);
+    } finally {
+      setIsLoadingAgents(false);
+    }
+  };
 
   const loadLookups = async () => {
     try {
@@ -95,7 +121,7 @@ const TicketDetails = ({ ticket, onUpdate }) => {
     setEditData({
       priority: ticket?.priority,
       department: ticket?.department,
-      assignedTo: ticket?.assignedTo,
+      assignedTo: ticket?.assigned_to,
       category: ticket?.category
     });
     setIsEditing(false);
@@ -242,11 +268,18 @@ const TicketDetails = ({ ticket, onUpdate }) => {
                   onChange={(e) => setEditData({...editData, category: e?.target?.value})}
                 />
                 
-                <Input
+                <Select
                   label="Assigned To"
-                  type="text"
-                  value={editData?.assignedTo}
-                  onChange={(e) => setEditData({...editData, assignedTo: e?.target?.value})}
+                  options={[
+                    { value: '', label: 'Unassigned' },
+                    ...agents.map(agent => ({
+                      value: agent.id,
+                      label: `${agent.user?.name || agent.agent_code} (${agent.department})`
+                    }))
+                  ]}
+                  value={editData?.assignedTo || ''}
+                  onChange={(value) => setEditData({...editData, assignedTo: value === '' ? null : parseInt(value)})}
+                  disabled={isLoadingAgents}
                 />
               </>
             ) : (
@@ -276,7 +309,7 @@ const TicketDetails = ({ ticket, onUpdate }) => {
                 
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Assigned To</label>
-                  <p className="text-sm text-foreground mt-1">{ticket?.assignedTo}</p>
+                  <p className="text-sm text-foreground mt-1">{ticket?.assignedAgent?.user?.name || 'Unassigned'}</p>
                 </div>
               </>
             )}

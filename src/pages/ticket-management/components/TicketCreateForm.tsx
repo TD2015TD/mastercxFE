@@ -691,7 +691,13 @@ const TicketCreateForm: React.FC<{
       });
       
       setPriorities(mappedPrios);
-      setChannelOptions(channelData.map(c => ({ value: c.code, label: c.name })));
+      // Filter channels to show only Phone, Email, and LiveChat
+      const allowedChannels = ['phone', 'email', 'chat'];
+      setChannelOptions(
+        channelData
+          .filter(c => allowedChannels.includes(c.code.toLowerCase()))
+          .map(c => ({ value: c.code, label: c.name }))
+      );
       setUrgencyOptions(urgencyData.map(u => ({ value: u.code, label: u.name })));
       setImpactOptions(impactData.map(i => ({ value: i.code, label: i.name })));
       setIdTypeOptions(idTypeData.map(t => ({ value: t.code, label: t.name })));
@@ -734,6 +740,16 @@ const TicketCreateForm: React.FC<{
     
     if (!formData.department) {
       setError('Department is required');
+      return false;
+    }
+    
+    if (!formData.category) {
+      setError('Category is required');
+      return false;
+    }
+    
+    if (!formData.sub_category) {
+      setError('Sub Category is required');
       return false;
     }
     
@@ -1211,7 +1227,7 @@ const TicketCreateForm: React.FC<{
           </div>
           
           <Select
-            label="Category"
+            label="Category *"
             value={formData.category}
             onChange={(value) => handleInputChange('category', value as string)}
             options={[
@@ -1219,10 +1235,11 @@ const TicketCreateForm: React.FC<{
               ...categories.map(cat => ({ value: cat.name, label: cat.name }))
             ]}
             disabled={!formData.department || isLoadingCategories}
+            required
           />
           
           <Select
-            label="Sub Category"
+            label="Sub Category *"
             value={formData.sub_category || ''}
             onChange={(value) => handleInputChange('sub_category', value as string)}
             options={[
@@ -1230,6 +1247,7 @@ const TicketCreateForm: React.FC<{
               ...subcategories.map(subcat => ({ value: subcat.name, label: subcat.name }))
             ]}
             disabled={!formData.category || isLoadingSubcategories || subcategories.length === 0}
+            required
           />
           
           {/* Urgency hidden — kept for future use */}
