@@ -41,9 +41,9 @@ const TicketHeader = ({ ticket, liveTimeRemaining, onStatusChange, onTransfer, o
         <div className="flex-1">
           <div className="flex items-center gap-3 mb-2">
             <h1 className="text-2xl font-semibold text-foreground">{ticket?.ticket_number}</h1>
-            <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getPriorityColor(ticket?.priority)}`}>
+            {/* <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getPriorityColor(ticket?.priority)}`}>
               {ticket?.priority}
-            </span>
+            </span> */}
             <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(ticket?.status)}`}>
               {ticket?.status}
             </span>

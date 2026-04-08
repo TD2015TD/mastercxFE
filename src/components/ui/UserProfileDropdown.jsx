@@ -465,11 +465,11 @@ const UserProfileDropdown = ({ user = null }) => {
             </button>
 
             {/* Session Info */}
-            <div className="px-4 py-2 border-t border-border">
+            {/* <div className="px-4 py-2 border-t border-border">
               <div className="text-xs text-muted-foreground">
                 Session expires in 45 minutes
               </div>
-            </div>
+            </div> */}
 
             {/* Logout */}
             <button
