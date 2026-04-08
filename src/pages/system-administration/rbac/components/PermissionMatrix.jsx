@@ -3,7 +3,7 @@ import { toast } from 'react-toastify';
 import Icon from '../../../../components/AppIcon';
 import Button from '../../../../components/ui/Button';
 import Input from '../../../../components/ui/Input';
-import api from '../../../../utils/api';
+import api from '../../../../services/api';
 
 const PermissionMatrix = () => {
   const [searchQuery, setSearchQuery] = useState('');
