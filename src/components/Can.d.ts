@@ -16,7 +16,5 @@ export interface UsePermissionReturn {
   permissions: string[];
 }
 
-declare const Can: React.FC<CanProps>;
-export const usePermission: () => UsePermissionReturn;
-
-export default Can;
+export default function Can(props: CanProps): JSX.Element;
+export function usePermission(): UsePermissionReturn;

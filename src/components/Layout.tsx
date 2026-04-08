@@ -1,11 +1,16 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-// @ts-expect-error - JSX module without type definitions
 import NavigationSidebar from './ui/NavigationSidebar';
-// @ts-expect-error - JSX module without type definitions
 import Header from './ui/Header';
-// @ts-expect-error - JSX module without type definitions
 import BreadcrumbNavigation from './ui/BreadcrumbNavigation';
+
+interface HeaderUser {
+  name: string;
+  email: string;
+  role: string;
+  department?: string;
+  avatar?: string | null;
+}
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -17,7 +22,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   // Get user from localStorage - using useMemo to avoid re-parsing on every render
-  const user = useMemo(() => {
+  const user = useMemo<HeaderUser | null>(() => {
     const userSession = localStorage.getItem('user-session');
     if (!userSession) return null;
     
@@ -62,6 +67,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     return <>{children}</>;
   }
 
+  // At this point, user is guaranteed to be non-null due to the check above
   return (
     <div className="flex h-screen overflow-hidden bg-background">
       {/* Navigation Sidebar */}
@@ -77,7 +83,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           isCollapsed ? 'ml-16' : 'ml-60'
         }`}
       >
-        {/* Header */}
+        {/* Header - user is non-null here */}
+        {/* @ts-expect-error - Type definition not properly recognized for JSX component */}
         <Header user={user} />
 
         {/* Page Content */}
