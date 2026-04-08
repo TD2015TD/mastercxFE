@@ -12,6 +12,7 @@ import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
 import Select from '../../../components/ui/Select';
 import Input from '../../../components/ui/Input';
+import Can from '../../../components/Can';
 
 const TicketList = ({ filter = 'all' }) => {
   const navigate = useNavigate();
@@ -304,28 +305,30 @@ const TicketList = ({ filter = 'all' }) => {
               icon="Search"
             />
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            iconName="Download"
-            iconPosition="left"
-            onClick={handleExport}
-            disabled={isExporting || tickets.length === 0}
-            className="shrink-0"
-          >
-            {isExporting ? 'Exporting...' : 'Export'}
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            iconName="FileText"
-            iconPosition="left"
-            onClick={handleExportPdf}
-            disabled={isExportingPdf || tickets.length === 0}
-            className="shrink-0"
-          >
-            {isExportingPdf ? 'Exporting...' : 'PDF'}
-          </Button>
+          <Can permission="report.export">
+            <Button
+              variant="outline"
+              size="sm"
+              iconName="Download"
+              iconPosition="left"
+              onClick={handleExport}
+              disabled={isExporting || tickets.length === 0}
+              className="shrink-0"
+            >
+              {isExporting ? 'Exporting...' : 'Export'}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              iconName="FileText"
+              iconPosition="left"
+              onClick={handleExportPdf}
+              disabled={isExportingPdf || tickets.length === 0}
+              className="shrink-0"
+            >
+              {isExportingPdf ? 'Exporting...' : 'PDF'}
+            </Button>
+          </Can>
           {hasActiveFilters && (
             <Button
               variant="ghost"

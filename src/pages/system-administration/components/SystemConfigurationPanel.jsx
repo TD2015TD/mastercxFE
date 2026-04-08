@@ -3,6 +3,7 @@ import { toast } from 'react-toastify';
 import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
 import { Checkbox } from '../../../components/ui/Checkbox';
+import Can, { usePermission } from '../../../components/Can';
 import api from '../../../services/api';
 import CategoryModal from './CategoryModal';
 import LookupModal from './LookupModal';
@@ -13,7 +14,16 @@ import MitelConfiguration from '../mitel-configuration/MitelConfiguration';
 import SupersetConfiguration from '../superset-configuration/SupersetConfiguration';
 
 const SystemConfigurationPanel = () => {
-  const [activeTab, setActiveTab] = useState('categories');
+  const { can } = usePermission();
+  
+  // Determine default tab based on permissions
+  const getDefaultTab = () => {
+    if (can('category.manage')) return 'categories';
+    if (can('system.config')) return 'email';
+    return 'categories'; // fallback
+  };
+  
+  const [activeTab, setActiveTab] = useState(getDefaultTab());
   const [categories, setCategories] = useState([]);
   const [allCategories, setAllCategories] = useState([]);
   const [lookups, setLookups] = useState({});
@@ -449,30 +459,76 @@ const SystemConfigurationPanel = () => {
 
         {/* Tabs */}
         <div className="flex space-x-1 bg-muted p-1 rounded-lg">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                activeTab === tab.id
-                  ? 'bg-background text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              <Icon name={tab.icon} size={16} />
-              <span>{tab.label}</span>
-            </button>
-          ))}
+          {tabs.map((tab) => {
+            // Check permissions for each tab
+            const hasAccess = 
+              (tab.id === 'categories' && can('category.manage')) ||
+              (tab.id === 'lookups' && can('system.config')) ||
+              (tab.id !== 'categories' && tab.id !== 'lookups' && can('system.config'));
+            
+            if (!hasAccess) return null;
+            
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  activeTab === tab.id
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <Icon name={tab.icon} size={16} />
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
       <div className="p-6">
-        {activeTab === 'categories' && renderCategories()}
-        {activeTab === 'lookups' && renderLookups()}
-        {activeTab === 'email' && <EmailConfiguration />}
-        {activeTab === 'mitel' && <MitelConfiguration />}
-        {activeTab === 'superset' && <SupersetConfiguration />}
-        {activeTab === 'authentication' && <AuthenticationConfiguration />}
-        {activeTab === 'ldap' && <LdapConfiguration />}
+        {activeTab === 'categories' && (
+          <Can 
+            permission="category.manage"
+            fallback={
+              <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-6 text-center">
+                <Icon name="Lock" size={48} className="text-amber-600 dark:text-amber-400 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-amber-900 dark:text-amber-100 mb-2">Access Denied</h3>
+                <p className="text-amber-800 dark:text-amber-200">You do not have permission to manage categories. Please contact your administrator.</p>
+              </div>
+            }
+          >
+            {renderCategories()}
+          </Can>
+        )}
+        {activeTab === 'lookups' && (
+          <Can 
+            permission="system.config"
+            fallback={
+              <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-6 text-center">
+                <Icon name="Lock" size={48} className="text-amber-600 dark:text-amber-400 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-amber-900 dark:text-amber-100 mb-2">Access Denied</h3>
+                <p className="text-amber-800 dark:text-amber-200">You do not have permission to manage lookups. Please contact your administrator.</p>
+              </div>
+            }
+          >
+            {renderLookups()}
+          </Can>
+        )}
+        {activeTab === 'email' && (
+          <Can permission="system.config"><EmailConfiguration /></Can>
+        )}
+        {activeTab === 'mitel' && (
+          <Can permission="system.config"><MitelConfiguration /></Can>
+        )}
+        {activeTab === 'superset' && (
+          <Can permission="system.config"><SupersetConfiguration /></Can>
+        )}
+        {activeTab === 'authentication' && (
+          <Can permission="system.config"><AuthenticationConfiguration /></Can>
+        )}
+        {activeTab === 'ldap' && (
+          <Can permission="system.config"><LdapConfiguration /></Can>
+        )}
       </div>
 
       {/* Category Modal */}

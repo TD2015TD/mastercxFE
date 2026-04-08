@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import Icon from '../../components/AppIcon';
 import Button from '../../components/ui/Button';
 import BreadcrumbNavigation from '../../components/ui/BreadcrumbNavigation';
+import Can, { usePermission } from '../../components/Can';
 import UserManagementPanel from './user-management/UserManagementPanel';
 import SystemConfigurationPanel from './components/SystemConfigurationPanel';
 import AuditTrailCenter from './components/AuditTrailCenter';
@@ -23,8 +24,27 @@ import { getSystemHealth } from '../../services/systemService';
 import { languageService } from '../../services/languageService';
 import { exportToCsv } from '../../utils/exportCsv';
 
+// Access Denied Component
+const AccessDenied = ({ feature }) => (
+  <div className="flex items-center justify-center min-h-[400px]">
+    <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-8 text-center max-w-md">
+      <Icon name="Lock" size={48} className="text-amber-600 dark:text-amber-400 mx-auto mb-4" />
+      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+        Access Denied
+      </h3>
+      <p className="text-gray-600 dark:text-gray-400 mb-4">
+        You do not have permission to access {feature || 'this feature'}.
+      </p>
+      <p className="text-sm text-gray-500 dark:text-gray-500">
+        Please contact your system administrator if you believe you should have access.
+      </p>
+    </div>
+  </div>
+);
+
 const SystemAdministration = () => {
   const navigate = useNavigate();
+  const { can } = usePermission();
 
   // Get current user role to restrict tab access
   const currentUserRole = (() => {
@@ -106,15 +126,21 @@ const SystemAdministration = () => {
   };
 
   const allTabs = [
-    { id: 'users', label: t('systemAdmin.tabs.users'), icon: 'Users', description: t('systemAdmin.tabs.usersDesc') },
-    { id: 'rbac', label: 'RBAC Management', icon: 'Shield', description: 'Manage roles, permissions, and menu assignments' },
-    { id: 'sla', label: 'SLA Management', icon: 'Clock', description: 'Configure and monitor Service Level Agreements' },
-    { id: 'reports', label: 'Report Configuration', icon: 'BarChart', description: 'Configure dashboards and assign role-based access to reports' },
-    { id: 'system', label: t('systemAdmin.tabs.system'), icon: 'Settings', description: t('systemAdmin.tabs.systemDesc') },
-    { id: 'health', label: t('systemAdmin.tabs.health'), icon: 'Activity', description: t('systemAdmin.tabs.healthDesc') }
+    { id: 'users', label: t('systemAdmin.tabs.users'), icon: 'Users', description: t('systemAdmin.tabs.usersDesc'), permission: 'user.manage' },
+    { id: 'rbac', label: 'RBAC Management', icon: 'Shield', description: 'Manage roles, permissions, and menu assignments', permission: 'role.manage' },
+    { id: 'sla', label: 'SLA Management', icon: 'Clock', description: 'Configure and monitor Service Level Agreements', permission: 'sla.manage' },
+    { id: 'reports', label: 'Report Configuration', icon: 'BarChart', description: 'Configure dashboards and assign role-based access to reports', permission: 'system.config' },
+    { id: 'system', label: t('systemAdmin.tabs.system'), icon: 'Settings', description: t('systemAdmin.tabs.systemDesc'), permission: 'system.config' },
+    { id: 'health', label: t('systemAdmin.tabs.health'), icon: 'Activity', description: t('systemAdmin.tabs.healthDesc'), permission: null } // null means everyone can access
   ];
-  // Supervisors can only access users and health tabs
-  const tabs = isSupervisor ? allTabs.filter(t => t.id === 'users' || t.id === 'health') : allTabs;
+  
+  // Filter tabs based on permissions
+  const tabs = allTabs.filter(tab => {
+    // If no permission required, allow access
+    if (!tab.permission) return true;
+    // Check if user has the required permission
+    return can(tab.permission);
+  });
 
   const statsData = [
     {
@@ -146,19 +172,43 @@ const SystemAdministration = () => {
   const renderTabContent = () => {
     switch (activeTab) {
       case 'users':
-        return <UserManagementPanel />;
+        return (
+          <Can permission="user.manage" fallback={<AccessDenied feature="User Management" />}>
+            <UserManagementPanel />
+          </Can>
+        );
       case 'rbac':
-        return renderRbacManagement();
+        return (
+          <Can permission="role.manage" fallback={<AccessDenied feature="RBAC Management" />}>
+            {renderRbacManagement()}
+          </Can>
+        );
       case 'sla':
-        return renderSlaManagement();
+        return (
+          <Can permission="sla.manage" fallback={<AccessDenied feature="SLA Management" />}>
+            {renderSlaManagement()}
+          </Can>
+        );
       case 'reports':
-        return <ReportConfigurationPanel />;
+        return (
+          <Can permission="system.config" fallback={<AccessDenied feature="Report Configuration" />}>
+            <ReportConfigurationPanel />
+          </Can>
+        );
       case 'system':
         return <SystemConfigurationPanel />;
       case 'audit':
-        return <AuditTrailCenter />;
+        return (
+          <Can permission="audit.view" fallback={<AccessDenied feature="Audit Trail" />}>
+            <AuditTrailCenter />
+          </Can>
+        );
       case 'compliance':
-        return <ComplianceDashboard />;
+        return (
+          <Can permission="audit.view" fallback={<AccessDenied feature="Compliance Dashboard" />}>
+            <ComplianceDashboard />
+          </Can>
+        );
       case 'health':
         return <SystemHealthMonitor />;
       default:
