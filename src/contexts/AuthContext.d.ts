@@ -30,8 +30,8 @@ export interface AuthProviderProps {
   children: ReactNode;
 }
 
-export const AuthProvider: React.FC<AuthProviderProps>;
-export const useAuth: () => AuthContextValue;
+export function AuthProvider(props: AuthProviderProps): JSX.Element;
+export function useAuth(): AuthContextValue;
 
 declare const AuthContext: React.Context<AuthContextValue | null>;
 export default AuthContext;
