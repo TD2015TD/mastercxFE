@@ -136,36 +136,20 @@ const RoleMenuManagement = () => {
       setSaving(true);
       const menuItemsArray = Array.from(selectedMenus.values());
 
-      console.log('Saving menu assignments:', {
-        roleId: selectedRole.id,
-        menuItemsCount: menuItemsArray.length,
-        menuItems: menuItemsArray
-      });
-
-      const response = await api.put(`/roles/${selectedRole.id}`, {
+      await api.put(`/roles/${selectedRole.id}`, {
         name: selectedRole.name,
         slug: selectedRole.slug,
         description: selectedRole.description,
         menu_items: menuItemsArray
       });
 
-      console.log('Save response:', response);
-
       toast.success('Menu assignments saved successfully');
       setIsModalOpen(false);
       loadRoleMenuItems(selectedRole.id);
       loadRoles();
     } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to save menu assignments');
       console.error('Error saving menu assignments:', error);
-      console.error('Error response:', error.response);
-      
-      // Handle validation errors
-      if (error.response?.data?.errors) {
-        const errorMessages = Object.values(error.response.data.errors).flat();
-        toast.error(errorMessages.join('\n') || 'Validation failed');
-      } else {
-        toast.error(error.response?.data?.message || 'Failed to save menu assignments');
-      }
     } finally {
       setSaving(false);
     }
