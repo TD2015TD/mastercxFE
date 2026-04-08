@@ -96,10 +96,12 @@ export const authService = {
         const jwtToken = data.data.access_token;
         const mitelToken = data.data.MitelToken;
         const user = data.data.user;
+        const permissions = data.data.permissions || [];
 
-        console.log('authService.login - Storing tokens and user data');
+        console.log('authService.login - Storing tokens, user data, and permissions');
         localStorage.setItem('jwt_token', jwtToken);
         localStorage.setItem('mitel_token', mitelToken);
+        localStorage.setItem('user_permissions', JSON.stringify(permissions));
         authService.setCurrentUser(user);
 
         return { jwtToken, user };
@@ -141,8 +143,10 @@ export const authService = {
     if (data.success && data.data.user) {
       const user = data.data.user;
       const agent = user.agent;
+      const permissions = data.data.permissions || [];
 
       authService.setCurrentUser(user);
+      authService.setPermissions(permissions);
       return { user, agent };
     }
 
@@ -203,5 +207,28 @@ export const authService = {
   // Get Mitel token from localStorage
   getMitelToken: (): string | null => {
     return localStorage.getItem('mitel_token');
+  },
+
+  // Get user permissions from localStorage
+  getPermissions: (): string[] => {
+    try {
+      const permissionsData = localStorage.getItem('user_permissions');
+      if (permissionsData) {
+        return JSON.parse(permissionsData);
+      }
+      return [];
+    } catch (err) {
+      console.error('Error parsing permissions data from localStorage:', err);
+      return [];
+    }
+  },
+
+  // Set user permissions to localStorage
+  setPermissions: (permissions: string[]) => {
+    try {
+      localStorage.setItem('user_permissions', JSON.stringify(permissions));
+    } catch (err) {
+      console.error('Error storing permissions data to localStorage:', err);
+    }
   },
 };

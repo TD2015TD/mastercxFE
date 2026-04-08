@@ -1,98 +1,75 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { toast } from 'react-toastify';
 import Icon from '../../../../components/AppIcon';
 import Button from '../../../../components/ui/Button';
 import Input from '../../../../components/ui/Input';
+import api from '../../../../utils/api';
 
 const PermissionMatrix = () => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedRole, setSelectedRole] = useState('admin');
+  const [selectedRole, setSelectedRole] = useState(null);
+  const [roles, setRoles] = useState([]);
+  const [modules, setModules] = useState([]);
+  const [permissions, setPermissions] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [hasChanges, setHasChanges] = useState(false);
 
-  const roles = [
-    { id: 'admin', name: 'Administrator', color: 'red' },
-    { id: 'supervisor', name: 'Supervisor', color: 'blue' },
-    { id: 'agent', name: 'Agent', color: 'green' },
-    { id: 'customer', name: 'Customer', color: 'gray' }
-  ];
+  const iconMap = {
+    'Ticket Management': 'Ticket',
+    'Customer Management': 'Users',
+    'Reporting & Analytics': 'BarChart',
+    'System Administration': 'Settings',
+    'Knowledge Base': 'BookOpen',
+    'Telephony (Mitel)': 'Phone'
+  };
 
-  const modules = [
-    {
-      name: 'Ticket Management',
-      icon: 'Ticket',
-      permissions: [
-        { key: 'ticket.view', label: 'View Tickets', admin: true, supervisor: true, agent: true, customer: true },
-        { key: 'ticket.create', label: 'Create Tickets', admin: true, supervisor: true, agent: true, customer: true },
-        { key: 'ticket.edit', label: 'Edit Tickets', admin: true, supervisor: true, agent: true, customer: false },
-        { key: 'ticket.delete', label: 'Delete Tickets', admin: true, supervisor: true, agent: false, customer: false },
-        { key: 'ticket.assign', label: 'Assign Tickets', admin: true, supervisor: true, agent: false, customer: false },
-        { key: 'ticket.escalate', label: 'Escalate Tickets', admin: true, supervisor: true, agent: true, customer: false },
-        { key: 'ticket.close', label: 'Close Tickets', admin: true, supervisor: true, agent: true, customer: false }
-      ]
-    },
-    {
-      name: 'Customer Management',
-      icon: 'Users',
-      permissions: [
-        { key: 'customer.view', label: 'View Customers', admin: true, supervisor: true, agent: true, customer: false },
-        { key: 'customer.create', label: 'Create Customers', admin: true, supervisor: true, agent: true, customer: false },
-        { key: 'customer.edit', label: 'Edit Customers', admin: true, supervisor: true, agent: true, customer: false },
-        { key: 'customer.delete', label: 'Delete Customers', admin: true, supervisor: false, agent: false, customer: false },
-        { key: 'customer.export', label: 'Export Customer Data', admin: true, supervisor: true, agent: false, customer: false }
-      ]
-    },
-    {
-      name: 'Reporting & Analytics',
-      icon: 'BarChart',
-      permissions: [
-        { key: 'report.view', label: 'View Reports', admin: true, supervisor: true, agent: true, customer: false },
-        { key: 'report.create', label: 'Create Reports', admin: true, supervisor: true, agent: false, customer: false },
-        { key: 'report.export', label: 'Export Reports', admin: true, supervisor: true, agent: true, customer: false },
-        { key: 'analytics.view', label: 'View Analytics', admin: true, supervisor: true, agent: false, customer: false },
-        { key: 'kpi.view', label: 'View KPIs', admin: true, supervisor: true, agent: true, customer: false }
-      ]
-    },
-    {
-      name: 'System Administration',
-      icon: 'Settings',
-      permissions: [
-        { key: 'user.manage', label: 'Manage Users', admin: true, supervisor: false, agent: false, customer: false },
-        { key: 'role.manage', label: 'Manage Roles', admin: true, supervisor: false, agent: false, customer: false },
-        { key: 'sla.manage', label: 'Manage SLA', admin: true, supervisor: true, agent: false, customer: false },
-        { key: 'category.manage', label: 'Manage Categories', admin: true, supervisor: true, agent: false, customer: false },
-        { key: 'system.config', label: 'System Configuration', admin: true, supervisor: false, agent: false, customer: false },
-        { key: 'audit.view', label: 'View Audit Logs', admin: true, supervisor: true, agent: false, customer: false }
-      ]
-    },
-    {
-      name: 'Knowledge Base',
-      icon: 'BookOpen',
-      permissions: [
-        { key: 'kb.view', label: 'View Knowledge Base', admin: true, supervisor: true, agent: true, customer: true },
-        { key: 'kb.create', label: 'Create Articles', admin: true, supervisor: true, agent: true, customer: false },
-        { key: 'kb.edit', label: 'Edit Articles', admin: true, supervisor: true, agent: true, customer: false },
-        { key: 'kb.delete', label: 'Delete Articles', admin: true, supervisor: true, agent: false, customer: false },
-        { key: 'kb.approve', label: 'Approve Articles', admin: true, supervisor: true, agent: false, customer: false }
-      ]
-    },
-    {
-      name: 'Telephony (Mitel)',
-      icon: 'Phone',
-      permissions: [
-        { key: 'mitel.view', label: 'View Call Data', admin: true, supervisor: true, agent: true, customer: false },
-        { key: 'mitel.call', label: 'Make Calls', admin: true, supervisor: true, agent: true, customer: false },
-        { key: 'mitel.transfer', label: 'Transfer Calls', admin: true, supervisor: true, agent: true, customer: false },
-        { key: 'mitel.recording', label: 'Access Recordings', admin: true, supervisor: true, agent: false, customer: false },
-        { key: 'mitel.queue', label: 'Manage Queues', admin: true, supervisor: true, agent: false, customer: false }
-      ]
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const response = await api.get('/permissions-matrix');
+      
+      setRoles(response.data.roles);
+      
+      // Set first role as default selected
+      if (response.data.roles.length > 0 && !selectedRole) {
+        setSelectedRole(response.data.roles[0].slug);
+      }
+      
+      // Transform matrix data into modules structure
+      const modulesData = response.data.matrix.map(item => ({
+        name: item.module,
+        icon: iconMap[item.module] || 'Circle',
+        permissions: item.permissions.map(perm => ({
+          id: perm.id,
+          key: perm.slug,
+          label: perm.name,
+          description: perm.description,
+          ...perm.roles // Spread role permissions (admin: true, supervisor: false, etc.)
+        }))
+      }));
+      
+      setModules(modulesData);
+      setPermissions(modulesData);
+      setHasChanges(false);
+    } catch (error) {
+      console.error('Error loading permission matrix:', error);
+      toast.error('Failed to load permissions');
+    } finally {
+      setLoading(false);
     }
-  ];
-
-  const [permissions, setPermissions] = useState(modules);
+  };
 
   const togglePermission = (moduleIndex, permissionIndex) => {
     const updatedPermissions = [...permissions];
     const permission = updatedPermissions[moduleIndex].permissions[permissionIndex];
     permission[selectedRole] = !permission[selectedRole];
     setPermissions(updatedPermissions);
+    setHasChanges(true);
   };
 
   const toggleAllInModule = (moduleIndex) => {
@@ -103,13 +80,71 @@ const PermissionMatrix = () => {
       p[selectedRole] = !allEnabled;
     });
     setPermissions(updatedPermissions);
+    setHasChanges(true);
   };
 
-  const getPermissionCount = (roleId) => {
+  const handleSaveChanges = async () => {
+    if (!selectedRole) {
+      toast.error('Please select a role');
+      return;
+    }
+
+    try {
+      setSaving(true);
+      
+      // Get the selected role object
+      const role = roles.find(r => r.slug === selectedRole);
+      if (!role) {
+        toast.error('Selected role not found');
+        return;
+      }
+
+      // Collect all permission IDs that are enabled for the selected role
+      const enabledPermissions = [];
+      permissions.forEach(module => {
+        module.permissions.forEach(permission => {
+          if (permission[selectedRole]) {
+            enabledPermissions.push(permission.id);
+          }
+        });
+      });
+
+      console.log('Saving permissions for role:', role.name);
+      console.log('Enabled permission IDs:', enabledPermissions);
+
+      // Save to API
+      const response = await api.post(`/roles/${role.id}/permissions`, {
+        permissions: enabledPermissions
+      });
+
+      console.log('Save response:', response);
+
+      toast.success(`Permissions updated successfully for ${role.name}`);
+      setHasChanges(false);
+      
+      // Reload to ensure sync with backend
+      await loadData();
+    } catch (error) {
+      console.error('Error saving permissions:', error);
+      console.error('Error response:', error.response);
+      toast.error(error.response?.data?.message || 'Failed to save permissions');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleResetToDefault = async () => {
+    if (window.confirm('Are you sure you want to reload permissions from the server? Any unsaved changes will be lost.')) {
+      await loadData();
+      toast.info('Permissions reloaded from server');
+    }
+  };
+
+  const getPermissionCount = (roleSlug) => {
     let count = 0;
     permissions.forEach(module => {
       module.permissions.forEach(permission => {
-        if (permission[roleId]) count++;
+        if (permission[roleSlug]) count++;
       });
     });
     return count;
@@ -121,6 +156,17 @@ const PermissionMatrix = () => {
     module.permissions.some(p => p.label.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <Icon name="Loader2" size={48} className="text-primary animate-spin mx-auto mb-4" />
+          <p className="text-muted-foreground">Loading permission matrix...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Role Selection */}
@@ -129,23 +175,23 @@ const PermissionMatrix = () => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {roles.map((role) => (
             <button
-              key={role.id}
-              onClick={() => setSelectedRole(role.id)}
+              key={role.slug}
+              onClick={() => setSelectedRole(role.slug)}
               className={`p-4 rounded-lg border-2 transition-all text-left ${
-                selectedRole === role.id
+                selectedRole === role.slug
                   ? 'border-primary bg-primary/5 ring-2 ring-primary/20'
                   : 'border-border hover:border-primary/50'
               }`}
             >
               <div className="flex items-center justify-between mb-2">
-                <Icon name="Shield" size={24} className={selectedRole === role.id ? 'text-primary' : 'text-muted-foreground'} />
-                {selectedRole === role.id && (
+                <Icon name="Shield" size={24} className={selectedRole === role.slug ? 'text-primary' : 'text-muted-foreground'} />
+                {selectedRole === role.slug && (
                   <Icon name="CheckCircle" size={20} className="text-primary" />
                 )}
               </div>
               <h4 className="font-semibold text-foreground mb-1">{role.name}</h4>
               <p className="text-sm text-muted-foreground">
-                {getPermissionCount(role.id)} permissions
+                {getPermissionCount(role.slug)} permissions
               </p>
             </button>
           ))}
@@ -164,11 +210,29 @@ const PermissionMatrix = () => {
             />
           </div>
           <div className="flex items-center space-x-3">
-            <Button variant="outline" iconName="RotateCcw" iconPosition="left">
+            {hasChanges && (
+              <span className="text-sm text-amber-600 dark:text-amber-400 flex items-center">
+                <Icon name="AlertCircle" size={16} className="mr-1" />
+                Unsaved changes
+              </span>
+            )}
+            <Button 
+              variant="outline" 
+              iconName="RotateCcw" 
+              iconPosition="left"
+              onClick={handleResetToDefault}
+              disabled={saving}
+            >
               Reset to Default
             </Button>
-            <Button variant="default" iconName="Save" iconPosition="left">
-              Save Changes
+            <Button 
+              variant="default" 
+              iconName="Save" 
+              iconPosition="left"
+              onClick={handleSaveChanges}
+              disabled={saving || !hasChanges}
+            >
+              {saving ? 'Saving...' : 'Save Changes'}
             </Button>
           </div>
         </div>
@@ -241,15 +305,15 @@ const PermissionMatrix = () => {
                       
                       {/* Other Roles Quick View */}
                       <div className="flex items-center space-x-2">
-                        {roles.filter(r => r.id !== selectedRole).map(role => (
+                        {roles.filter(r => r.slug !== selectedRole).map(role => (
                           <div
-                            key={role.id}
+                            key={role.slug}
                             className={`px-2 py-1 rounded text-xs font-medium ${
-                              permission[role.id]
+                              permission[role.slug]
                                 ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
                                 : 'bg-gray-100 text-gray-500 dark:bg-gray-900/30 dark:text-gray-500'
                             }`}
-                            title={`${role.name}: ${permission[role.id] ? 'Enabled' : 'Disabled'}`}
+                            title={`${role.name}: ${permission[role.slug] ? 'Enabled' : 'Disabled'}`}
                           >
                             {role.name.substring(0, 3)}
                           </div>
@@ -269,9 +333,9 @@ const PermissionMatrix = () => {
         <h3 className="text-lg font-semibold text-foreground mb-4">Permission Summary</h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {roles.map(role => (
-            <div key={role.id} className="bg-muted/30 rounded-lg p-4">
+            <div key={role.slug} className="bg-muted/30 rounded-lg p-4">
               <p className="text-sm text-muted-foreground mb-1">{role.name}</p>
-              <p className="text-2xl font-bold text-foreground">{getPermissionCount(role.id)}</p>
+              <p className="text-2xl font-bold text-foreground">{getPermissionCount(role.slug)}</p>
               <p className="text-xs text-muted-foreground mt-1">permissions enabled</p>
             </div>
           ))}
