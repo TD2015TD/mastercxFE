@@ -17,6 +17,15 @@ export const AuthProvider = ({ children }) => {
         const userPermissions = authService.getPermissions();
         const token = localStorage.getItem('jwt_token');
 
+        console.log('🔧 AuthContext Init:', {
+          hasToken: !!token,
+          currentUser: currentUser,
+          userRole: currentUser?.role,
+          userRoleSlug: currentUser?.role?.slug,
+          permissions: userPermissions,
+          permissionsCount: userPermissions?.length
+        });
+
         if (currentUser && token) {
           setUser(currentUser);
           setPermissions(userPermissions);
@@ -43,6 +52,14 @@ export const AuthProvider = ({ children }) => {
     try {
       const response = await authService.login(credentials);
       const userPermissions = authService.getPermissions();
+      
+      console.log('🔧 AuthContext Login:', {
+        user: response.user,
+        userRole: response.user?.role,
+        userRoleSlug: response.user?.role?.slug,
+        permissions: userPermissions,
+        permissionsCount: userPermissions?.length
+      });
       
       setUser(response.user);
       setPermissions(userPermissions);
