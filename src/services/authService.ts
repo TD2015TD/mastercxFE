@@ -99,6 +99,11 @@ export const authService = {
         const permissions = data.data.permissions || [];
 
         console.log('authService.login - Storing tokens, user data, and permissions');
+        console.log('authService.login - User object:', user);
+        console.log('authService.login - User role:', user.role);
+        console.log('authService.login - User role slug:', user.role?.slug);
+        console.log('authService.login - Permissions:', permissions);
+        
         localStorage.setItem('jwt_token', jwtToken);
         localStorage.setItem('mitel_token', mitelToken);
         localStorage.setItem('user_permissions', JSON.stringify(permissions));
@@ -182,9 +187,32 @@ export const authService = {
       const userData = localStorage.getItem('user-session');
       if (userData) {
         const user = JSON.parse(userData);
-        // Map role_id to role name if needed
+        console.log('authService.getCurrentUser - Retrieved user:', user);
+        console.log('authService.getCurrentUser - User role:', user.role);
+        console.log('authService.getCurrentUser - User role type:', typeof user.role);
+        console.log('authService.getCurrentUser - User role slug:', user.role?.slug);
+        
+        // Map role_id to role object if needed (ensure role is an object with slug property)
         if (user.role_id && !user.role) {
-          user.role = getRoleFromRoleId(user.role_id);
+          console.log('authService.getCurrentUser - Role missing, mapping from role_id');
+          const roleSlug = getRoleFromRoleId(user.role_id);
+          user.role = {
+            id: user.role_id,
+            slug: roleSlug,
+            name: roleSlug.split('_').map((word: string) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
+          };
+          console.log('authService.getCurrentUser - Mapped role:', user.role);
+        }
+        // Handle case where role exists but is just a string instead of object
+        if (user.role && typeof user.role === 'string') {
+          console.log('authService.getCurrentUser - Role is string, converting to object:', user.role);
+          const roleSlug = user.role;
+          user.role = {
+            id: user.role_id,
+            slug: roleSlug,
+            name: roleSlug.split('_').map((word: string) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
+          };
+          console.log('authService.getCurrentUser - Converted role:', user.role);
         }
         return user;
       }
@@ -198,6 +226,9 @@ export const authService = {
   // Set current user to localStorage
   setCurrentUser: (user: AuthResponse['data']['user']) => {
     try {
+      console.log('authService.setCurrentUser - Storing user:', user);
+      console.log('authService.setCurrentUser - User role:', user.role);
+      console.log('authService.setCurrentUser - User role slug:', user.role?.slug);
       localStorage.setItem('user-session', JSON.stringify(user));
     } catch (err) {
       console.error('Error storing user data to localStorage:', err);
