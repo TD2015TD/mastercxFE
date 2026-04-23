@@ -126,7 +126,7 @@ const SystemConfigurationPanel = () => {
   const loadCategories = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/categories');
+      const response = await api.get('/categories', { params: { per_page: 1000 } });
       let filteredCategories = response.data.data || [];
       
       // Apply case-insensitive department filter on frontend
@@ -310,7 +310,7 @@ const SystemConfigurationPanel = () => {
       {!loading && categories.length > CAT_PER_PAGE && (
         <div className="flex items-center justify-between pt-4 border-t border-border">
           <p className="text-sm text-muted-foreground">
-            Showing {Math.min((catCurrentPage - 1) * CAT_PER_PAGE + 1, categories.length)}–{Math.min(catCurrentPage * CAT_PER_PAGE, categories.length)} of {categories.length}
+            Showing {Math.min((catCurrentPage - 1) * CAT_PER_PAGE + 1, categories.length)}–{Math.min(catCurrentPage * CAT_PER_PAGE, categories.length)} of {allCategories.length}
           </p>
           <div className="flex items-center gap-1">
             <Button
