@@ -244,9 +244,17 @@ export const authService = {
   getPermissions: (): string[] => {
     try {
       const permissionsData = localStorage.getItem('user_permissions');
+      console.log('authService.getPermissions - Raw data from localStorage:', permissionsData);
+      
       if (permissionsData) {
-        return JSON.parse(permissionsData);
+        const parsed = JSON.parse(permissionsData);
+        console.log('authService.getPermissions - Parsed permissions:', parsed);
+        console.log('authService.getPermissions - Is array:', Array.isArray(parsed));
+        console.log('authService.getPermissions - Length:', parsed?.length);
+        return parsed;
       }
+      
+      console.log('authService.getPermissions - No permissions in localStorage, returning empty array');
       return [];
     } catch (err) {
       console.error('Error parsing permissions data from localStorage:', err);
