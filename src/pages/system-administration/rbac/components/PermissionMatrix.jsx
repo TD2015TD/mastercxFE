@@ -3,9 +3,11 @@ import { toast } from 'react-toastify';
 import Icon from '../../../../components/AppIcon';
 import Button from '../../../../components/ui/Button';
 import Input from '../../../../components/ui/Input';
+import { useAuth } from '../../../../contexts/AuthContext';
 import api from '../../../../services/api';
 
 const PermissionMatrix = () => {
+  const { user, refreshUser } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedRole, setSelectedRole] = useState(null);
   const [roles, setRoles] = useState([]);
@@ -65,6 +67,12 @@ const PermissionMatrix = () => {
   };
 
   const togglePermission = (moduleIndex, permissionIndex) => {
+    // Prevent toggling Super Admin permissions
+    if (selectedRole === 'super_admin') {
+      toast.warning('Super Admin permissions cannot be modified. Super Admin always has full access.');
+      return;
+    }
+    
     const updatedPermissions = [...permissions];
     const permission = updatedPermissions[moduleIndex].permissions[permissionIndex];
     permission[selectedRole] = !permission[selectedRole];
@@ -73,6 +81,12 @@ const PermissionMatrix = () => {
   };
 
   const toggleAllInModule = (moduleIndex) => {
+    // Prevent toggling Super Admin permissions
+    if (selectedRole === 'super_admin') {
+      toast.warning('Super Admin permissions cannot be modified. Super Admin always has full access.');
+      return;
+    }
+    
     const updatedPermissions = [...permissions];
     const module = updatedPermissions[moduleIndex];
     const allEnabled = module.permissions.every(p => p[selectedRole]);
@@ -86,6 +100,12 @@ const PermissionMatrix = () => {
   const handleSaveChanges = async () => {
     if (!selectedRole) {
       toast.error('Please select a role');
+      return;
+    }
+
+    // Prevent saving Super Admin permissions
+    if (selectedRole === 'super_admin') {
+      toast.error('Super Admin permissions cannot be modified. Super Admin always has full access.');
       return;
     }
 
@@ -124,6 +144,17 @@ const PermissionMatrix = () => {
       
       // Reload to ensure sync with backend
       await loadData();
+      
+      // If the saved role matches the current user's role, refresh their session
+      if (user?.role?.slug === selectedRole) {
+        try {
+          await refreshUser();
+          toast.info('Your permissions have been refreshed. Changes are now active.');
+        } catch (error) {
+          console.error('Error refreshing user permissions:', error);
+          toast.warning('Permissions saved, but failed to refresh your session. Please log out and log back in to see changes.');
+        }
+      }
     } catch (error) {
       console.error('Error saving permissions:', error);
       console.error('Error response:', error.response);
@@ -189,9 +220,14 @@ const PermissionMatrix = () => {
                   <Icon name="CheckCircle" size={20} className="text-primary" />
                 )}
               </div>
-              <h4 className="font-semibold text-foreground mb-1">{role.name}</h4>
+              <h4 className="font-semibold text-foreground mb-1 flex items-center gap-2">
+                {role.name}
+                {role.slug === 'super_admin' && (
+                  <Icon name="Lock" size={14} className="text-amber-500" />
+                )}
+              </h4>
               <p className="text-sm text-muted-foreground">
-                {getPermissionCount(role.slug)} permissions
+                {role.slug === 'super_admin' ? 'Full Access (Locked)' : `${getPermissionCount(role.slug)} permissions`}
               </p>
             </button>
           ))}
@@ -230,13 +266,29 @@ const PermissionMatrix = () => {
               iconName="Save" 
               iconPosition="left"
               onClick={handleSaveChanges}
-              disabled={saving || !hasChanges}
+              disabled={saving || !hasChanges || selectedRole === 'super_admin'}
             >
               {saving ? 'Saving...' : 'Save Changes'}
             </Button>
           </div>
         </div>
       </div>
+
+      {/* Super Admin Warning */}
+      {selectedRole === 'super_admin' && (
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+          <div className="flex items-start">
+            <Icon name="Lock" size={20} className="text-blue-600 dark:text-blue-400 mr-3 mt-0.5" />
+            <div>
+              <h4 className="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-1">Super Admin Permissions are Locked</h4>
+              <p className="text-sm text-blue-800 dark:text-blue-200">
+                Super Admin role has full system access and bypasses all permission checks. 
+                Permissions cannot be modified for this role as Super Admins always have complete access to all features.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Permission Matrix */}
       <div className="space-y-4">
@@ -262,7 +314,10 @@ const PermissionMatrix = () => {
                   </div>
                   <button
                     onClick={() => toggleAllInModule(moduleIndex)}
-                    className="flex items-center space-x-2 px-4 py-2 rounded-lg border border-border hover:border-primary/50 transition-colors"
+                    disabled={selectedRole === 'super_admin'}
+                    className={`flex items-center space-x-2 px-4 py-2 rounded-lg border border-border hover:border-primary/50 transition-colors ${
+                      selectedRole === 'super_admin' ? 'opacity-50 cursor-not-allowed' : ''
+                    }`}
                   >
                     <Icon 
                       name={allEnabled ? "CheckSquare" : "Square"} 
@@ -287,14 +342,20 @@ const PermissionMatrix = () => {
                       <div className="flex items-center space-x-3">
                         <button
                           onClick={() => togglePermission(moduleIndex, permissionIndex)}
+                          disabled={selectedRole === 'super_admin'}
                           className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
                             permission[selectedRole]
                               ? 'bg-primary border-primary'
                               : 'border-border hover:border-primary/50'
+                          } ${
+                            selectedRole === 'super_admin' ? 'opacity-60 cursor-not-allowed' : ''
                           }`}
                         >
                           {permission[selectedRole] && (
                             <Icon name="Check" size={14} className="text-white" />
+                          )}
+                          {selectedRole === 'super_admin' && (
+                            <Icon name="Lock" size={10} className="text-white absolute" />
                           )}
                         </button>
                         <div>
@@ -350,7 +411,9 @@ const PermissionMatrix = () => {
             <h4 className="text-sm font-semibold text-amber-900 dark:text-amber-100 mb-1">Important</h4>
             <p className="text-sm text-amber-800 dark:text-amber-200">
               Changes to permissions will take effect immediately for all users with this role. 
-              Users will need to re-login to see updated permissions reflected in their session.
+              {user?.role?.slug === selectedRole 
+                ? ' Your permissions will be automatically refreshed after saving.'
+                : ' Users will need to re-login to see updated permissions reflected in their session.'}
             </p>
           </div>
         </div>

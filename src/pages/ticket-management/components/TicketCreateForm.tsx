@@ -658,6 +658,17 @@ const TicketCreateForm: React.FC<{
     }
   }, [formData.category, formData.department, categories, loadSubcategories]);
 
+  // Cleanup: If component unmounts while modal is open or after ticket creation,
+  // ensure localStorage draft is cleared so next mount starts fresh
+  useEffect(() => {
+    return () => {
+      // On unmount, clear any pending draft for this case
+      if (draftKey) {
+        localStorage.removeItem(draftKey);
+      }
+    };
+  }, [draftKey]);
+
   const loadLookups = async () => {
     try {
       const [deptData, prioData, channelData, urgencyData, impactData, idTypeData, contactTypeData] = await Promise.all([
