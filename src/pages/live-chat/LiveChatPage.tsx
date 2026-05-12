@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { authService } from '../../services/authService';
 import { knowledgeBaseService, type KnowledgeBaseArticle } from '../../services/knowledgeBaseService';
 import { ticketService } from '../../services/ticketService';
 import { ChatWidget } from '../../components/ChatWidget/ChatWidget';
