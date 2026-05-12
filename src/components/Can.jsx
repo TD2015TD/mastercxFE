@@ -13,17 +13,26 @@ import { hasPermission, hasAnyPermission, hasAllPermissions, canPerform } from '
  * @param {ReactNode} props.fallback - Content to render if user doesn't have permission
  */
 const Can = ({ permission, anyOf, allOf, children, fallback = null }) => {
-  const { user, permissions } = useAuth();
+  const { user, permissions, loading } = useAuth();
+
+  // If still loading auth state, don't render anything to avoid flashing wrong content
+  if (loading) {
+    return null;
+  }
 
   console.log('🔐 Can Component:', {
     permission,
     anyOf,
     allOf,
+    user: user,
+    userExists: !!user,
     userRole: user?.role,
     userRoleSlug: user?.role?.slug,
     isSuperAdmin: user?.role?.slug === 'super_admin',
     permissions: permissions,
-    hasPermissions: permissions?.length > 0
+    permissionsArray: Array.isArray(permissions) ? permissions : 'NOT AN ARRAY',
+    hasPermissions: permissions?.length > 0,
+    loading: loading
   });
 
   // Super admin bypass
@@ -56,10 +65,13 @@ const Can = ({ permission, anyOf, allOf, children, fallback = null }) => {
  * Hook to check permissions in functional components
  */
 export const usePermission = () => {
-  const { user, permissions } = useAuth();
+  const { user, permissions, loading } = useAuth();
 
   return {
     can: (permission) => {
+      // During loading, deny access to avoid flashing
+      if (loading) return false;
+      
       const result = canPerform(user, permissions, permission);
       console.log('🔐 Permission Check:', {
         permission,
@@ -73,15 +85,18 @@ export const usePermission = () => {
       return result;
     },
     canAny: (permissionArray) => {
+      if (loading) return false;
       if (user?.role?.slug === 'super_admin') return true;
       return hasAnyPermission(permissions, permissionArray);
     },
     canAll: (permissionArray) => {
+      if (loading) return false;
       if (user?.role?.slug === 'super_admin') return true;
       return hasAllPermissions(permissions, permissionArray);
     },
     isSuperAdmin: () => user?.role?.slug === 'super_admin',
     permissions,
+    loading,
   };
 };
 

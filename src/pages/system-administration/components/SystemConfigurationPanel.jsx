@@ -20,7 +20,8 @@ const SystemConfigurationPanel = () => {
   const getDefaultTab = () => {
     if (can('category.manage')) return 'categories';
     if (can('system.config')) return 'email';
-    return 'categories'; // fallback
+    // If no permissions, default to email (will show access denied)
+    return 'email';
   };
   
   const [activeTab, setActiveTab] = useState(getDefaultTab());
@@ -468,10 +469,17 @@ const SystemConfigurationPanel = () => {
             
             if (!hasAccess) return null;
             
+            // Prevent switching to tabs without permission
+            const handleTabClick = () => {
+              if (hasAccess) {
+                setActiveTab(tab.id);
+              }
+            };
+            
             return (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={handleTabClick}
                 className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                   activeTab === tab.id
                     ? 'bg-background text-foreground shadow-sm'

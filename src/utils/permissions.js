@@ -9,10 +9,23 @@
  * @returns {boolean}
  */
 export const hasPermission = (userPermissions, requiredPermission) => {
+  console.log('🔍 hasPermission check:', {
+    userPermissions: userPermissions,
+    userPermissionsType: typeof userPermissions,
+    isArray: Array.isArray(userPermissions),
+    length: userPermissions?.length,
+    requiredPermission: requiredPermission,
+    includes: userPermissions?.includes?.(requiredPermission)
+  });
+  
   if (!userPermissions || !Array.isArray(userPermissions)) {
+    console.log('❌ hasPermission: No permissions or not an array');
     return false;
   }
-  return userPermissions.includes(requiredPermission);
+  
+  const result = userPermissions.includes(requiredPermission);
+  console.log(`🔍 hasPermission result for "${requiredPermission}":`, result);
+  return result;
 };
 
 /**

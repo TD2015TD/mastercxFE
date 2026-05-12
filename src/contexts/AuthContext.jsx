@@ -9,10 +9,25 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
+  // Debug: Track state changes
+  useEffect(() => {
+    console.log('🔄 AuthContext State Changed:', {
+      user: user,
+      userExists: !!user,
+      userRole: user?.role?.slug,
+      permissions: permissions,
+      permissionsLength: permissions?.length,
+      isAuthenticated: isAuthenticated,
+      loading: loading
+    });
+  }, [user, permissions, isAuthenticated, loading]);
+
   // Load user and permissions from localStorage on mount
   useEffect(() => {
     const initAuth = () => {
       try {
+        console.log('🚀 AuthContext Init: Starting...');
+        
         const currentUser = authService.getCurrentUser();
         const userPermissions = authService.getPermissions();
         const token = localStorage.getItem('jwt_token');
@@ -23,14 +38,21 @@ export const AuthProvider = ({ children }) => {
           userRole: currentUser?.role,
           userRoleSlug: currentUser?.role?.slug,
           permissions: userPermissions,
-          permissionsCount: userPermissions?.length
+          permissionsCount: userPermissions?.length,
+          permissionsType: typeof userPermissions,
+          permissionsIsArray: Array.isArray(userPermissions)
         });
 
         if (currentUser && token) {
+          console.log('✅ Auth state: Setting user and permissions', {
+            user: currentUser,
+            permissions: userPermissions
+          });
           setUser(currentUser);
-          setPermissions(userPermissions);
+          setPermissions(userPermissions || []);
           setIsAuthenticated(true);
         } else {
+          console.log('❌ Auth state: No user or token, clearing auth');
           setUser(null);
           setPermissions([]);
           setIsAuthenticated(false);
@@ -41,6 +63,7 @@ export const AuthProvider = ({ children }) => {
         setPermissions([]);
         setIsAuthenticated(false);
       } finally {
+        console.log('🏁 AuthContext Init: Complete, setting loading=false');
         setLoading(false);
       }
     };
@@ -58,12 +81,23 @@ export const AuthProvider = ({ children }) => {
         userRole: response.user?.role,
         userRoleSlug: response.user?.role?.slug,
         permissions: userPermissions,
-        permissionsCount: userPermissions?.length
+        permissionsCount: userPermissions?.length,
+        permissionsType: typeof userPermissions,
+        permissionsIsArray: Array.isArray(userPermissions)
       });
       
+      // Update all state together in batch
+      const perms = Array.isArray(userPermissions) ? userPermissions : [];
+      
       setUser(response.user);
-      setPermissions(userPermissions);
+      setPermissions(perms);
       setIsAuthenticated(true);
+      
+      console.log('✅ Login state updated:', {
+        userSet: !!response.user,
+        permissionsCount: perms.length,
+        isAuthenticated: true
+      });
       
       return response;
     } catch (error) {
@@ -111,6 +145,18 @@ export const AuthProvider = ({ children }) => {
     logout,
     refreshUser,
   };
+
+  // Debug: Log context value whenever it changes
+  useEffect(() => {
+    console.log('📦 AuthContext Value Updated:', {
+      user: value.user,
+      userExists: !!value.user,
+      permissions: value.permissions,
+      permissionsLength: value.permissions?.length,
+      loading: value.loading,
+      isAuthenticated: value.isAuthenticated
+    });
+  }, [value]);
 
   return (
     <AuthContext.Provider value={value}>

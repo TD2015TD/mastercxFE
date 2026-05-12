@@ -6,11 +6,12 @@ import Input from '../../../components/ui/Input';
 import Select from '../../../components/ui/Select';
 import { Checkbox } from '../../../components/ui/Checkbox';
 import Icon from '../../../components/AppIcon';
-import { authService } from '../../../services/authService';
+import { useAuth } from '../../../contexts/AuthContext';
 import { languageService } from '../../../services/languageService';
 
 const LoginForm = () => {
   const navigate = useNavigate();
+  const { login: authLogin } = useAuth();
   const [currentLanguage, setCurrentLanguage] = useState('en');
   const [translations, setTranslations] = useState({});
   const [formData, setFormData] = useState({
@@ -86,8 +87,8 @@ const LoginForm = () => {
     try {
       console.log('Login attempt starting:', { username: formData.username });
       
-      // Use authService to login
-      const response = await authService.login({
+      // Use AuthContext login to update React state immediately
+      const response = await authLogin({
         username: formData.username,
         password: formData.password
       });
