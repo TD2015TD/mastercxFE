@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { authService } from '../../services/authService';
-import { knowledgeBaseService, KnowledgeBaseArticle } from '../../services/knowledgeBaseService';
+import { knowledgeBaseService, type KnowledgeBaseArticle } from '../../services/knowledgeBaseService';
 import { ticketService } from '../../services/ticketService';
 import { ChatWidget } from '../../components/ChatWidget/ChatWidget';
 import api from '../../services/api';
@@ -33,7 +33,6 @@ const AI_CHAT_WS_URL = import.meta.env.VITE_AI_CHAT_SERVICE_URL || 'wss://chat.t
 const LiveChatPage = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const user = authService.getCurrentUser();
   const resolutionRef = useRef<HTMLTextAreaElement>(null);
 
   // conversationId = Mitel interaction ID = sessionId for ai-chat-service
