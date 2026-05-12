@@ -5,111 +5,106 @@ import { authService } from '../../services/authService';
 interface Message {
   author: string;
   type: 'text';
-  data: {
-    text: string;
-  };
+  data: { text: string };
 }
 
-const AI_CHAT_SERVICE_URL = import.meta.env.VITE_AI_CHAT_SERVICE_URL || 'ws://localhost:8000';
+interface ChatWidgetProps {
+  mitelInteractionId?: string;
+}
 
-export const ChatWidget = () => {
+const AI_CHAT_SERVICE_URL = import.meta.env.VITE_AI_CHAT_SERVICE_URL || 'wss://chat.telediant.com.my';
+
+export const ChatWidget = ({ mitelInteractionId }: ChatWidgetProps) => {
   const user = authService.getCurrentUser();
+  const agentUserId = user?.agent?.agent_code || user?.id?.toString() || 'agent_unknown';
+
   const [messages, setMessages] = useState<Message[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<number | null>(null);
-  const sessionIdRef = useRef<string>(`session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
   const isConnectedRef = useRef<boolean>(false);
 
-  // WebSocket connection for agent-customer chat
+  // Use Mitel interaction ID as session; fall back to a random one for standalone use.
+  const sessionIdRef = useRef<string>(
+    mitelInteractionId || `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  );
+
+  // Re-connect when a new Mitel interaction is assigned to this agent.
+  useEffect(() => {
+    if (mitelInteractionId) {
+      sessionIdRef.current = mitelInteractionId;
+      // Tear down any existing socket so connectWebSocket opens a fresh one.
+      if (wsRef.current) {
+        wsRef.current.onclose = null;
+        wsRef.current.close();
+        wsRef.current = null;
+      }
+      setMessages([]);
+      isConnectedRef.current = false;
+    }
+  }, [mitelInteractionId]);
+
   useEffect(() => {
     const connectWebSocket = () => {
       try {
         const ws = new WebSocket(`${AI_CHAT_SERVICE_URL}/ws/agent-customer-chat`);
-        
+
         ws.onopen = () => {
-          console.log('Agent connected to ai-chat-service');
-          
-          // Send connection message
           ws.send(JSON.stringify({
             type: 'connect',
             sender: 'agent',
             session_id: sessionIdRef.current,
-            user_id: user?.id || 'agent_unknown',
+            user_id: agentUserId,
           }));
         };
 
         ws.onmessage = (event) => {
           const data = JSON.parse(event.data);
-          
-          console.log('Received message:', data);
-          
+
           if (data.type === 'error') {
-            console.error('WebSocket error:', data.error);
+            console.error('ChatWidget WS error:', data.error);
             return;
           }
 
           if (data.type === 'connected') {
             isConnectedRef.current = true;
-            console.log('Agent connected successfully:', data);
           }
 
           if (data.type === 'message') {
-            // Received message from customer (already translated if needed)
-            const customerMessage: Message = {
+            setMessages(prev => [...prev, {
               author: 'them',
               type: 'text',
-              data: {
-                text: data.content
-              }
-            };
-            
-            setMessages(prev => [...prev, customerMessage]);
-          }
-
-          if (data.type === 'message_sent') {
-            console.log('Message sent confirmation:', data);
+              data: { text: data.content }
+            }]);
           }
 
           if (data.type === 'disconnected') {
-            console.log('Other party disconnected:', data.sender);
-            const systemMessage: Message = {
+            setMessages(prev => [...prev, {
               author: 'them',
               type: 'text',
-              data: {
-                text: '(Customer has left the chat)'
-              }
-            };
-            setMessages(prev => [...prev, systemMessage]);
+              data: { text: '(Customer has left the chat)' }
+            }]);
           }
         };
 
-        ws.onerror = (error) => {
-          console.error('WebSocket error:', error);
-        };
+        ws.onerror = (err) => console.error('ChatWidget WS error:', err);
 
         ws.onclose = () => {
-          console.log('WebSocket disconnected, attempting to reconnect...');
           isConnectedRef.current = false;
-          // Attempt to reconnect after 3 seconds
           reconnectTimeoutRef.current = setTimeout(connectWebSocket, 3000);
         };
 
         wsRef.current = ws;
-      } catch (error) {
-        console.error('Failed to connect to WebSocket:', error);
+      } catch (err) {
+        console.error('ChatWidget: failed to connect', err);
       }
     };
 
     connectWebSocket();
 
-    // Cleanup on unmount
     return () => {
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
-      }
+      if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
       if (wsRef.current) {
-        // Send disconnect message
         if (isConnectedRef.current) {
           wsRef.current.send(JSON.stringify({
             type: 'disconnect',
@@ -117,50 +112,35 @@ export const ChatWidget = () => {
             session_id: sessionIdRef.current,
           }));
         }
+        wsRef.current.onclose = null;
         wsRef.current.close();
       }
     };
-  }, [user]);
+  }, [agentUserId]);
 
   const handleNewMessage = (text: string) => {
-    const newMessage: Message = {
-      author: 'me',
-      type: 'text',
-      data: {
-        text
-      }
-    };
+    setMessages(prev => [...prev, { author: 'me', type: 'text', data: { text } }]);
 
-    setMessages(prev => [...prev, newMessage]);
-
-    // Send message through WebSocket to ai-chat-service
-    // Agent writes in English, will be translated to Malay for customer
-    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({
         type: 'message',
         sender: 'agent',
         content: text,
         session_id: sessionIdRef.current,
-        user_id: user?.id || 'agent_unknown',
+        user_id: agentUserId,
       }));
     } else {
-      // Fallback if WebSocket is not connected
-      const errorMessage: Message = {
+      setMessages(prev => [...prev, {
         author: 'them',
         type: 'text',
-        data: {
-          text: 'Unable to connect to chat service. Please try again.'
-        }
-      };
-      setMessages(prev => [...prev, errorMessage]);
+        data: { text: 'Unable to connect to chat service. Please try again.' }
+      }]);
     }
   };
 
   return (
     <Launcher
-      agentProfile={{
-        teamName: 'Customer Support'
-      }}
+      agentProfile={{ teamName: 'Customer Support' }}
       messageList={messages}
       onMessageWasSent={handleNewMessage}
       isOpen={isOpen}

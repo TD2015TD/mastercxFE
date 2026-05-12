@@ -97,6 +97,18 @@ const ConversationNotification = ({ className = '', onConversationEvent }) => {
           return [newConversation, ...prev];
         });
 
+        // Auto screen pop: navigate immediately when a chat interaction is offered.
+        // Agent does not need to click — the live chat page opens automatically.
+        const mediaType = (data.mediaType || '').toLowerCase();
+        if (mediaType === 'chat' || mediaType === 'webchat') {
+          const params = new URLSearchParams({ conversationId: newConversation.conversationId });
+          if (newConversation.fromName && newConversation.fromName !== 'Unknown') params.set('name', newConversation.fromName);
+          if (newConversation.fromAddress && newConversation.fromAddress !== 'Unknown') params.set('ic', newConversation.fromAddress);
+          if (newConversation.subject)   params.set('topic', newConversation.subject);
+          if (newConversation.queueName) params.set('faqPath', newConversation.queueName);
+          navigate(`/communications/chat?${params.toString()}`);
+        }
+
         onConversationEvent?.('inbox:conversation_added', newConversation);
       }
     });
@@ -253,9 +265,13 @@ const ConversationNotification = ({ className = '', onConversationEvent }) => {
     } else if (conversation.mediaType?.toLowerCase() === 'email') {
       // Navigate to email handling interface
       navigate(`/communications/email?conversationId=${conversation.conversationId}`);
-    } else if (conversation.mediaType?.toLowerCase() === 'chat') {
-      // Navigate to chat interface
-      navigate(`/communications/chat?conversationId=${conversation.conversationId}`);
+    } else if (conversation.mediaType?.toLowerCase() === 'chat' || conversation.mediaType?.toLowerCase() === 'webchat') {
+      const params = new URLSearchParams({ conversationId: conversation.conversationId });
+      if (conversation.fromName)    params.set('name', conversation.fromName);
+      if (conversation.fromAddress) params.set('ic', conversation.fromAddress);
+      if (conversation.subject)     params.set('topic', conversation.subject);
+      if (conversation.queueName)   params.set('faqPath', conversation.queueName);
+      navigate(`/communications/chat?${params.toString()}`);
     }
 
     // Close the dropdown after clicking
