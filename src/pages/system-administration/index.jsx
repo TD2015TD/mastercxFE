@@ -14,6 +14,7 @@ import SlaConfigurationTable from './sla-configuration/components/SlaConfigurati
 import SlaPerformanceMetrics from './sla-configuration/components/SlaPerformanceMetrics';
 import SlaRulesEngine from './sla-configuration/components/SlaRulesEngine';
 import ReportConfigurationPanel from './report-configuration';
+import KnowledgeBaseAdmin from './knowledge-base';
 import RoleManagement from './rbac/components/RoleManagement';
 import RoleMenuManagement from './rbac/components/RoleMenuManagement';
 import MenuPermissionMatrix from './rbac/components/MenuPermissionMatrix';
@@ -129,6 +130,7 @@ const SystemAdministration = () => {
     { id: 'users', label: t('systemAdmin.tabs.users'), icon: 'Users', description: t('systemAdmin.tabs.usersDesc'), permission: 'user.manage' },
     { id: 'rbac', label: 'RBAC Management', icon: 'Shield', description: 'Manage roles, permissions, and menu assignments', permission: 'role.manage' },
     { id: 'sla', label: 'SLA Management', icon: 'Clock', description: 'Configure and monitor Service Level Agreements', permission: 'sla.manage' },
+    { id: 'knowledge-base', label: 'Knowledge Base', icon: 'BookOpen', description: 'Manage knowledge base articles and categories', permission: null },
     { id: 'reports', label: 'Report Configuration', icon: 'BarChart', description: 'Configure dashboards and assign role-based access to reports', permission: 'system.config' },
     { id: 'system', label: t('systemAdmin.tabs.system'), icon: 'Settings', description: t('systemAdmin.tabs.systemDesc'), permission: 'system.config' },
     { id: 'health', label: t('systemAdmin.tabs.health'), icon: 'Activity', description: t('systemAdmin.tabs.healthDesc'), permission: null } // null means everyone can access
@@ -209,6 +211,8 @@ const SystemAdministration = () => {
             <ComplianceDashboard />
           </Can>
         );
+      case 'knowledge-base':
+        return <KnowledgeBaseAdmin />;
       case 'health':
         return <SystemHealthMonitor />;
       default:

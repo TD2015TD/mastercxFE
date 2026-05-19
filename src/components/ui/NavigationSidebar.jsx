@@ -68,6 +68,7 @@ const NavigationSidebar = ({ isCollapsed = false, onToggleCollapse, userRole = '
         { label: 'Dashboard', path: '/supervisor-dashboard', icon: 'LayoutDashboard', tooltip: 'Supervisor dashboard overview' },
         { label: 'Tickets', path: '/ticket-management', icon: 'Ticket', tooltip: 'Manage customer tickets' },
         { label: 'Customer 360', path: '/customer-360-profile', icon: 'Users', tooltip: 'Complete customer profile' },
+        { label: 'Knowledge Base', path: '/knowledge-base-portal', icon: 'BookOpen', tooltip: 'Access articles and documentation' },
         { label: 'Administration', path: '/system-administration', icon: 'Settings', tooltip: 'System configuration and user management' },
       ];
     }
@@ -77,6 +78,7 @@ const NavigationSidebar = ({ isCollapsed = false, onToggleCollapse, userRole = '
       { label: 'Dashboard', path: '/agent-dashboard', icon: 'LayoutDashboard', tooltip: 'View your daily workspace' },
       { label: 'Tickets', path: '/ticket-management', icon: 'Ticket', tooltip: 'Manage customer tickets' },
       { label: 'Customer 360', path: '/customer-360-profile', icon: 'Users', tooltip: 'Complete customer profile' },
+      { label: 'Knowledge Base', path: '/knowledge-base-portal', icon: 'BookOpen', tooltip: 'Access articles and documentation' },
     ];
   };
 

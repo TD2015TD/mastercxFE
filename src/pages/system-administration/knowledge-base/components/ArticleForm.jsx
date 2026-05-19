@@ -69,7 +69,8 @@ const ArticleForm = ({ article, categories, onSave, onClose, isLoading }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+    <div className="fixed inset-0 bg-black/50 z-50">
+      <div className="fixed inset-0 left-60 flex items-center justify-center p-4 overflow-y-auto">
       <div className="bg-card rounded-lg shadow-xl max-w-4xl w-full my-8">
         <div className="flex items-center justify-between p-6 border-b border-border sticky top-0 bg-card z-10">
           <h3 className="text-lg font-semibold text-foreground">
@@ -206,6 +207,7 @@ const ArticleForm = ({ article, categories, onSave, onClose, isLoading }) => {
             </Button>
           </div>
         </form>
+      </div>
       </div>
     </div>
   );

@@ -282,125 +282,127 @@ const CategoryManagement = () => {
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-card rounded-lg shadow-xl max-w-4xl w-full">
-            <div className="flex items-center justify-between p-6 border-b border-border">
-              <h3 className="text-lg font-semibold text-foreground">
-                {editingCategory ? 'Edit Category' : 'Add New Category'}
-              </h3>
-              <button
-                onClick={handleCloseModal}
-                className="text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <Icon name="X" size={20} />
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[calc(90vh-120px)] overflow-y-auto">
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  Category Code *
-                </label>
-                <input
-                  type="text"
-                  required
-                  disabled={editingCategory}
-                  value={formData.code}
-                  onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                  className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground focus:ring-2 focus:ring-primary focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
-                  placeholder="e.g., customs_declaration, faqs"
-                />
-                {editingCategory && (
-                  <p className="text-xs text-muted-foreground mt-1">Code cannot be changed after creation</p>
-                )}
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">
-                    Category Name (English) *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.name_en}
-                    onChange={(e) => setFormData({ ...formData, name_en: e.target.value })}
-                    className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground focus:ring-2 focus:ring-primary focus:border-transparent"
-                    placeholder="e.g., Customs Declaration"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">
-                    Category Name (Malay) *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.name_ms}
-                    onChange={(e) => setFormData({ ...formData, name_ms: e.target.value })}
-                    className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground focus:ring-2 focus:ring-primary focus:border-transparent"
-                    placeholder="e.g., Deklarasi Kastam"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">
-                    Description (English)
-                  </label>
-                  <textarea
-                    value={formData.description_en}
-                    onChange={(e) => setFormData({ ...formData, description_en: e.target.value })}
-                    rows={3}
-                    className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground focus:ring-2 focus:ring-primary focus:border-transparent"
-                    placeholder="English description for this category"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">
-                    Description (Malay)
-                  </label>
-                  <textarea
-                    value={formData.description_ms}
-                    onChange={(e) => setFormData({ ...formData, description_ms: e.target.value })}
-                    rows={3}
-                    className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground focus:ring-2 focus:ring-primary focus:border-transparent"
-                    placeholder="Malay description for this category"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  Sort Order
-                </label>
-                <input
-                  type="number"
-                  value={formData.sort_order}
-                  onChange={(e) => setFormData({ ...formData, sort_order: parseInt(e.target.value) || 0 })}
-                  className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground focus:ring-2 focus:ring-primary focus:border-transparent"
-                  placeholder="0"
-                />
-              </div>
-
-              <div className="flex items-center justify-end space-x-3 pt-4 border-t border-border">
-                <Button
-                  type="button"
-                  variant="outline"
+        <div className="fixed inset-0 bg-black/50 z-50">
+          <div className="fixed inset-0 left-60 flex items-center justify-center p-4">
+            <div className="bg-card rounded-lg shadow-xl max-w-4xl w-full">
+              <div className="flex items-center justify-between p-6 border-b border-border">
+                <h3 className="text-lg font-semibold text-foreground">
+                  {editingCategory ? 'Edit Category' : 'Add New Category'}
+                </h3>
+                <button
                   onClick={handleCloseModal}
+                  className="text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  variant="default"
-                  disabled={isLoading}
-                >
-                  {isLoading ? 'Saving...' : editingCategory ? 'Update Category' : 'Create Category'}
-                </Button>
+                  <Icon name="X" size={20} />
+                </button>
               </div>
-            </form>
+
+              <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[calc(90vh-120px)] overflow-y-auto">
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    Category Code *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    disabled={editingCategory}
+                    value={formData.code}
+                    onChange={(e) => setFormData({ ...formData, code: e.target.value })}
+                    className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground focus:ring-2 focus:ring-primary focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+                    placeholder="e.g., customs_declaration, faqs"
+                  />
+                  {editingCategory && (
+                    <p className="text-xs text-muted-foreground mt-1">Code cannot be changed after creation</p>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-2">
+                      Category Name (English) *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={formData.name_en}
+                      onChange={(e) => setFormData({ ...formData, name_en: e.target.value })}
+                      className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground focus:ring-2 focus:ring-primary focus:border-transparent"
+                      placeholder="e.g., Customs Declaration"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-2">
+                      Category Name (Malay) *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={formData.name_ms}
+                      onChange={(e) => setFormData({ ...formData, name_ms: e.target.value })}
+                      className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground focus:ring-2 focus:ring-primary focus:border-transparent"
+                      placeholder="e.g., Deklarasi Kastam"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-2">
+                      Description (English)
+                    </label>
+                    <textarea
+                      value={formData.description_en}
+                      onChange={(e) => setFormData({ ...formData, description_en: e.target.value })}
+                      rows={3}
+                      className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground focus:ring-2 focus:ring-primary focus:border-transparent"
+                      placeholder="English description for this category"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-2">
+                      Description (Malay)
+                    </label>
+                    <textarea
+                      value={formData.description_ms}
+                      onChange={(e) => setFormData({ ...formData, description_ms: e.target.value })}
+                      rows={3}
+                      className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground focus:ring-2 focus:ring-primary focus:border-transparent"
+                      placeholder="Malay description for this category"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    Sort Order
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.sort_order}
+                    onChange={(e) => setFormData({ ...formData, sort_order: parseInt(e.target.value) || 0 })}
+                    className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground focus:ring-2 focus:ring-primary focus:border-transparent"
+                    placeholder="0"
+                  />
+                </div>
+
+                <div className="flex items-center justify-end space-x-3 pt-4 border-t border-border">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleCloseModal}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    variant="default"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? 'Saving...' : editingCategory ? 'Update Category' : 'Create Category'}
+                  </Button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
       )}

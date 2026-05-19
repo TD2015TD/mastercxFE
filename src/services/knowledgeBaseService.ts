@@ -180,6 +180,12 @@ export const knowledgeBaseService = {
     return response.data;
   },
 
+  // Publish a draft article (supervisor/admin only)
+  publishArticle: async (id: string | number) => {
+    const response = await api.post(`/knowledge-base-articles/${id}/publish`);
+    return response.data;
+  },
+
   // Get articles pending review
   getPendingReviews: async (params?: {
     page?: number;

@@ -3,6 +3,7 @@ import Icon from '../../../../components/AppIcon';
 import Button from '../../../../components/ui/Button';
 import { knowledgeBaseService } from '../../../../services/knowledgeBaseService';
 import ArticleForm from './ArticleForm';
+import { toast } from 'react-toastify';
 
 const ArticleManagement = () => {
   const [articles, setArticles] = useState([]);
@@ -93,44 +94,53 @@ const ArticleManagement = () => {
   };
 
   const handleSaveArticle = async (data) => {
+    // Close modal immediately so user can see feedback
+    handleCloseModal();
     try {
       setIsLoading(true);
 
-      // Determine if this is a file-based article
-      // - If creating new article: check if data has file
-      // - If editing: check if original article has file_path OR if new file is provided
       const isFileBased = editingArticle
         ? (editingArticle.file_path || data.file)
         : data.file;
 
       if (isFileBased) {
-        // Use file-based endpoint with FormData
         if (editingArticle) {
           await knowledgeBaseService.updateArticleWithFile(editingArticle.id, data);
-          setSuccess('Article updated successfully');
+          toast.success('Article updated successfully');
         } else {
           await knowledgeBaseService.createArticleWithFile(data);
-          setSuccess('Article created successfully');
+          toast.success('Article created successfully');
         }
       } else {
-        // Use OpenSearch endpoint for text-only articles
         if (editingArticle) {
           await knowledgeBaseService.updateArticle(editingArticle.id, data);
-          setSuccess('Article updated successfully');
+          toast.success('Article updated successfully');
         } else {
           await knowledgeBaseService.createArticle(data);
-          setSuccess('Article created successfully');
+          toast.success('Article created successfully');
         }
       }
 
       await fetchArticles();
-      setTimeout(() => {
-        handleCloseModal();
-        setSuccess(null);
-      }, 1500);
     } catch (err) {
       console.error('Error saving article:', err);
-      setError(err.response?.data?.message || 'Failed to save article');
+      const msg = err.response?.data?.message
+        || (err.response?.data?.errors ? JSON.stringify(err.response.data.errors) : null)
+        || 'Failed to save article';
+      toast.error(msg);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handlePublish = async (article) => {
+    try {
+      setIsLoading(true);
+      await knowledgeBaseService.publishArticle(article.id);
+      toast.success('Article published successfully');
+      await fetchArticles();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to publish article');
     } finally {
       setIsLoading(false);
     }
@@ -144,13 +154,11 @@ const ArticleManagement = () => {
     try {
       setIsLoading(true);
       await knowledgeBaseService.deleteArticle(article.id);
-      setSuccess('Article deleted successfully');
+      toast.success('Article deleted successfully');
       await fetchArticles();
-      setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
       console.error('Error deleting article:', err);
-      setError('Failed to delete article');
-      setTimeout(() => setError(null), 3000);
+      toast.error('Failed to delete article');
     } finally {
       setIsLoading(false);
     }
@@ -200,20 +208,6 @@ const ArticleManagement = () => {
         </Button>
       </div>
 
-      {/* Alerts */}
-      {error && (
-        <div className="bg-error/10 border border-error text-error px-4 py-3 rounded-lg flex items-center">
-          <Icon name="AlertCircle" size={20} className="mr-2" />
-          {error}
-        </div>
-      )}
-      {success && (
-        <div className="bg-success/10 border border-success text-success px-4 py-3 rounded-lg flex items-center">
-          <Icon name="CheckCircle" size={20} className="mr-2" />
-          {success}
-        </div>
-      )}
-
       {/* Filters */}
       <div className="bg-card border border-border rounded-lg p-4">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -260,7 +254,7 @@ const ArticleManagement = () => {
       </div>
 
       {/* Articles Table */}
-      <div className="bg-card border border-border rounded-lg overflow-hidden">
+      <div className="bg-card border border-border rounded-lg overflow-x-auto">
         <table className="min-w-full divide-y divide-border">
           <thead className="bg-muted/30">
             <tr>
@@ -360,6 +354,16 @@ const ArticleManagement = () => {
                         iconName="Edit"
                         onClick={() => handleOpenModal(article)}
                       />
+                      {(!article.status || article.status === 'draft') && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          iconName="CheckCircle"
+                          className="text-success hover:text-success"
+                          title="Publish"
+                          onClick={() => handlePublish(article)}
+                        />
+                      )}
                       <Button
                         variant="ghost"
                         size="sm"
@@ -418,78 +422,93 @@ const ArticleManagement = () => {
 
       {/* View Article Modal */}
       {viewingArticle && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-card rounded-lg shadow-xl max-w-4xl w-full my-8">
-            <div className="flex items-center justify-between p-6 border-b border-border sticky top-0 bg-card">
-              <div className="flex items-center space-x-3">
-                <h3 className="text-lg font-semibold text-foreground">{viewingArticle.title}</h3>
+        <div className="fixed inset-0 bg-black/50 z-50">
+          <div className="fixed inset-0 left-60 flex items-center justify-center p-4">
+          <div className="bg-card rounded-lg shadow-xl w-full max-w-4xl flex flex-col" style={{ height: '90vh' }}>
+            {/* Header */}
+            <div className="flex items-center justify-between p-4 border-b border-border shrink-0">
+              <div className="flex items-center gap-3 min-w-0">
+                <h3 className="text-lg font-semibold text-foreground truncate">{viewingArticle.title}</h3>
                 {getStatusBadge(viewingArticle.status)}
               </div>
-              <button
-                onClick={() => setViewingArticle(null)}
-                className="text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <Icon name="X" size={20} />
-              </button>
+              <div className="flex items-center gap-2 ml-3 shrink-0">
+                {viewingArticle.file_path && (
+                  <>
+                    <a
+                      href={`/api/v1/public/kbase/articles/${viewingArticle.id}/file`}
+                      download
+                      className="flex items-center gap-1 px-3 py-1.5 text-sm bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
+                    >
+                      <Icon name="Download" size={14} />
+                      Muat Turun
+                    </a>
+                    <a
+                      href={`/api/v1/public/kbase/articles/${viewingArticle.id}/file`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1 px-3 py-1.5 text-sm border border-border rounded-md hover:bg-muted/50 transition-colors text-foreground"
+                    >
+                      <Icon name="ExternalLink" size={14} />
+                      Buka Tab Baru
+                    </a>
+                  </>
+                )}
+                <button onClick={() => setViewingArticle(null)} className="text-muted-foreground hover:text-foreground transition-colors p-1">
+                  <Icon name="X" size={20} />
+                </button>
+              </div>
             </div>
 
-            <div className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4 p-4 bg-muted/30 rounded-lg">
-                <div>
-                  <p className="text-xs text-muted-foreground">Category</p>
-                  <p className="text-sm font-medium text-foreground">{getCategoryName(viewingArticle.category_code || viewingArticle.category)}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Author</p>
-                  <p className="text-sm font-medium text-foreground">{viewingArticle.author || '-'}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Views</p>
-                  <p className="text-sm font-medium text-foreground">{viewingArticle.views || 0}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Updated</p>
-                  <p className="text-sm font-medium text-foreground">
-                    {viewingArticle.updated_at ? new Date(viewingArticle.updated_at).toLocaleString() : '-'}
-                  </p>
-                </div>
-              </div>
+            {/* Metadata strip */}
+            <div className="flex items-center gap-6 px-4 py-2 border-b border-border bg-muted/20 text-sm shrink-0">
+              <span><span className="text-muted-foreground">Kategori: </span><span className="font-medium">{getCategoryName(viewingArticle.category_code || viewingArticle.category)}</span></span>
+              <span><span className="text-muted-foreground">Penulis: </span><span className="font-medium">{viewingArticle.author || '-'}</span></span>
+              <span><span className="text-muted-foreground">Views: </span><span className="font-medium">{viewingArticle.views || 0}</span></span>
+              {viewingArticle.updated_at && <span className="text-muted-foreground">{new Date(viewingArticle.updated_at).toLocaleString()}</span>}
+            </div>
 
-              <div>
-                <h4 className="text-sm font-medium text-foreground mb-2">Content</h4>
-                <div className="prose prose-sm max-w-none bg-muted/30 rounded-lg p-4">
-                  <div dangerouslySetInnerHTML={{ __html: viewingArticle.content }} />
-                </div>
-              </div>
-
-              {viewingArticle.tags && viewingArticle.tags.length > 0 && (
-                <div>
-                  <h4 className="text-sm font-medium text-foreground mb-2">Tags</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {viewingArticle.tags.map((tag, idx) => (
-                      <span
-                        key={idx}
-                        className="px-2 py-1 bg-primary/10 text-primary text-xs rounded-md"
-                      >
-                        {tag}
-                      </span>
-                    ))}
+            {/* Body / Viewer */}
+            <div className="flex-1 overflow-hidden">
+              {viewingArticle.file_path ? (() => {
+                const ft = (viewingArticle.file_type || '').toLowerCase();
+                const fileUrl = `/api/v1/public/kbase/articles/${viewingArticle.id}/file`;
+                if (ft === 'pdf') {
+                  return <iframe src={fileUrl} title={viewingArticle.file_name || viewingArticle.title} className="w-full h-full border-0" />;
+                }
+                if (ft === 'doc' || ft === 'docx') {
+                  const absoluteUrl = `${window.location.origin}${fileUrl}`;
+                  const viewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(absoluteUrl)}&embedded=true`;
+                  return <iframe src={viewerUrl} title={viewingArticle.file_name || viewingArticle.title} className="w-full h-full border-0" />;
+                }
+                if (ft === 'txt') {
+                  return <div className="p-6 overflow-y-auto h-full prose prose-sm max-w-none text-foreground whitespace-pre-wrap">{viewingArticle.content || 'No content available.'}</div>;
+                }
+                return (
+                  <div className="flex flex-col items-center justify-center h-full gap-4 text-center p-6">
+                    <Icon name="FileText" size={40} className="text-muted-foreground" />
+                    <p className="text-muted-foreground text-sm uppercase">{ft} — pratonton tidak tersedia</p>
                   </div>
+                );
+              })() : (
+                <div className="p-6 overflow-y-auto h-full">
+                  {viewingArticle.tags && viewingArticle.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-4">
+                      {viewingArticle.tags.map((tag, idx) => (
+                        <span key={idx} className="px-2 py-1 bg-primary/10 text-primary text-xs rounded-md">{tag}</span>
+                      ))}
+                    </div>
+                  )}
+                  <div className="prose prose-sm max-w-none text-foreground" dangerouslySetInnerHTML={{ __html: viewingArticle.content || 'No content available.' }} />
                 </div>
               )}
             </div>
 
-            <div className="flex items-center justify-end space-x-3 p-6 border-t border-border">
-              <Button variant="outline" onClick={() => setViewingArticle(null)}>
-                Close
-              </Button>
-              <Button variant="default" onClick={() => {
-                setViewingArticle(null);
-                handleOpenModal(viewingArticle);
-              }}>
-                Edit Article
-              </Button>
+            {/* Footer */}
+            <div className="flex items-center justify-end gap-3 p-4 border-t border-border shrink-0">
+              <Button variant="outline" onClick={() => setViewingArticle(null)}>Close</Button>
+              <Button variant="default" onClick={() => { setViewingArticle(null); handleOpenModal(viewingArticle); }}>Edit Article</Button>
             </div>
+          </div>
           </div>
         </div>
       )}

@@ -4,9 +4,14 @@ import Icon from '../../components/AppIcon';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import api from '../../services/api';
+import { knowledgeBaseService } from '../../services/knowledgeBaseService';
+import { useAuth } from '../../contexts/AuthContext';
 import { toast } from 'react-toastify';
 
 const KnowledgeBasePortal = () => {
+  const { user } = useAuth();
+  const userRole = user?.role?.slug ?? 'agent';
+
   const [activeTab, setActiveTab] = useState('browse');
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(false);
@@ -21,6 +26,12 @@ const KnowledgeBasePortal = () => {
   const [searchResults, setSearchResults] = useState([]);
   const [hasSearched, setHasSearched] = useState(false);
   const [selectedArticle, setSelectedArticle] = useState(null);
+
+  // Upload form state
+  const [uploadForm, setUploadForm] = useState({ title: '', category_code: '', content: '', file: null });
+  const [uploadLoading, setUploadLoading] = useState(false);
+  const [myUploads, setMyUploads] = useState([]);
+  const [myUploadsLoading, setMyUploadsLoading] = useState(false);
 
   // Fetch stats from knowledge-base-articles
   const fetchStats = async () => {
@@ -170,9 +181,11 @@ const KnowledgeBasePortal = () => {
 
   // Open article detail modal
   const handleViewArticle = async (article) => {
-    // For browse/recent: article already has full fields from REST API
-    // For search results: fetch full article by ES _id (which equals DB id)
-    if (article.content !== undefined) {
+    // file_path is only present in browse/recent results (full DB query).
+    // Search results come from Elasticsearch and don't include file_path.
+    // Always fetch the full article when file_path is absent so the file download
+    // button and correct content are available.
+    if (article.file_path !== undefined) {
       setSelectedArticle(article);
       return;
     }
@@ -180,10 +193,12 @@ const KnowledgeBasePortal = () => {
       const response = await api.get(`/knowledge-base-articles/${article.id}`);
       if (response.data.success) {
         setSelectedArticle(response.data.data);
+      } else {
+        setSelectedArticle(article);
       }
     } catch (error) {
       console.error('Failed to fetch article:', error);
-      toast.error('Failed to load article');
+      setSelectedArticle(article);
     }
   };
 
@@ -261,8 +276,58 @@ const KnowledgeBasePortal = () => {
       fetchArticles();
     } else if (activeTab === 'categories') {
       fetchCategories();
+    } else if (activeTab === 'upload') {
+      fetchMyUploads();
+      if (categories.length === 0) fetchCategories();
     }
   }, [activeTab]);
+
+  const fetchMyUploads = async () => {
+    setMyUploadsLoading(true);
+    try {
+      const response = await knowledgeBaseService.getArticlesWithFiles({ status: 'draft' });
+      const data = response?.data?.data || response?.data || [];
+      setMyUploads(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('Failed to load uploads:', err);
+    } finally {
+      setMyUploadsLoading(false);
+    }
+  };
+
+  const handleUploadSubmit = async (e) => {
+    e.preventDefault();
+    if (!uploadForm.title || !uploadForm.category_code) {
+      toast.error('Title and category are required');
+      return;
+    }
+    if (!uploadForm.file && !uploadForm.content.trim()) {
+      toast.error('Please provide a file or content');
+      return;
+    }
+    if (uploadForm.file && uploadForm.file.size > 10 * 1024 * 1024) {
+      toast.error('File size must not exceed 10 MB');
+      return;
+    }
+    setUploadLoading(true);
+    try {
+      await knowledgeBaseService.createArticleWithFile({
+        title: uploadForm.title,
+        category_code: uploadForm.category_code,
+        content: uploadForm.content || undefined,
+        file: uploadForm.file || undefined,
+        status: 'draft',
+      });
+      toast.success('Article submitted as draft. Awaiting supervisor approval.');
+      setUploadForm({ title: '', category_code: '', content: '', file: null });
+      fetchMyUploads();
+      fetchStats();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to submit article');
+    } finally {
+      setUploadLoading(false);
+    }
+  };
 
   const statsDisplay = [
     {
@@ -292,7 +357,8 @@ const KnowledgeBasePortal = () => {
     { id: 'browse', label: 'Browse Articles', icon: 'List' },
     { id: 'search', label: 'Search', icon: 'Search' },
     { id: 'recent', label: 'Recently Updated', icon: 'Clock' },
-    { id: 'categories', label: 'Categories', icon: 'Folder' }
+    { id: 'categories', label: 'Categories', icon: 'Folder' },
+    ...(userRole === 'agent' ? [{ id: 'upload', label: 'Upload Article', icon: 'Upload' }] : []),
   ];
 
   const renderTabContent = () => {
@@ -450,6 +516,124 @@ const KnowledgeBasePortal = () => {
           </div>
         );
 
+      case 'upload':
+        return (
+          <div className="space-y-6">
+            {/* Upload Form */}
+            <div className="bg-card rounded-lg border border-border p-6">
+              <h3 className="text-lg font-semibold text-foreground mb-1">Submit Article</h3>
+              <p className="text-sm text-muted-foreground mb-6">
+                Articles you submit will be saved as <span className="font-medium text-warning">Draft</span> and must be approved by a supervisor before they appear in the knowledge base.
+              </p>
+              <form onSubmit={handleUploadSubmit} className="space-y-5">
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">Title <span className="text-error">*</span></label>
+                  <input
+                    type="text"
+                    value={uploadForm.title}
+                    onChange={e => setUploadForm(f => ({ ...f, title: e.target.value }))}
+                    placeholder="Enter article title"
+                    className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">Category <span className="text-error">*</span></label>
+                  <select
+                    value={uploadForm.category_code}
+                    onChange={e => setUploadForm(f => ({ ...f, category_code: e.target.value }))}
+                    className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    required
+                  >
+                    <option value="">Select a category</option>
+                    {categories.map(cat => (
+                      <option key={cat.code} value={cat.code}>{cat.name || cat.name_en || cat.code}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">Upload File</label>
+                  <div className="flex items-center gap-3">
+                    <label className="flex items-center gap-2 px-4 py-2 border border-border rounded-md bg-muted/30 cursor-pointer hover:bg-muted/50 text-sm text-foreground">
+                      <Icon name="Paperclip" size={16} />
+                      {uploadForm.file ? `${uploadForm.file.name} (${(uploadForm.file.size / 1024 / 1024).toFixed(1)} MB)` : 'Choose file (PDF, DOC, DOCX, TXT — max 10 MB)'}
+                      <input
+                        type="file"
+                        accept=".pdf,.doc,.docx,.txt"
+                        className="hidden"
+                        onChange={e => setUploadForm(f => ({ ...f, file: e.target.files[0] || null }))}
+                      />
+                    </label>
+                    {uploadForm.file && (
+                      <button type="button" onClick={() => setUploadForm(f => ({ ...f, file: null }))} className="text-muted-foreground hover:text-foreground">
+                        <Icon name="X" size={16} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">
+                    Content {!uploadForm.file && <span className="text-error">*</span>}
+                    <span className="text-xs text-muted-foreground ml-2">(required if no file uploaded)</span>
+                  </label>
+                  <textarea
+                    value={uploadForm.content}
+                    onChange={e => setUploadForm(f => ({ ...f, content: e.target.value }))}
+                    placeholder="Write article content here..."
+                    rows={6}
+                    className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary resize-y"
+                  />
+                </div>
+                <div className="flex items-center gap-3 pt-2">
+                  <Button type="submit" variant="default" iconName="Upload" iconPosition="left" disabled={uploadLoading}>
+                    {uploadLoading ? 'Submitting...' : 'Submit as Draft'}
+                  </Button>
+                  <span className="text-xs text-muted-foreground flex items-center gap-1">
+                    <Icon name="Info" size={14} />
+                    Will be reviewed by a supervisor before publishing
+                  </span>
+                </div>
+              </form>
+            </div>
+
+            {/* My Submissions */}
+            <div className="bg-card rounded-lg border border-border p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-foreground">My Submissions</h3>
+                <button onClick={fetchMyUploads} className="text-muted-foreground hover:text-foreground">
+                  <Icon name="RefreshCw" size={16} />
+                </button>
+              </div>
+              {myUploadsLoading ? (
+                <div className="text-center py-6 text-muted-foreground">Loading...</div>
+              ) : myUploads.length === 0 ? (
+                <div className="text-center py-6 text-muted-foreground">
+                  <Icon name="FileText" size={32} className="mx-auto mb-2 opacity-40" />
+                  <p className="text-sm">No submissions yet</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {myUploads.map(article => (
+                    <div key={article.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <Icon name={article.file_name ? 'Paperclip' : 'FileText'} size={18} className="text-primary shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-foreground truncate">{article.title}</p>
+                          <p className="text-xs text-muted-foreground">{getCategoryName(article.category_code)} • {new Date(article.created_at).toLocaleDateString()}</p>
+                        </div>
+                      </div>
+                      <span className="ml-3 shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground">
+                        <Icon name="Clock" size={10} className="mr-1" />
+                        Pending Review
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        );
+
       default:
         return null;
     }
@@ -462,6 +646,8 @@ const KnowledgeBasePortal = () => {
       fetchArticles();
     } else if (activeTab === 'recent') {
       fetchRecentViews();
+    } else if (activeTab === 'upload') {
+      fetchMyUploads();
     }
   };
 
@@ -542,6 +728,7 @@ const KnowledgeBasePortal = () => {
               {activeTab === 'search' && 'Search for specific articles using keywords and content.'}
               {activeTab === 'recent' && 'View articles that have been recently updated.'}
               {activeTab === 'categories' && 'Browse articles organized by department and category.'}
+              {activeTab === 'upload' && 'Submit an article as a draft. A supervisor will review and publish it.'}
             </p>
           </div>
 
@@ -591,21 +778,116 @@ const KnowledgeBasePortal = () => {
 
       {/* Article Detail Modal */}
       {selectedArticle && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setSelectedArticle(null)}>
-          <div className="bg-card rounded-lg border border-border w-full max-w-3xl mx-4 max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
-            <div className="flex items-start justify-between p-6 border-b border-border">
-              <div>
-                <h2 className="text-xl font-semibold text-foreground">{selectedArticle.title}</h2>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {getCategoryName(selectedArticle.category_code)} • By {selectedArticle.author}
-                </p>
+        <div className="fixed inset-0 z-50 bg-black/50" onClick={() => setSelectedArticle(null)}>
+          <div className="fixed inset-0 left-60 flex items-center justify-center p-4" onClick={() => setSelectedArticle(null)}>
+            <div className="bg-card rounded-lg border border-border w-full max-w-4xl flex flex-col" style={{ height: '90vh' }} onClick={e => e.stopPropagation()}>
+              {/* Header */}
+              <div className="flex items-start justify-between p-4 border-b border-border shrink-0">
+                <div>
+                  <h2 className="text-xl font-semibold text-foreground">{selectedArticle.title}</h2>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {getCategoryName(selectedArticle.category_code)} • By {selectedArticle.author}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 ml-4 shrink-0">
+                  {selectedArticle.file_path && (
+                    <a
+                      href={`/api/v1/public/kbase/articles/${selectedArticle.id}/file`}
+                      download
+                      className="flex items-center gap-1 px-3 py-1.5 text-sm bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
+                    >
+                      <Icon name="Download" size={14} />
+                      Muat Turun
+                    </a>
+                  )}
+                  {selectedArticle.file_path && (
+                    <a
+                      href={`/api/v1/public/kbase/articles/${selectedArticle.id}/file`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1 px-3 py-1.5 text-sm border border-border rounded-md hover:bg-muted/50 transition-colors text-foreground"
+                    >
+                      <Icon name="ExternalLink" size={14} />
+                      Buka Tab Baru
+                    </a>
+                  )}
+                  <button onClick={() => setSelectedArticle(null)} className="text-muted-foreground hover:text-foreground p-1">
+                    <Icon name="X" size={20} />
+                  </button>
+                </div>
               </div>
-              <button onClick={() => setSelectedArticle(null)} className="text-muted-foreground hover:text-foreground ml-4">
-                <Icon name="X" size={20} />
-              </button>
-            </div>
-            <div className="p-6 overflow-y-auto flex-1 prose prose-sm max-w-none text-foreground whitespace-pre-wrap">
-              {selectedArticle.content || 'No content available.'}
+
+              {/* Body */}
+              <div className="flex-1 overflow-hidden">
+                {selectedArticle.file_path ? (
+                  (() => {
+                    const ft = (selectedArticle.file_type || '').toLowerCase();
+                    const fileUrl = `/api/v1/public/kbase/articles/${selectedArticle.id}/file`;
+                    if (ft === 'pdf') {
+                      return (
+                        <iframe
+                          src={fileUrl}
+                          title={selectedArticle.file_name || selectedArticle.title}
+                          className="w-full h-full border-0"
+                        />
+                      );
+                    }
+                    if (ft === 'txt') {
+                      return (
+                        <div className="p-6 overflow-y-auto h-full prose prose-sm max-w-none text-foreground whitespace-pre-wrap">
+                          {selectedArticle.content || 'No content available.'}
+                        </div>
+                      );
+                    }
+                    if (ft === 'doc' || ft === 'docx') {
+                      const absoluteUrl = `${window.location.origin}${fileUrl}`;
+                      const viewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(absoluteUrl)}&embedded=true`;
+                      return (
+                        <iframe
+                          src={viewerUrl}
+                          title={selectedArticle.file_name || selectedArticle.title}
+                          className="w-full h-full border-0"
+                        />
+                      );
+                    }
+                    // Other formats — no inline preview
+                    return (
+                      <div className="flex flex-col items-center justify-center h-full gap-4 text-center p-6">
+                        <div className="w-16 h-16 rounded-xl bg-muted/50 flex items-center justify-center">
+                          <Icon name="FileText" size={32} className="text-muted-foreground" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-foreground">{selectedArticle.file_name || 'Dokumen dilampirkan'}</p>
+                          <p className="text-sm text-muted-foreground mt-1 uppercase">{ft} — pratonton tidak tersedia</p>
+                        </div>
+                        <div className="flex gap-3">
+                          <a
+                            href={fileUrl}
+                            download
+                            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors text-sm"
+                          >
+                            <Icon name="Download" size={16} />
+                            Muat Turun Fail
+                          </a>
+                          <a
+                            href={fileUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-2 px-4 py-2 border border-border rounded-md hover:bg-muted/50 transition-colors text-sm text-foreground"
+                          >
+                            <Icon name="ExternalLink" size={16} />
+                            Buka Tab Baru
+                          </a>
+                        </div>
+                      </div>
+                    );
+                  })()
+                ) : (
+                  <div className="p-6 overflow-y-auto h-full prose prose-sm max-w-none text-foreground whitespace-pre-wrap">
+                    {selectedArticle.content || 'No content available.'}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>

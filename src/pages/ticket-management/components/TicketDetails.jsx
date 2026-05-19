@@ -309,7 +309,7 @@ const TicketDetails = ({ ticket, onUpdate }) => {
                 
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Assigned To</label>
-                  <p className="text-sm text-foreground mt-1">{ticket?.assignedAgent?.user?.name || 'Unassigned'}</p>
+                  <p className="text-sm text-foreground mt-1">{ticket?.assigned_agent?.user?.name || 'Unassigned'}</p>
                 </div>
               </>
             )}

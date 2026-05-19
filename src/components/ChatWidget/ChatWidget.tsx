@@ -13,6 +13,24 @@ interface ChatWidgetProps {
 }
 
 const AI_CHAT_SERVICE_URL = import.meta.env.VITE_AI_CHAT_SERVICE_URL || 'wss://chat.telediant.com.my';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
+
+async function completeOpenMediaInteraction(interactionId: string): Promise<void> {
+  const token = localStorage.getItem('jwt_token');
+  try {
+    await fetch(`${API_BASE_URL}/mitel/openmedia/${interactionId}`, {
+      method: 'PUT',
+      keepalive: true,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ interactionState: 'Handled' }),
+    });
+  } catch {
+    // Best-effort — do not block cleanup
+  }
+}
 
 export const ChatWidget = ({ mitelInteractionId }: ChatWidgetProps) => {
   const user = authService.getCurrentUser();
@@ -115,8 +133,12 @@ export const ChatWidget = ({ mitelInteractionId }: ChatWidgetProps) => {
         wsRef.current.onclose = null;
         wsRef.current.close();
       }
+      // Complete the Mitel OpenMedia interaction so it is marked Handled
+      if (mitelInteractionId) {
+        completeOpenMediaInteraction(mitelInteractionId);
+      }
     };
-  }, [agentUserId]);
+  }, [agentUserId, mitelInteractionId]);
 
   const handleNewMessage = (text: string) => {
     setMessages(prev => [...prev, { author: 'me', type: 'text', data: { text } }]);

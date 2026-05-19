@@ -24,7 +24,7 @@ interface TicketForm {
   resolution: string;
 }
 
-const AI_CHAT_WIDGET_URL = import.meta.env.VITE_AI_CHAT_WIDGET_URL || 'https://chat.telediant.com.my/customer.html';
+const AI_CHAT_WIDGET_URL = import.meta.env.VITE_AI_CHAT_WIDGET_URL || 'https://cxsuite.telediant.com.my/widget/customer.html';
 const AI_CHAT_WS_URL = import.meta.env.VITE_AI_CHAT_SERVICE_URL || 'wss://chat.telediant.com.my';
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -224,7 +224,7 @@ const LiveChatPage = () => {
               src={iframeSrc}
               title="Customer Chat View"
               className="w-full h-40 border-0"
-              sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
+              sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-downloads"
             />
           </div>
         )}

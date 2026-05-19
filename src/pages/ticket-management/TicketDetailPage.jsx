@@ -536,14 +536,14 @@ const TicketDetailPage = () => {
           {/* Current Assignment */}
           <div className="bg-muted p-4 rounded-lg">
             <p className="text-sm text-muted-foreground mb-2">Currently Assigned To</p>
-            {ticket?.assignedAgent?.user ? (
+            {ticket?.assigned_agent?.user ? (
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
                   <Icon name="User" size={20} className="text-primary" />
                 </div>
                 <div>
-                  <p className="font-medium text-foreground">{ticket.assignedAgent.user.name}</p>
-                  <p className="text-sm text-muted-foreground">{ticket.assignedAgent.department}</p>
+                  <p className="font-medium text-foreground">{ticket.assigned_agent.user.name}</p>
+                  <p className="text-sm text-muted-foreground">{ticket.assigned_agent.department}</p>
                 </div>
               </div>
             ) : (
