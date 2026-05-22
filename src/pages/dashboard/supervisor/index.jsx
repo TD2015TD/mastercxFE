@@ -1,92 +1,83 @@
 import React, { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
+import { useNavigate } from 'react-router-dom';
 import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
-import AgentPerformancePanel from './components/AgentPerformancePanel';
-import SLAComplianceCenter from './components/SLAComplianceCenter';
-import QuickActions from './components/QuickActions';
-import { getQueueStats, getSlaStats, getAgentPerformance } from '../../../services/dashboardService';
-import { languageService } from '../../../services/languageService';
+import TicketMetricCard from './components/TicketMetricCard';
+import TicketsClosedChart from './components/TicketsClosedChart';
+import DepartmentPerformanceChart from './components/DepartmentPerformanceChart';
+import LiveChatStatusChart from './components/LiveChatStatusChart';
+import { 
+  getTicketMetrics, 
+  getTicketsClosedByDay, 
+  getDepartmentPerformance, 
+  getLiveChatStatus 
+} from '../../../services/dashboardService';
+import { authService } from '../../../services/authService';
 
 const SupervisorDashboard = () => {
-  const [currentLanguage, setCurrentLanguage] = useState('en');
-  const [translations, setTranslations] = useState({});
-  const [activeTab, setActiveTab] = useState('overview');
-  const [dashboardData, setDashboardData] = useState(null);
-  const [widgetErrors, setWidgetErrors] = useState({});
+  const navigate = useNavigate();
+  const [currentUser, setCurrentUser] = useState(null);
+  const [userName, setUserName] = useState('');
+  const [userDepartment, setUserDepartment] = useState('all');
+  const [selectedAgent, setSelectedAgent] = useState('all');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  
+  // Dashboard data
+  const [ticketMetrics, setTicketMetrics] = useState(null);
+  const [ticketsClosedData, setTicketsClosedData] = useState([]);
+  const [departmentPerformance, setDepartmentPerformance] = useState([]);
+  const [liveChatStatus, setLiveChatStatus] = useState(null);
+  
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [userDepartment, setUserDepartment] = useState(null);
 
-  // Load translations
+  // Get current user info
   useEffect(() => {
-    const savedLanguage = localStorage.getItem('preferred-language') || 'en';
-    setCurrentLanguage(savedLanguage);
-    loadTranslations(savedLanguage);
-  }, []);
-
-  const loadTranslations = async (locale) => {
-    try {
-      const translations = await languageService.getTranslations(locale);
-      setTranslations(translations);
-    } catch (error) {
-      console.error('Failed to load translations:', error);
-      setTranslations({});
-    }
-  };
-
-  const t = (key) => {
-    const keys = key.split('.');
-    let value = translations;
-    for (const k of keys) {
-      value = value?.[k];
-      if (value === undefined) return key;
-    }
-    return value || key;
-  };
-
-  // Get user department from session
-  useEffect(() => {
+    const user = authService.getCurrentUser();
+    setCurrentUser(user);
+    setUserName(user?.name || 'User');
+    
     const userSession = localStorage.getItem('user-session');
     if (userSession) {
       try {
         const userData = JSON.parse(userSession);
-        // supervisor may not have an agent record — use department if available, else null (= all departments)
-        const dept = userData.agent?.department || userData.department || null;
-        setUserDepartment(dept ?? 'all');
+        const dept = userData.agent?.department || userData.department || 'all';
+        setUserDepartment(dept);
       } catch (err) {
         console.error('Error parsing user session:', err);
-        setUserDepartment('all');
       }
-    } else {
-      setUserDepartment('all');
     }
   }, []);
 
-  // Fetch dashboard data — only real DB-backed widgets
+  // Fetch dashboard data
   const fetchDashboardData = async () => {
-    if (!userDepartment) return;
     try {
       setLoading(true);
-      // Pass department only when a real department is selected (not 'all')
-      const dept = userDepartment === 'all' ? undefined : userDepartment;
-      const [queueRes, slaRes, agentsRes] = await Promise.allSettled([
-        getQueueStats(dept),
-        getSlaStats(dept),
-        getAgentPerformance(dept),
+      const dept = userDepartment === 'all' ? null : userDepartment;
+      const agentId = selectedAgent === 'all' ? null : selectedAgent;
+
+      const [metricsRes, closedRes, deptPerfRes, liveChatRes] = await Promise.allSettled([
+        getTicketMetrics(dept, agentId, dateFrom, dateTo),
+        getTicketsClosedByDay(dept, agentId),
+        getDepartmentPerformance(dateFrom, dateTo),
+        getLiveChatStatus(dept, agentId),
       ]);
 
-      const errors = {};
-      if (queueRes.status === 'rejected') errors.queue = queueRes.reason;
-      if (slaRes.status === 'rejected') errors.sla = slaRes.reason;
-      if (agentsRes.status === 'rejected') errors.agents = agentsRes.reason;
-      setWidgetErrors(errors);
+      if (metricsRes.status === 'fulfilled') {
+        setTicketMetrics(metricsRes.value.data);
+      }
+      if (closedRes.status === 'fulfilled') {
+        setTicketsClosedData(closedRes.value.data);
+      }
+      if (deptPerfRes.status === 'fulfilled') {
+        setDepartmentPerformance(deptPerfRes.value.data);
+      }
+      if (liveChatRes.status === 'fulfilled') {
+        setLiveChatStatus(liveChatRes.value.data);
+      }
 
-      setDashboardData({
-        queue: queueRes.status === 'fulfilled' ? queueRes.value.data : { waiting: 0, in_progress: 0, on_hold: 0 },
-        sla: slaRes.status === 'fulfilled' ? slaRes.value.data : { total_tickets: 0, sla_breaches_today: 0, compliance_rate: 0, by_priority: {}, warnings_count: 0, on_track: 0 },
-        agents: agentsRes.status === 'fulfilled' ? agentsRes.value.data : [],
-      });
       setError(null);
     } catch (err) {
       console.error('Error fetching dashboard data:', err);
@@ -97,197 +88,176 @@ const SupervisorDashboard = () => {
   };
 
   useEffect(() => {
-    fetchDashboardData();
-    const interval = setInterval(fetchDashboardData, 30000);
-    return () => clearInterval(interval);
+    if (userDepartment) {
+      fetchDashboardData();
+      const interval = setInterval(fetchDashboardData, 60000); // Refresh every minute
+      return () => clearInterval(interval);
+    }
   }, [userDepartment]);
 
-  const handleRefresh = () => fetchDashboardData();
+  const handleApplyFilters = () => {
+    fetchDashboardData();
+  };
 
-  // Stats derived purely from DB data — no Mitel dependency
-  const stats = dashboardData ? [
-    {
-      label: 'Open Tickets',
-      value: (dashboardData.queue.waiting || 0) + (dashboardData.queue.in_progress || 0),
-      subtext: `${dashboardData.queue.waiting || 0} unassigned · ${dashboardData.queue.in_progress || 0} in progress`,
-      icon: 'Ticket',
-      color: 'text-blue-600',
-      error: widgetErrors.queue,
-    },
-    {
-      label: 'On Hold',
-      value: dashboardData.queue.on_hold || 0,
-      subtext: 'Awaiting customer response',
-      icon: 'PauseCircle',
-      color: 'text-yellow-600',
-      error: widgetErrors.queue,
-    },
-  ] : [];
-
-  const tabs = [
-    { id: 'overview', label: t('supervisor.dashboard.tabs.overview'), icon: 'LayoutDashboard' },
-    { id: 'performance', label: t('supervisor.dashboard.tabs.performance'), icon: 'Users' },
-  ];
-
-  const renderTabContent = () => {
-    switch (activeTab) {
-      case 'overview':
-        return (
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-              <div className="xl:col-span-2 space-y-6">
-                <AgentPerformancePanel data={dashboardData?.agents || []} />
-                {/* <SLAComplianceCenter data={dashboardData?.sla} /> */}
-              </div>
-              <div className="space-y-6">
-                <QuickActions />
-              </div>
-            </div>
-          </div>
-        );
-      
-      case 'performance':
-        return <AgentPerformancePanel data={dashboardData?.agents || []} />;
-      
-      case 'sla':
-        return <SLAComplianceCenter data={dashboardData?.sla} />;
-      
-      default:
-        return null;
-    }
+  const handleNewManualTicket = () => {
+    navigate('/ticket-management/create');
   };
 
   return (
     <>
       <Helmet>
-        <title>{t('supervisor.dashboard.title')} - JKDM CRM</title>
-        <meta name="description" content={t('supervisor.dashboard.subtitle')} />
+        <title>Supervisor Dashboard - JKDM CRM</title>
+        <meta name="description" content="Supervisor dashboard for monitoring team performance and ticket metrics" />
       </Helmet>
 
-      <div className="min-h-screen bg-background">
-        
+      <div className="min-h-screen bg-gray-50">
         <main className="container mx-auto px-6 py-8 max-w-7xl">
-
           {/* Header */}
           <div className="mb-8">
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
               <div>
-                <h1 className="text-3xl font-bold text-foreground flex items-center">
-                  <Icon name="LayoutDashboard" size={32} className="mr-3 text-primary" />
-                  {t('supervisor.dashboard.title')}
+                <h1 className="text-3xl font-bold text-gray-900">
+                  Hello {userName}!
                 </h1>
-                <p className="text-muted-foreground mt-2">
-                  {t('supervisor.dashboard.subtitle')}
+                <p className="text-gray-600 mt-1">
+                  Let's dive into today's task
                 </p>
               </div>
               
               <div className="flex items-center space-x-3">
                 <Button 
-                  variant="outline" 
-                  iconName="RefreshCw" 
+                  variant="primary"
+                  iconName="Plus" 
                   iconPosition="left"
-                  onClick={handleRefresh}
-                  disabled={loading}
+                  onClick={handleNewManualTicket}
+                  className="bg-gray-800 hover:bg-gray-900 text-white"
                 >
-                  {loading ? t('supervisor.dashboard.refreshing') : t('supervisor.dashboard.refresh')}
+                  New Manual Ticket
                 </Button>
               </div>
             </div>
           </div>
 
-          {/* Stats Grid */}
-          {loading && !dashboardData ? (
-            <div className="flex items-center justify-center py-12">
-              <Icon name="Loader" size={32} className="animate-spin text-primary" />
-              <span className="ml-3 text-muted-foreground">{t('supervisor.dashboard.loading')}</span>
+          {/* Filters - Aligned to Right */}
+          <div className="bg-white rounded-lg p-4 mb-6 shadow-sm border border-gray-200">
+            <div className="flex justify-end items-end gap-4">
+              <div className="w-48">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Date Range
+                </label>
+                <input
+                  type="text"
+                  placeholder="Select date range"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  readOnly
+                />
+              </div>
+
+              <div className="w-48">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Agent
+                </label>
+                <select
+                  value={selectedAgent}
+                  onChange={(e) => setSelectedAgent(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                >
+                  <option value="all">All Agents</option>
+                  {/* Agent options will be populated dynamically */}
+                </select>
+              </div>
+
+              <div className="w-48">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Department
+                </label>
+                <select
+                  value={userDepartment}
+                  onChange={(e) => setUserDepartment(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                >
+                  <option value="all">All Departments</option>
+                  <option value="BMC">BMC</option>
+                  <option value="TOC">TOC</option>
+                </select>
+              </div>
+
+              <div>
+                <Button 
+                  variant="primary"
+                  onClick={handleApplyFilters}
+                  className="bg-gray-800 hover:bg-gray-900 text-white px-6"
+                >
+                  Apply Filter
+                </Button>
+              </div>
             </div>
-          ) : error ? (
-            <div className="bg-error/10 border border-error/20 rounded-lg p-6 mb-8">
+          </div>
+
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-6 mb-8">
               <div className="flex items-center">
-                <Icon name="AlertTriangle" size={24} className="text-error mr-3" />
+                <Icon name="AlertTriangle" size={24} className="text-red-600 mr-3" />
                 <div>
-                  <h3 className="font-semibold text-error">{t('supervisor.dashboard.errorLoading')}</h3>
-                  <p className="text-sm text-muted-foreground mt-1">{error}</p>
+                  <h3 className="font-semibold text-red-600">Error Loading Dashboard</h3>
+                  <p className="text-sm text-gray-600 mt-1">{error}</p>
                 </div>
               </div>
             </div>
-          ) : (
-            <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            {stats.map((stat, index) => (
-              <div key={index} className={`bg-card rounded-lg border p-6 ${stat.error ? 'border-error/40 bg-error/5' : 'border-border'}`}>
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <p className="text-sm text-muted-foreground mb-1">{stat.label}</p>
-                    {stat.error ? (
-                      <div className="space-y-1">
-                        <p className="text-lg font-semibold text-error">Error</p>
-                        <p className="text-xs text-error/80">{stat.error?.response?.data?.message || 'Failed to load'}</p>
-                      </div>
-                    ) : (
-                      <>
-                        <p className="text-2xl font-bold text-foreground">{stat.value}</p>
-                        <p className="text-xs text-muted-foreground mt-1">{stat.subtext}</p>
-                        {stat.dataSource && (
-                          <div className="mt-2">
-                            <span className={`text-xs px-2 py-0.5 rounded-full ${
-                              stat.dataSource === 'mitel_api' 
-                                ? 'bg-green-500/20 text-green-700 dark:text-green-400' 
-                                : 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-400'
-                            }`}>
-                              {stat.dataSource === 'mitel_api' ? '🟢 Live' : '🟡 Cached'}
-                            </span>
-                          </div>
-                        )}
-                      </>
-                    )}
-                  </div>
-                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${stat.error ? 'bg-error/20 text-error' : `bg-primary/10 ${stat.color}`}`}>
-                    <Icon name={stat.error ? 'AlertTriangle' : stat.icon} size={20} />
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Tabs */}
-          <div className="mb-8">
-            <div className="border-b border-border">
-              <nav className="flex space-x-8 overflow-x-auto">
-                {tabs.map((tab) => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap transition-colors duration-200 ${
-                      activeTab === tab.id
-                        ? 'border-primary text-primary'
-                        : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted'
-                    }`}
-                  >
-                    <Icon name={tab.icon} size={16} />
-                    <span>{tab.label}</span>
-                  </button>
-                ))}
-              </nav>
-            </div>
-          </div>
-
-          {/* Tab Description */}
-          <div className="bg-muted/30 rounded-lg p-4 mb-6 border border-border">
-            <p className="text-sm text-muted-foreground">
-              {activeTab === 'overview' && t('supervisor.dashboard.tabDescriptions.overview')}
-              {activeTab === 'performance' && t('supervisor.dashboard.tabDescriptions.performance')}
-              {activeTab === 'sla' && t('supervisor.dashboard.tabDescriptions.sla')}
-            </p>
-          </div>
-
-          {/* Tab Content */}
-          <div className="mb-8">
-            {renderTabContent()}
-          </div>
-
-            </>
           )}
+
+          {/* Main Content - Two Column Layout */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            {/* Left Column - 4 Metric Cards in 2x2 Grid */}
+            <div className="grid grid-cols-2 gap-4">
+              <TicketMetricCard 
+                title="Total in Progress" 
+                value={ticketMetrics?.total_in_progress || 0}
+                bgColor="bg-pink-50"
+                textColor="text-pink-600"
+                loading={loading}
+              />
+              <TicketMetricCard 
+                title="In Progress (of the Day)" 
+                value={ticketMetrics?.in_progress_today || 0}
+                bgColor="bg-blue-50"
+                textColor="text-blue-600"
+                loading={loading}
+              />
+              <TicketMetricCard 
+                title="Closed (for the Day)" 
+                value={ticketMetrics?.closed_today || 0}
+                bgColor="bg-blue-50"
+                textColor="text-blue-600"
+                loading={loading}
+              />
+              <TicketMetricCard 
+                title="Total (of the Day)" 
+                value={ticketMetrics?.total_today || 0}
+                bgColor="bg-pink-50"
+                textColor="text-pink-600"
+                loading={loading}
+              />
+            </div>
+
+            {/* Right Column - Tickets Closed Chart */}
+            <div>
+              <TicketsClosedChart data={ticketsClosedData} loading={loading} />
+            </div>
+          </div>
+
+          {/* Bottom Section - Two Equal Panels */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            {/* Department Performance Chart */}
+            <div>
+              <DepartmentPerformanceChart data={departmentPerformance} loading={loading} />
+            </div>
+
+            {/* LiveChat Status Chart */}
+            <div>
+              <LiveChatStatusChart data={liveChatStatus} loading={loading} />
+            </div>
+          </div>
         </main>
       </div>
     </>

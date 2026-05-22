@@ -105,6 +105,56 @@ export const getSupervisorDashboardWidgets = async (department: string) => {
   };
 };
 
+/**
+ * Get ticket metrics for dashboard cards
+ */
+export const getTicketMetrics = async (department?: string | null, agentId?: number | null, dateFrom?: string | null, dateTo?: string | null) => {
+  const params: any = {};
+  if (department && department !== 'all') params.department = department;
+  if (agentId) params.agent_id = agentId;
+  if (dateFrom) params.date_from = dateFrom;
+  if (dateTo) params.date_to = dateTo;
+
+  const response = await api.get('/dashboard/ticket-metrics', { params });
+  return response.data;
+};
+
+/**
+ * Get tickets closed by day for line chart
+ */
+export const getTicketsClosedByDay = async (department?: string | null, agentId?: number | null) => {
+  const params: any = {};
+  if (department && department !== 'all') params.department = department;
+  if (agentId) params.agent_id = agentId;
+
+  const response = await api.get('/dashboard/tickets-closed-by-day', { params });
+  return response.data;
+};
+
+/**
+ * Get department performance for bar chart
+ */
+export const getDepartmentPerformance = async (dateFrom?: string | null, dateTo?: string | null) => {
+  const params: any = {};
+  if (dateFrom) params.date_from = dateFrom;
+  if (dateTo) params.date_to = dateTo;
+
+  const response = await api.get('/dashboard/department-performance', { params });
+  return response.data;
+};
+
+/**
+ * Get LiveChat status for donut chart
+ */
+export const getLiveChatStatus = async (department?: string | null, agentId?: number | null) => {
+  const params: any = {};
+  if (department && department !== 'all') params.department = department;
+  if (agentId) params.agent_id = agentId;
+
+  const response = await api.get('/dashboard/livechat-status', { params });
+  return response.data;
+};
+
 export default {
   getAgentDashboard,
   getSupervisorDashboard,
@@ -114,4 +164,8 @@ export default {
   getAgentPerformance,
   getTrends,
   getSupervisorDashboardWidgets,
+  getTicketMetrics,
+  getTicketsClosedByDay,
+  getDepartmentPerformance,
+  getLiveChatStatus,
 };
