@@ -452,7 +452,7 @@ const SystemAdministration = () => {
         <title>System Administration - JKDM CRM Portal</title>
         <meta name="description" content="Comprehensive system administration interface for JKDM CRM Portal with user management, system configuration, and compliance monitoring." />
       </Helmet>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="w-full max-w-none">
         <BreadcrumbNavigation />
         
         {/* Header */}

@@ -207,26 +207,62 @@ const TicketList = ({ filter = 'all' }) => {
       }
 
       const rows = [
-        ['Ticket ID', 'Case ID', 'Subject', 'Customer', 'Email', 'Priority', 'Status', 'Assigned To', 'Department', 'Category', 'Channel', 'Created At', 'Updated At'],
-        ...((Array.isArray(exportTickets) ? exportTickets : []).map(t => {
-          const fmt = (d) => d ? new Date(d).toLocaleString('en-MY', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }) : '';
-          return [
-            t.ticket_number,
-            t.case_id || '',
-            t.subject,
-            t.customer?.name || '',
-            t.customer?.email || '',
-            t.priority,
-            t.status,
-            t.assigned_agent?.user?.name || t.assigned_agent?.employee_id || 'Unassigned',
-            t.department || '',
-            t.category || '',
-            t.channel || '',
-            fmt(t.created_at),
-            fmt(t.updated_at),
-          ];
-        }))
-      ];
+        [
+              'Ticket ID',
+              'Case ID',
+              'Subject',
+              'Customer',
+              'Email',
+              'Priority',
+              'Status',
+              'Assigned To',
+              'Department',
+              'Category',
+              'Channel',
+              'Created Date',
+              'Created Time',
+              'Updated Date',
+              'Updated Time'
+            ],
+            ...((Array.isArray(exportTickets) ? exportTickets : []).map(t => {
+              const fmtDate = (d) =>
+                d
+                  ? new Date(d).toLocaleDateString('en-MY', {
+                      year: 'numeric',
+                      month: '2-digit',
+                      day: '2-digit'
+                    })
+                  : '';
+
+              const fmtTime = (d) =>
+                d
+                  ? new Date(d).toLocaleTimeString('en-MY', {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      second: '2-digit',
+                      hour12: false
+                    })
+                  : '';
+
+              return [
+                t.ticket_number,
+                t.case_id || '',
+                t.subject,
+                t.customer?.name || '',
+                t.customer?.email || '',
+                t.priority,
+                t.status,
+                t.assigned_agent?.user?.name || t.assigned_agent?.employee_id || 'Unassigned',
+                t.department || '',
+                t.category || '',
+                t.channel || '',
+                fmtDate(t.created_at),
+                fmtTime(t.created_at),
+                fmtDate(t.updated_at),
+                fmtTime(t.updated_at),
+              ];
+            }))
+    ];
 
       await exportToExcel({ rows, filename: 'tickets', title: 'Ticket Management Report' });
     } catch (error) {
@@ -246,9 +282,26 @@ const TicketList = ({ filter = 'all' }) => {
         exportTickets = response.data.data || response.data;
       }
       const rows = [
-        ['Ticket ID', 'Case ID', 'Subject', 'Customer', 'Email', 'Priority', 'Status', 'Assigned To', 'Department', 'Category', 'Channel', 'Created At'],
+         ['Ticket ID', 'Case ID', 'Subject', 'Customer', 'Email', 'Priority', 'Status', 'Assigned To', 'Department', 'Category', 'Channel', 'Created Date', 'Created Time', 'Updated Date', 'Updated Time'],
         ...((Array.isArray(exportTickets) ? exportTickets : []).map(t => {
-          const fmt = (d) => d ? new Date(d).toLocaleString('en-MY', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }) : '';
+           const fmtDate = (d) =>
+            d
+              ? new Date(d).toLocaleDateString('en-MY', {
+                  year: 'numeric',
+                  month: '2-digit',
+                  day: '2-digit'
+                })
+              : '';
+
+          const fmtTime = (d) =>
+            d
+              ? new Date(d).toLocaleTimeString('en-MY', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  second: '2-digit',
+                  hour12: false
+                })
+              : '';
           return [
             t.ticket_number,
             t.case_id || '',
@@ -261,7 +314,10 @@ const TicketList = ({ filter = 'all' }) => {
             t.department || '',
             t.category || '',
             t.channel || '',
-            fmt(t.created_at),
+            fmtDate(t.created_at),
+            fmtTime(t.created_at),
+            fmtDate(t.updated_at),
+            fmtTime(t.updated_at),
           ];
         }))
       ];
@@ -291,7 +347,7 @@ const TicketList = ({ filter = 'all' }) => {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4w-full max-w-none">
       {/* Filters */}
       <div className="space-y-3">
         {/* Search + Clear */}

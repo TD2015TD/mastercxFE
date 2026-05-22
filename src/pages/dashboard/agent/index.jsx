@@ -100,7 +100,7 @@ const AgentDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="w-full max-w-none">
       <Helmet>
         <title>Agent Dashboard - JKDM CRM Portal</title>
         <meta name="description" content="Agent workspace for managing tickets, customer interactions, and performance metrics" />

@@ -14,6 +14,12 @@ const TicketManagement = () => {
   const currentUser = authService.getCurrentUser();
   const [activeTab, setActiveTab] = useState('all');
   const [totalCount, setTotalCount] = useState(0);
+  const [totalCall, setTotalCall] = useState(0);
+  const [totalEmail, setTotalEmail] = useState(0);
+  const [totalChat, setTotalChat] = useState(0);
+  const [todayCallCount, setTodayCallCount] = useState(0);
+  const [todayEmailCount, setTodayEmailCount] = useState(0);
+  const [todayChatCount, setTodayChatCount] = useState(0);
   const [myTicketsCount, setMyTicketsCount] = useState(0);
   const [unassignedCount, setUnassignedCount] = useState(0);
   const [todayCount, setTodayCount] = useState(0);
@@ -24,51 +30,112 @@ const TicketManagement = () => {
     loadCounts();
   }, []);
 
-  const loadCounts = async () => {
-    try {
-      setIsLoading(true);
-      const today = new Date().toISOString().split('T')[0];
+ const loadCounts = async () => {
+  try {
+    setIsLoading(true);
+    const today = new Date().toISOString().split('T')[0];
 
-      const requests = [
-        ticketService.getTickets({ per_page: 1, page: 1 }),
-        ticketService.getTickets({ per_page: 1, page: 1, unassigned: 1 }),
-        ticketService.getTickets({ per_page: 1, page: 1, date_from: today, date_to: today }),
-      ];
+    const requests = [
+      ticketService.getTickets({ per_page: 1, page: 1 }),
+      ticketService.getTickets({ per_page: 1, page: 1, unassigned: 1 }),
+      ticketService.getTickets({ per_page: 1, page: 1, date_from: today, date_to: today }),
 
-      if (currentUser?.agent?.id) {
-        requests.push(ticketService.getTickets({ per_page: 1, page: 1, assigned_to: currentUser.agent.id }));
-      }
+      ticketService.getTickets({ per_page: 1, page: 1, date_from: today, date_to: today, channel: 'phone' }),
+      ticketService.getTickets({ per_page: 1, page: 1, date_from: today, date_to: today, channel: 'email' }),
+      ticketService.getTickets({ per_page: 1, page: 1, date_from: today, date_to: today, channel: 'chat' }),
 
-      const [allRes, unassignedRes, todayRes, myRes] = await Promise.all(requests);
+      ticketService.getTickets({ per_page: 1, page: 1, channel: 'phone' }),
+      ticketService.getTickets({ per_page: 1, page: 1, channel: 'email' }),
+      ticketService.getTickets({ per_page: 1, page: 1, channel: 'chat' }),
+    ];
 
-      if (allRes.success) setTotalCount(allRes.data.total || 0);
-      if (unassignedRes.success) setUnassignedCount(unassignedRes.data.total || 0);
-      if (todayRes.success) setTodayCount(todayRes.data.total || 0);
-      if (myRes?.success) setMyTicketsCount(myRes.data.total || 0);
-    } catch (error) {
-      console.error('Error loading ticket counts:', error);
-    } finally {
-      setIsLoading(false);
+    if (currentUser?.agent?.id) {
+      requests.push(
+        ticketService.getTickets({
+          per_page: 1,
+          page: 1,
+          assigned_to: currentUser.agent.id
+        })
+      );
     }
-  };
+
+    const [
+      allRes,
+      unassignedRes,
+      todayRes,
+      todayCallRes,
+      todayEmailRes,
+      todayChatRes,
+      phoneRes,
+      emailRes,
+      chatRes,
+      myRes
+    ] = await Promise.all(requests);
+
+    if (allRes?.success) setTotalCount(allRes.data.total || 0);
+    if (unassignedRes?.success) setUnassignedCount(unassignedRes.data.total || 0);
+    if (todayRes?.success) setTodayCount(todayRes.data.total || 0);
+
+    if (todayCallRes?.success) setTodayCallCount(todayCallRes.data.total || 0);
+    if (todayEmailRes?.success) setTodayEmailCount(todayEmailRes.data.total || 0);
+    if (todayChatRes?.success) setTodayChatCount(todayChatRes.data.total || 0);
+
+    if (phoneRes?.success) setTotalCall(phoneRes.data.total || 0);
+    if (emailRes?.success) setTotalEmail(emailRes.data.total || 0);
+    if (chatRes?.success) setTotalChat(chatRes.data.total || 0);
+
+    if (myRes?.success) setMyTicketsCount(myRes.data.total || 0);
+
+    console.log('Counts loaded:', {
+      total: allRes?.data?.total,
+      unassigned: unassignedRes?.data?.total,
+      today: todayRes?.data?.total,
+      todayPhone: todayCallRes?.data?.total,
+      todayEmail: todayEmailRes?.data?.total,
+      todayChat: todayChatRes?.data?.total,
+      phone: phoneRes?.data?.total,
+      email: emailRes?.data?.total,
+      chat: chatRes?.data?.total,
+      myTickets: myRes?.data?.total
+    });
+  } catch (error) {
+    console.error('Error loading ticket counts:', error);
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   // Calculate statistics
   const stats = [
-    {
-      label: 'Total Tickets',
-      value: totalCount.toString(),
-      subtext: `+${todayCount} today`,
-      icon: 'Ticket',
-      color: 'text-blue-600'
-    },
-    {
-      label: 'Unassigned',
-      value: unassignedCount.toString(),
-      subtext: unassignedCount > 0 ? 'Needs attention' : 'All assigned',
-      icon: 'AlertCircle',
-      color: 'text-red-600'
-    },
-  ];
+  {
+    label: 'Total Tickets',
+    value: totalCount.toString(),
+    subtext: `+${todayCount} today`,
+    icon: 'Ticket',
+    color: 'text-blue-600'
+  },
+  {
+    label: 'Call Tickets',
+    value: totalCall.toString(),
+    subtext: `+${todayCallCount} today`,
+    icon: 'Phone',
+    color: 'text-green-600'
+  },
+  {
+    label: 'Email Tickets',
+    value: totalEmail.toString(),
+    subtext: `+${todayEmailCount} today`,
+    icon: 'Mail',
+    color: 'text-yellow-600'
+  },
+  {
+    label: 'Chat Tickets',
+    value: totalChat.toString(),
+    subtext: `+${todayChatCount} today`,
+    icon: 'MessageSquare',
+    color: 'text-purple-600'
+  }
+];
 
   const tabs = [
     { id: 'all', label: 'All Tickets', icon: 'List', count: totalCount },
@@ -116,7 +183,7 @@ const TicketManagement = () => {
         }
       >
         <div className="min-h-screen bg-background">
-        <main className="container mx-auto px-6 py-8 max-w-7xl">
+        <main className="w-full max-w-none">
           {/* Header */}
           <div className="mb-8">
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">

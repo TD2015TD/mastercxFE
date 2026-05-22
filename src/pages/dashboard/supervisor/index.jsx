@@ -111,7 +111,7 @@ const SupervisorDashboard = () => {
       </Helmet>
 
       <div className="min-h-screen bg-gray-50">
-        <main className="container mx-auto px-6 py-8 max-w-7xl">
+        <main className="w-full max-w-none">
           {/* Header */}
           <div className="mb-8">
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
