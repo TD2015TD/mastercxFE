@@ -7,13 +7,15 @@ import TicketMetricCard from './components/TicketMetricCard';
 import TicketsClosedChart from './components/TicketsClosedChart';
 import DepartmentPerformanceChart from './components/DepartmentPerformanceChart';
 import LiveChatStatusChart from './components/LiveChatStatusChart';
-import { 
-  getTicketMetrics, 
-  getTicketsClosedByDay, 
-  getDepartmentPerformance, 
-  getLiveChatStatus 
+import {
+  getTicketMetrics,
+  getTicketsClosedByDay,
+  getDepartmentPerformance,
+  getLiveChatStatus,
+  getTicketsByChannel,
 } from '../../../services/dashboardService';
 import { authService } from '../../../services/authService';
+import { agentService } from '../../../services/agentService';
 
 const SupervisorDashboard = () => {
   const navigate = useNavigate();
@@ -29,9 +31,11 @@ const SupervisorDashboard = () => {
   const [ticketsClosedData, setTicketsClosedData] = useState([]);
   const [departmentPerformance, setDepartmentPerformance] = useState([]);
   const [liveChatStatus, setLiveChatStatus] = useState(null);
+  const [ticketsByChannel, setTicketsByChannel] = useState(null);
   
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [agents, setAgents] = useState([]);
 
   // Get current user info
   useEffect(() => {
@@ -51,6 +55,17 @@ const SupervisorDashboard = () => {
     }
   }, []);
 
+  // Fetch agents list for the filter dropdown
+  useEffect(() => {
+    agentService.getAgents({ status: 'active', per_page: 200 })
+      .then(res => {
+        // API returns { success, data: { data: [...], ... } } (paginated)
+        const list = res?.data?.data ?? res?.data ?? res ?? [];
+        setAgents(Array.isArray(list) ? list : []);
+      })
+      .catch(() => setAgents([]));
+  }, []);
+
   // Fetch dashboard data
   const fetchDashboardData = async () => {
     try {
@@ -58,11 +73,12 @@ const SupervisorDashboard = () => {
       const dept = userDepartment === 'all' ? null : userDepartment;
       const agentId = selectedAgent === 'all' ? null : selectedAgent;
 
-      const [metricsRes, closedRes, deptPerfRes, liveChatRes] = await Promise.allSettled([
+      const [metricsRes, closedRes, deptPerfRes, liveChatRes, channelRes] = await Promise.allSettled([
         getTicketMetrics(dept, agentId, dateFrom, dateTo),
         getTicketsClosedByDay(dept, agentId),
         getDepartmentPerformance(dateFrom, dateTo),
         getLiveChatStatus(dept, agentId),
+        getTicketsByChannel(dept, agentId),
       ]);
 
       if (metricsRes.status === 'fulfilled') {
@@ -76,6 +92,9 @@ const SupervisorDashboard = () => {
       }
       if (liveChatRes.status === 'fulfilled') {
         setLiveChatStatus(liveChatRes.value.data);
+      }
+      if (channelRes.status === 'fulfilled') {
+        setTicketsByChannel(channelRes.value.data);
       }
 
       setError(null);
@@ -101,6 +120,23 @@ const SupervisorDashboard = () => {
 
   const handleNewManualTicket = () => {
     navigate('/ticket-management/create');
+  };
+
+  // "View Tickets" navigation helpers
+  const handleViewInProgress = () => {
+    navigate('/ticket-management?status=In+Progress');
+  };
+  const handleViewInProgressToday = () => {
+    const today = new Date().toISOString().split('T')[0];
+    navigate(`/ticket-management?status=In+Progress&date_from=${today}&date_to=${today}`);
+  };
+  const handleViewClosedToday = () => {
+    const today = new Date().toISOString().split('T')[0];
+    navigate(`/ticket-management?status=Closed&date_from=${today}&date_to=${today}`);
+  };
+  const handleViewTotalToday = () => {
+    const today = new Date().toISOString().split('T')[0];
+    navigate(`/ticket-management?date_from=${today}&date_to=${today}`);
   };
 
   return (
@@ -138,21 +174,38 @@ const SupervisorDashboard = () => {
             </div>
           </div>
 
-          {/* Filters - Aligned to Right */}
+          {/* Filters */}
           <div className="bg-white rounded-lg p-4 mb-6 shadow-sm border border-gray-200">
-            <div className="flex justify-end items-end gap-4">
-              <div className="w-48">
+            <div className="flex flex-wrap justify-end items-end gap-4">
+              {/* Date From */}
+              <div className="w-44">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Date Range
+                  Date From
                 </label>
                 <input
-                  type="text"
-                  placeholder="Select date range"
+                  type="date"
+                  value={dateFrom}
+                  max={dateTo || undefined}
+                  onChange={(e) => setDateFrom(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                  readOnly
                 />
               </div>
 
+              {/* Date To */}
+              <div className="w-44">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Date To
+                </label>
+                <input
+                  type="date"
+                  value={dateTo}
+                  min={dateFrom || undefined}
+                  onChange={(e) => setDateTo(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                />
+              </div>
+
+              {/* Agent */}
               <div className="w-48">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Agent
@@ -163,11 +216,16 @@ const SupervisorDashboard = () => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                 >
                   <option value="all">All Agents</option>
-                  {/* Agent options will be populated dynamically */}
+                  {agents.map(agent => (
+                    <option key={agent.id} value={agent.id}>
+                      {agent.user?.name || agent.agent_code}
+                    </option>
+                  ))}
                 </select>
               </div>
 
-              <div className="w-48">
+              {/* Department */}
+              <div className="w-44">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Department
                 </label>
@@ -182,8 +240,15 @@ const SupervisorDashboard = () => {
                 </select>
               </div>
 
-              <div>
-                <Button 
+              {/* Apply + Clear */}
+              <div className="flex gap-2">
+                <button
+                  onClick={() => { setDateFrom(''); setDateTo(''); setSelectedAgent('all'); setUserDepartment('all'); }}
+                  className="px-4 py-2 text-sm border border-gray-300 rounded-md text-gray-600 hover:bg-gray-50 transition-colors"
+                >
+                  Clear
+                </button>
+                <Button
                   variant="primary"
                   onClick={handleApplyFilters}
                   className="bg-gray-800 hover:bg-gray-900 text-white px-6"
@@ -210,33 +275,37 @@ const SupervisorDashboard = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
             {/* Left Column - 4 Metric Cards in 2x2 Grid */}
             <div className="grid grid-cols-2 gap-4">
-              <TicketMetricCard 
-                title="Total in Progress" 
+              <TicketMetricCard
+                title="Total in Progress"
                 value={ticketMetrics?.total_in_progress || 0}
                 bgColor="bg-pink-50"
                 textColor="text-pink-600"
                 loading={loading}
+                onClick={handleViewInProgress}
               />
-              <TicketMetricCard 
-                title="In Progress (of the Day)" 
+              <TicketMetricCard
+                title="In Progress (of the Day)"
                 value={ticketMetrics?.in_progress_today || 0}
                 bgColor="bg-blue-50"
                 textColor="text-blue-600"
                 loading={loading}
+                onClick={handleViewInProgressToday}
               />
-              <TicketMetricCard 
-                title="Closed (for the Day)" 
+              <TicketMetricCard
+                title="Closed (for the Day)"
                 value={ticketMetrics?.closed_today || 0}
                 bgColor="bg-blue-50"
                 textColor="text-blue-600"
                 loading={loading}
+                onClick={handleViewClosedToday}
               />
-              <TicketMetricCard 
-                title="Total (of the Day)" 
+              <TicketMetricCard
+                title="Total (of the Day)"
                 value={ticketMetrics?.total_today || 0}
                 bgColor="bg-pink-50"
                 textColor="text-pink-600"
                 loading={loading}
+                onClick={handleViewTotalToday}
               />
             </div>
 
@@ -253,9 +322,9 @@ const SupervisorDashboard = () => {
               <DepartmentPerformanceChart data={departmentPerformance} loading={loading} />
             </div>
 
-            {/* LiveChat Status Chart */}
+            {/* Tickets by Channel Chart */}
             <div>
-              <LiveChatStatusChart data={liveChatStatus} loading={loading} />
+              <LiveChatStatusChart data={ticketsByChannel} loading={loading} />
             </div>
           </div>
         </main>

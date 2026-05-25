@@ -180,6 +180,12 @@ export const knowledgeBaseService = {
     return response.data;
   },
 
+  // Delete file-based article (uses /knowledge-base-articles/{id})
+  deleteFileArticle: async (id: string | number) => {
+    const response = await api.delete(`/knowledge-base-articles/${id}`);
+    return response.data;
+  },
+
   // Publish a draft article (supervisor/admin only)
   publishArticle: async (id: string | number) => {
     const response = await api.post(`/knowledge-base-articles/${id}/publish`);

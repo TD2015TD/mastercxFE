@@ -40,8 +40,8 @@ const ArticleForm = ({ article, categories, onSave, onClose, isLoading }) => {
         return;
       }
 
-      if (file.size > 10 * 1024 * 1024) {
-        const errorMsg = 'File size exceeds 10MB limit.';
+      if (file.size > 30 * 1024 * 1024) {
+        const errorMsg = 'File size exceeds 30MB limit.';
         setFileError(errorMsg);
         toast.error(errorMsg);
         e.target.value = '';
@@ -151,7 +151,7 @@ const ArticleForm = ({ article, categories, onSave, onClose, isLoading }) => {
               required={!article}
             />
             <p className="text-xs text-muted-foreground mt-1">
-              Supported formats: PDF, DOC, DOCX, TXT (Max 10MB)
+              Supported formats: PDF, DOC, DOCX, TXT (Max 30MB)
             </p>
             {article && (
               <p className="text-xs text-muted-foreground mt-1">

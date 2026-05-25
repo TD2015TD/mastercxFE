@@ -338,7 +338,7 @@ const TicketDetails = ({ ticket, onUpdate }) => {
       <div className="mt-6">
         <h4 className="font-medium text-foreground mb-3">Issue Description</h4>
         <div className="bg-muted rounded-lg p-4">
-          <p className="text-sm text-foreground leading-relaxed">{ticket?.description}</p>
+          <p className="text-sm text-foreground leading-relaxed" style={{ whiteSpace: 'pre-wrap' }}>{ticket?.description}</p>
         </div>
       </div>
     </div>

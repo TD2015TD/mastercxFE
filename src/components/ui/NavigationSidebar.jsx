@@ -65,11 +65,12 @@ const NavigationSidebar = ({ isCollapsed = false, onToggleCollapse, userRole = '
 
     if (isSupervisorOrAbove) {
       return [
-        { label: 'Dashboard', path: '/supervisor-dashboard', icon: 'LayoutDashboard', tooltip: 'Supervisor dashboard overview' },
-        { label: 'Tickets', path: '/ticket-management', icon: 'Ticket', tooltip: 'Manage customer tickets' },
-        { label: 'Customer 360', path: '/customer-360-profile', icon: 'Users', tooltip: 'Complete customer profile' },
-        { label: 'Knowledge Base', path: '/knowledge-base-portal', icon: 'BookOpen', tooltip: 'Access articles and documentation' },
-        { label: 'Administration', path: '/system-administration', icon: 'Settings', tooltip: 'System configuration and user management' },
+        { label: 'Dashboard',      path: '/supervisor-dashboard',    icon: 'LayoutDashboard', tooltip: 'Supervisor dashboard overview' },
+        { label: 'Tickets',        path: '/ticket-management',       icon: 'Ticket',          tooltip: 'Manage customer tickets' },
+        { label: 'Customer 360',   path: '/customer-360-profile',    icon: 'Users',           tooltip: 'Complete customer profile' },
+        { label: 'Knowledge Base', path: '/knowledge-base-portal',   icon: 'BookOpen',        tooltip: 'Access articles and documentation' },
+        { label: 'Analytics',      path: '/analytics-and-reporting', icon: 'BarChart3',       tooltip: 'Jana laporan dan analitik dari Superset' },
+        { label: 'Administration', path: '/system-administration',   icon: 'Settings',        tooltip: 'System configuration and user management' },
       ];
     }
 

@@ -60,8 +60,8 @@ export default function ArticleManagement() {
         return;
       }
 
-      if (file.size > 10 * 1024 * 1024) {
-        const errorMsg = 'File size exceeds 10MB limit.';
+      if (file.size > 30 * 1024 * 1024) {
+        const errorMsg = 'File size exceeds 30MB limit.';
         setError(errorMsg);
         toast.error(errorMsg);
         e.target.value = '';
@@ -175,7 +175,7 @@ export default function ArticleManagement() {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium mb-2">Document File {!editingId && '*'} <span className="text-xs text-gray-500">(PDF, DOC, DOCX, TXT - Max 10MB)</span></label>
+            <label className="block text-sm font-medium mb-2">Document File {!editingId && '*'} <span className="text-xs text-gray-500">(PDF, DOC, DOCX, TXT - Max 30MB)</span></label>
             <input type="file" id="fileInput" onChange={handleFileChange} accept=".pdf,.doc,.docx,.txt" className="w-full px-3 py-2 border rounded-md" required={!editingId} />
             {selectedFile && <div className="mt-2 text-sm text-gray-600">Selected: {selectedFile.name} ({(selectedFile.size / 1024 / 1024).toFixed(2)} MB)</div>}
           </div>

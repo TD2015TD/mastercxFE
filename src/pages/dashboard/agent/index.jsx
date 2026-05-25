@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { authService } from '../../../services/authService';
-import { 
-  getTicketMetrics, 
-  getTicketsClosedByDay, 
-  getDepartmentPerformance, 
-  getLiveChatStatus 
+import {
+  getTicketMetrics,
+  getTicketsClosedByDay,
+  getDepartmentPerformance,
+  getLiveChatStatus,
+  getTicketsByChannel,
 } from '../../../services/dashboardService';
 import { Helmet } from 'react-helmet';
 import { useNavigate } from 'react-router-dom';
@@ -29,6 +30,7 @@ const AgentDashboard = () => {
   const [ticketsClosedData, setTicketsClosedData] = useState([]);
   const [departmentPerformance, setDepartmentPerformance] = useState([]);
   const [liveChatStatus, setLiveChatStatus] = useState(null);
+  const [ticketsByChannel, setTicketsByChannel] = useState(null);
   
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -58,11 +60,12 @@ const AgentDashboard = () => {
       setLoading(true);
       const dept = userDepartment === 'all' ? null : userDepartment;
 
-      const [metricsRes, closedRes, deptPerfRes, liveChatRes] = await Promise.allSettled([
+      const [metricsRes, closedRes, deptPerfRes, liveChatRes, channelRes] = await Promise.allSettled([
         getTicketMetrics(dept, agentId),
         getTicketsClosedByDay(dept, agentId),
         getDepartmentPerformance(),
         getLiveChatStatus(dept, agentId),
+        getTicketsByChannel(dept, agentId),
       ]);
 
       if (metricsRes.status === 'fulfilled') {
@@ -76,6 +79,9 @@ const AgentDashboard = () => {
       }
       if (liveChatRes.status === 'fulfilled') {
         setLiveChatStatus(liveChatRes.value.data);
+      }
+      if (channelRes.status === 'fulfilled') {
+        setTicketsByChannel(channelRes.value.data);
       }
 
       setError(null);
@@ -97,6 +103,23 @@ const AgentDashboard = () => {
 
   const handleNewManualTicket = () => {
     navigate('/ticket-management/create');
+  };
+
+  // "View Tickets" navigation helpers
+  const handleViewInProgress = () => {
+    navigate('/ticket-management?status=In+Progress');
+  };
+  const handleViewInProgressToday = () => {
+    const today = new Date().toISOString().split('T')[0];
+    navigate(`/ticket-management?status=In+Progress&date_from=${today}&date_to=${today}`);
+  };
+  const handleViewClosedToday = () => {
+    const today = new Date().toISOString().split('T')[0];
+    navigate(`/ticket-management?status=Closed&date_from=${today}&date_to=${today}`);
+  };
+  const handleViewTotalToday = () => {
+    const today = new Date().toISOString().split('T')[0];
+    navigate(`/ticket-management?date_from=${today}&date_to=${today}`);
   };
 
   return (
@@ -149,33 +172,37 @@ const AgentDashboard = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
           {/* Left Column - 4 Metric Cards in 2x2 Grid */}
           <div className="grid grid-cols-2 gap-4">
-            <TicketMetricCard 
-              title="Total in Progress" 
+            <TicketMetricCard
+              title="Total in Progress"
               value={ticketMetrics?.total_in_progress || 0}
               bgColor="bg-pink-50"
               textColor="text-pink-600"
               loading={loading}
+              onClick={handleViewInProgress}
             />
-            <TicketMetricCard 
-              title="In Progress (of the Day)" 
+            <TicketMetricCard
+              title="In Progress (of the Day)"
               value={ticketMetrics?.in_progress_today || 0}
               bgColor="bg-blue-50"
               textColor="text-blue-600"
               loading={loading}
+              onClick={handleViewInProgressToday}
             />
-            <TicketMetricCard 
-              title="Closed (for the Day)" 
+            <TicketMetricCard
+              title="Closed (for the Day)"
               value={ticketMetrics?.closed_today || 0}
               bgColor="bg-blue-50"
               textColor="text-blue-600"
               loading={loading}
+              onClick={handleViewClosedToday}
             />
-            <TicketMetricCard 
-              title="Total (of the Day)" 
+            <TicketMetricCard
+              title="Total (of the Day)"
               value={ticketMetrics?.total_today || 0}
               bgColor="bg-pink-50"
               textColor="text-pink-600"
               loading={loading}
+              onClick={handleViewTotalToday}
             />
           </div>
 
@@ -192,9 +219,9 @@ const AgentDashboard = () => {
             <DepartmentPerformanceChart data={departmentPerformance} loading={loading} />
           </div>
 
-          {/* LiveChat Status Chart */}
+          {/* Tickets by Channel Chart */}
           <div>
-            <LiveChatStatusChart data={liveChatStatus} loading={loading} />
+            <LiveChatStatusChart data={ticketsByChannel} loading={loading} />
           </div>
         </div>
       </div>

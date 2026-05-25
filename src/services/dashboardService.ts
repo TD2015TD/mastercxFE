@@ -155,6 +155,18 @@ export const getLiveChatStatus = async (department?: string | null, agentId?: nu
   return response.data;
 };
 
+/**
+ * Get today's ticket count broken down by channel (phone, email, chat, web, walk-in, social_media)
+ */
+export const getTicketsByChannel = async (department?: string | null, agentId?: number | null) => {
+  const params: any = {};
+  if (department && department !== 'all') params.department = department;
+  if (agentId) params.agent_id = agentId;
+
+  const response = await api.get('/dashboard/tickets-by-channel', { params });
+  return response.data;
+};
+
 export default {
   getAgentDashboard,
   getSupervisorDashboard,
@@ -168,4 +180,5 @@ export default {
   getTicketsClosedByDay,
   getDepartmentPerformance,
   getLiveChatStatus,
+  getTicketsByChannel,
 };

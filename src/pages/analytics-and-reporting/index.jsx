@@ -1,11 +1,33 @@
+import { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
-import BreadcrumbNavigation from '../../components/ui/BreadcrumbNavigation';
 import Icon from '../../components/AppIcon';
-import TelephonyBar from '../../components/TelephonyBar';
-import SupersetDashboardList from './components/SupersetDashboardList';
 import Can from '../../components/Can';
+import SupersetDashboardList from './components/SupersetDashboardList';
+import ReportGenerator from './components/ReportGenerator';
+import SupersetDashboardModal from '../../components/SupersetDashboardModal';
+import { useSupersetDashboards } from '../../hooks/useSupersetDashboards';
 
 const AnalyticsAndReporting = () => {
+  // Shared dashboard list (used by both ReportGenerator and the card grid)
+  const { dashboards, loading } = useSupersetDashboards({ is_active: true });
+
+  // Modal state
+  const [selectedDashboard, setSelectedDashboard] = useState(null);
+  const [reportFilters,      setReportFilters]     = useState(null);
+  const [isModalOpen,        setIsModalOpen]        = useState(false);
+
+  const handleViewReport = (dashboard, filters) => {
+    setSelectedDashboard(dashboard);
+    setReportFilters(filters);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedDashboard(null);
+    setReportFilters(null);
+  };
+
   return (
     <>
       <Helmet>
@@ -13,7 +35,7 @@ const AnalyticsAndReporting = () => {
         <meta name="description" content="Interactive analytics dashboards and reporting" />
       </Helmet>
 
-      <Can 
+      <Can
         permission="report.view"
         fallback={
           <div className="flex items-center justify-center min-h-screen">
@@ -31,26 +53,51 @@ const AnalyticsAndReporting = () => {
         }
       >
         <div className="min-h-screen bg-background">
-        <main className="container mx-auto px-6 py-8 max-w-7xl">
-          {/* Header */}
-          <div className="mb-8">
-            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-              <div>
-                <h1 className="text-3xl font-bold text-foreground flex items-center">
-                  <Icon name="BarChart3" size={32} className="mr-3 text-primary" />
-                  Analytics & Reporting
-                </h1>
-                <p className="text-muted-foreground mt-2">
-                  Interactive Superset dashboards with advanced analytics and visualizations based on your role permissions
-                </p>
-              </div>
-            </div>
-          </div>
+          <main className="container mx-auto px-6 py-8 max-w-7xl">
 
-          {/* Superset Dashboard List */}
-          <SupersetDashboardList />
-        </main>
-      </div>
+            {/* ── Page header ───────────────────────────────────────────── */}
+            <div className="mb-8">
+              <h1 className="text-3xl font-bold text-foreground flex items-center">
+                <Icon name="BarChart3" size={32} className="mr-3 text-primary" />
+                Analytics & Reporting
+              </h1>
+              <p className="text-muted-foreground mt-2">
+                Jana laporan interaktif dari Superset dan lihat prestasi pasukan berdasarkan peranan anda
+              </p>
+            </div>
+
+            {/* ── Report Generator (NEW) ─────────────────────────────────── */}
+            <ReportGenerator
+              dashboards={dashboards}
+              loading={loading}
+              onViewReport={handleViewReport}
+            />
+
+            {/* ── Divider ───────────────────────────────────────────────── */}
+            <div className="flex items-center gap-4 mb-6">
+              <div className="flex-1 h-px bg-border" />
+              <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted px-3 py-1 rounded-full">
+                <Icon name="LayoutGrid" size={12} />
+                Semua Laporan Tersedia
+              </div>
+              <div className="flex-1 h-px bg-border" />
+            </div>
+
+            {/* ── Dashboard card grid (existing) ─────────────────────────── */}
+            <SupersetDashboardList onViewDashboard={handleViewReport} />
+
+          </main>
+        </div>
+
+        {/* ── Modal (shared by both ReportGenerator and card grid) ────────── */}
+        {selectedDashboard && (
+          <SupersetDashboardModal
+            dashboard={selectedDashboard}
+            isOpen={isModalOpen}
+            onClose={handleCloseModal}
+            reportFilters={reportFilters}
+          />
+        )}
       </Can>
     </>
   );

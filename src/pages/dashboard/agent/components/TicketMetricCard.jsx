@@ -1,7 +1,7 @@
 import React from 'react';
 import Icon from '../../../../components/AppIcon';
 
-const TicketMetricCard = ({ title, value, bgColor, textColor, loading }) => {
+const TicketMetricCard = ({ title, value, bgColor, textColor, loading, onClick }) => {
   return (
     <div className={`${bgColor} rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow`}>
       <div className="flex items-start justify-between mb-3">
@@ -12,7 +12,7 @@ const TicketMetricCard = ({ title, value, bgColor, textColor, loading }) => {
           </div>
         </div>
       </div>
-      
+
       <div className="mb-3">
         <p className={`text-2xl font-bold ${textColor}`}>
           {loading ? '...' : value}
@@ -21,8 +21,11 @@ const TicketMetricCard = ({ title, value, bgColor, textColor, loading }) => {
       </div>
 
       <div className="pt-3 border-t border-gray-200">
-        <button className="text-xs text-gray-600 hover:text-gray-800 flex items-center">
-          View Tickets 
+        <button
+          onClick={onClick}
+          className="text-xs text-gray-600 hover:text-gray-800 flex items-center cursor-pointer"
+        >
+          View Tickets
           <Icon name="ArrowRight" size={12} className="ml-1" />
         </button>
       </div>

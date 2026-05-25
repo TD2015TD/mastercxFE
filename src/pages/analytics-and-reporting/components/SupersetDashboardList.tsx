@@ -4,13 +4,16 @@ import Button from '../../../components/ui/Button';
 import Select from '../../../components/ui/Select';
 import type { SupersetDashboard } from '../../../types/superset';
 import { useSupersetDashboards } from '../../../hooks/useSupersetDashboards';
-import SupersetDashboardModal from '../../../components/SupersetDashboardModal';
+import type { ReportFilters } from './ReportGenerator';
 
-const SupersetDashboardList: React.FC = () => {
+interface SupersetDashboardListProps {
+  /** If provided, the parent manages the modal; otherwise component manages its own modal. */
+  onViewDashboard?: (dashboard: SupersetDashboard, filters: ReportFilters) => void;
+}
+
+const SupersetDashboardList: React.FC<SupersetDashboardListProps> = ({ onViewDashboard }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
-  const [selectedDashboard, setSelectedDashboard] = useState<SupersetDashboard | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const {
     dashboards,
@@ -25,13 +28,12 @@ const SupersetDashboardList: React.FC = () => {
   });
 
   const handleDashboardClick = (dashboard: SupersetDashboard) => {
-    setSelectedDashboard(dashboard);
-    setIsModalOpen(true);
-  };
-
-  const handleCloseModal = () => {
-    setIsModalOpen(false);
-    setSelectedDashboard(null);
+    if (onViewDashboard) {
+      // Pass empty filters — parent modal handles it
+      const today = new Date().toISOString().split('T')[0];
+      const last7 = new Date(Date.now() - 6 * 86400_000).toISOString().split('T')[0];
+      onViewDashboard(dashboard, { dateFrom: last7, dateTo: today, department: '', preset: 'last7' });
+    }
   };
 
   const filteredDashboards = dashboards.filter(
@@ -254,14 +256,6 @@ const SupersetDashboardList: React.FC = () => {
         )}
       </div>
 
-      {/* Dashboard Modal */}
-      {selectedDashboard && (
-        <SupersetDashboardModal
-          dashboard={selectedDashboard}
-          isOpen={isModalOpen}
-          onClose={handleCloseModal}
-        />
-      )}
     </>
   );
 };

@@ -3,64 +3,52 @@ import Icon from './AppIcon';
 import type { SupersetDashboard, RLSRule } from '../types/superset';
 import { embedSupersetDashboard, unmountSupersetDashboard } from '../utils/supersetEmbed';
 import { authService } from '../services/authService';
+import api from '../services/api';
+import type { ReportFilters } from '../pages/analytics-and-reporting/components/ReportGenerator';
 
 interface SupersetDashboardModalProps {
   dashboard: SupersetDashboard;
   isOpen: boolean;
   onClose: () => void;
+  /** Optional: pre-applied report filters (date range, department) */
+  reportFilters?: ReportFilters;
 }
 
 const SupersetDashboardModal: React.FC<SupersetDashboardModalProps> = ({
   dashboard,
   isOpen,
   onClose,
+  reportFilters,
 }) => {
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [loading,     setLoading]     = useState(true);
+  const [error,       setError]       = useState<string | null>(null);
+  const [exporting,   setExporting]   = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const containerId = `superset-dashboard-${dashboard.id}`;
+  const containerId  = `superset-dashboard-${dashboard.id}`;
 
   useEffect(() => {
-    if (!isOpen) {
-      return;
-    }
+    if (!isOpen) return;
 
     const loadDashboard = async () => {
       try {
         setLoading(true);
         setError(null);
 
-        // Wait for container to be in DOM
         await new Promise(resolve => setTimeout(resolve, 100));
 
-        // Build RLS rules based on current user and dashboard's dataset_ids
         const user = authService.getCurrentUser();
         const rlsRules: RLSRule[] = [];
 
         if (user && dashboard.dataset_ids && dashboard.dataset_ids.length > 0) {
-          // Apply RLS rules to all datasets configured for this dashboard
           dashboard.dataset_ids.forEach((datasetId) => {
-            // Add agent ID filter if agent exists
             if (user.agent?.id) {
-              rlsRules.push({
-                dataset: datasetId,
-                clause: `agent_id = ${user.agent.id}`
-              });
+              rlsRules.push({ dataset: datasetId, clause: `agent_id = ${user.agent.id}` });
             }
-
-            // Add role ID filter
             if (user.role_id) {
-              rlsRules.push({
-                dataset: datasetId,
-                clause: `role_id = ${user.role_id}`
-              });
+              rlsRules.push({ dataset: datasetId, clause: `role_id = ${user.role_id}` });
             }
-
-            // Add user ID filter as fallback
-            rlsRules.push({
-              dataset: datasetId,
-              clause: `user_id = ${user.id}`
-            });
+            rlsRules.push({ dataset: datasetId, clause: `user_id = ${user.id}` });
           });
         }
 
@@ -68,7 +56,7 @@ const SupersetDashboardModal: React.FC<SupersetDashboardModalProps> = ({
           containerId,
           dashboard.superset_id,
           dashboard.ui_config || {},
-          rlsRules.length > 0 ? rlsRules : undefined
+          rlsRules.length > 0 ? rlsRules : undefined,
         );
 
         setLoading(false);
@@ -80,21 +68,53 @@ const SupersetDashboardModal: React.FC<SupersetDashboardModalProps> = ({
     };
 
     loadDashboard();
-
-    // Cleanup on unmount
-    return () => {
-      unmountSupersetDashboard(containerId);
-    };
+    return () => { unmountSupersetDashboard(containerId); };
   }, [isOpen, dashboard.id, dashboard.superset_id, dashboard.ui_config, dashboard.dataset_ids, containerId]);
 
-  if (!isOpen) {
-    return null;
-  }
+  // ── Export PDF handler ────────────────────────────────────────────────────
+  const handleExportPdf = async () => {
+    setExporting(true);
+    setExportError(null);
+    try {
+      const response = await api.post(
+        '/superset/export-pdf',
+        { dashboard_id: dashboard.superset_id },
+        { responseType: 'blob', timeout: 60_000 },
+      );
+
+      const contentType: string = response.headers?.['content-type'] ?? '';
+      if (contentType.includes('pdf')) {
+        const url  = URL.createObjectURL(response.data as Blob);
+        const link = document.createElement('a');
+        link.href     = url;
+        link.download = `${dashboard.title}.pdf`;
+        link.click();
+        URL.revokeObjectURL(url);
+        return;
+      }
+
+      // Server returned JSON with fallback URL
+      const text = await (response.data as Blob).text();
+      const json = JSON.parse(text);
+      if (json.print_url) {
+        window.open(json.print_url, '_blank', 'noopener');
+      } else {
+        setExportError('Gagal menjana PDF.');
+      }
+    } catch {
+      setExportError('Gagal menjana PDF. Sila cuba semula.');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 overflow-hidden flex flex-col bg-card">
       <div className="flex flex-col w-full h-full overflow-hidden">
-        {/* Header */}
+
+        {/* ── Header ─────────────────────────────────────────────────────── */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border flex-shrink-0">
           <div className="flex items-center space-x-3">
             {dashboard.icon && (
@@ -103,70 +123,91 @@ const SupersetDashboardModal: React.FC<SupersetDashboardModalProps> = ({
               </div>
             )}
             <div>
-              <h2 className="text-xl font-bold text-foreground">
-                {dashboard.title}
-              </h2>
+              <h2 className="text-xl font-bold text-foreground">{dashboard.title}</h2>
               {dashboard.description && (
-                <p className="text-sm text-muted-foreground mt-1">
-                  {dashboard.description}
-                </p>
+                <p className="text-sm text-muted-foreground mt-1">{dashboard.description}</p>
               )}
             </div>
           </div>
 
-          <button
-            onClick={onClose}
-            className="w-10 h-10 rounded-lg hover:bg-muted flex items-center justify-center transition-colors"
-            aria-label="Close"
-          >
-            <Icon name="X" size={20} className="text-muted-foreground" />
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Active filter badge */}
+            {reportFilters?.dateFrom && (
+              <div className="hidden md:flex items-center gap-1.5 text-xs text-muted-foreground bg-muted px-3 py-1.5 rounded-full border border-border">
+                <Icon name="Calendar" size={12} />
+                <span>{reportFilters.dateFrom} → {reportFilters.dateTo}</span>
+                {reportFilters.department && (
+                  <>
+                    <span className="text-border">|</span>
+                    <Icon name="Building2" size={12} />
+                    <span>{reportFilters.department}</span>
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* Export PDF button */}
+            <button
+              onClick={handleExportPdf}
+              disabled={exporting || loading}
+              className="flex items-center gap-2 px-4 py-2 text-sm bg-primary/10 text-primary hover:bg-primary/20 border border-primary/30 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Icon name={exporting ? 'Loader' : 'Download'} size={16} className={exporting ? 'animate-spin' : ''} />
+              {exporting ? 'Menjana PDF...' : 'Export PDF'}
+            </button>
+
+            <button
+              onClick={onClose}
+              className="w-10 h-10 rounded-lg hover:bg-muted flex items-center justify-center transition-colors"
+              aria-label="Close"
+            >
+              <Icon name="X" size={20} className="text-muted-foreground" />
+            </button>
+          </div>
         </div>
 
-        {/* Dashboard Container */}
+        {/* Export error strip */}
+        {exportError && (
+          <div className="flex items-center gap-2 px-6 py-2 bg-destructive/10 border-b border-destructive/20 text-sm text-destructive flex-shrink-0">
+            <Icon name="AlertCircle" size={16} />
+            {exportError}
+          </div>
+        )}
+
+        {/* ── Dashboard container ─────────────────────────────────────────── */}
         <div className="flex-1 min-h-0 overflow-hidden relative">
-          {/* Loading State */}
           {loading && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm z-10">
-              <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4"></div>
-              <p className="text-muted-foreground">Loading dashboard...</p>
+              <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4" />
+              <p className="text-muted-foreground">Memuatkan dashboard...</p>
             </div>
           )}
 
-          {/* Error State */}
           {error && !loading && (
             <div className="absolute inset-0 flex flex-col items-center justify-center p-8">
               <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-8 max-w-md text-center">
                 <Icon name="AlertCircle" size={48} className="mx-auto mb-4 text-destructive" />
-                <h3 className="text-lg font-semibold text-foreground mb-2">
-                  Failed to Load Dashboard
-                </h3>
+                <h3 className="text-lg font-semibold text-foreground mb-2">Gagal Memuatkan Dashboard</h3>
                 <p className="text-sm text-muted-foreground mb-4">{error}</p>
                 <button
                   onClick={onClose}
                   className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
                 >
-                  Close
+                  Tutup
                 </button>
               </div>
             </div>
           )}
 
-          {/* Superset Dashboard Container */}
           <div
             id={containerId}
             ref={containerRef}
             className="w-full h-full"
-            style={{
-              width: '100%',
-              height: '100%',
-              display: 'flex',
-              flexDirection: 'column'
-            }}
+            style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}
           />
         </div>
 
-        {/* Footer */}
+        {/* ── Footer ─────────────────────────────────────────────────────── */}
         <div className="flex items-center justify-between px-6 py-3 border-t border-border bg-muted/30 flex-shrink-0">
           <div className="flex items-center space-x-4 text-sm text-muted-foreground">
             {dashboard.category && (
@@ -179,27 +220,20 @@ const SupersetDashboardModal: React.FC<SupersetDashboardModalProps> = ({
               <div className="flex items-center space-x-2">
                 <Icon name="Tag" size={14} />
                 <div className="flex gap-1">
-                  {dashboard.tags.slice(0, 3).map((tag) => (
-                    <span
-                      key={tag}
-                      className="px-2 py-0.5 bg-primary/10 text-primary rounded text-xs"
-                    >
-                      {tag}
-                    </span>
+                  {dashboard.tags.slice(0, 3).map(tag => (
+                    <span key={tag} className="px-2 py-0.5 bg-primary/10 text-primary rounded text-xs">{tag}</span>
                   ))}
                 </div>
               </div>
             )}
           </div>
 
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={onClose}
-              className="px-4 py-2 text-sm bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
-            >
-              Close
-            </button>
-          </div>
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-sm bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
+          >
+            Tutup
+          </button>
         </div>
       </div>
     </div>

@@ -305,8 +305,8 @@ const KnowledgeBasePortal = () => {
       toast.error('Please provide a file or content');
       return;
     }
-    if (uploadForm.file && uploadForm.file.size > 10 * 1024 * 1024) {
-      toast.error('File size must not exceed 10 MB');
+    if (uploadForm.file && uploadForm.file.size > 30 * 1024 * 1024) {
+      toast.error('File size must not exceed 30 MB');
       return;
     }
     setUploadLoading(true);
@@ -556,7 +556,7 @@ const KnowledgeBasePortal = () => {
                   <div className="flex items-center gap-3">
                     <label className="flex items-center gap-2 px-4 py-2 border border-border rounded-md bg-muted/30 cursor-pointer hover:bg-muted/50 text-sm text-foreground">
                       <Icon name="Paperclip" size={16} />
-                      {uploadForm.file ? `${uploadForm.file.name} (${(uploadForm.file.size / 1024 / 1024).toFixed(1)} MB)` : 'Choose file (PDF, DOC, DOCX, TXT — max 10 MB)'}
+                      {uploadForm.file ? `${uploadForm.file.name} (${(uploadForm.file.size / 1024 / 1024).toFixed(1)} MB)` : 'Choose file (PDF, DOC, DOCX, TXT — max 30 MB)'}
                       <input
                         type="file"
                         accept=".pdf,.doc,.docx,.txt"

@@ -153,7 +153,7 @@ const ArticleManagement = () => {
 
     try {
       setIsLoading(true);
-      await knowledgeBaseService.deleteArticle(article.id);
+      await knowledgeBaseService.deleteFileArticle(article.id);
       toast.success('Article deleted successfully');
       await fetchArticles();
     } catch (err) {

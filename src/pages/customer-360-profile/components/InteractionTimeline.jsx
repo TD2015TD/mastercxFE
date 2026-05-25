@@ -18,19 +18,38 @@ const InteractionTimeline = ({ customerId }) => {
   const loadInteractions = async () => {
     try {
       setIsLoading(true);
-      const response = await api.get(`/customer-interactions`, {
-        params: {
-          customer_id: customerId,
-          per_page: 50,
-        },
-      });
 
-      if (response.data.success) {
-        setInteractions(response.data.data || []);
-      } else if (response.data.data) {
-        // Handle paginated response
-        setInteractions(response.data.data || []);
-      }
+      const [interactionsRes, ticketsRes] = await Promise.allSettled([
+        api.get('/customer-interactions', { params: { customer_id: customerId, per_page: 50 } }),
+        api.get('/tickets', { params: { customer_id: customerId, per_page: 100 } }),
+      ]);
+
+      const rawInteractions = interactionsRes.status === 'fulfilled'
+        ? (interactionsRes.value.data?.data || [])
+        : [];
+
+      // Transform tickets into interaction-like objects
+      const ticketItems = ticketsRes.status === 'fulfilled'
+        ? (ticketsRes.value.data?.data?.data || ticketsRes.value.data?.data || []).map(t => ({
+            id: `ticket-${t.id}`,
+            interaction_type: 'ticket',
+            channel: t.channel || 'web',
+            subject: `[${t.ticket_number}] ${t.subject}`,
+            description: `Status: ${t.status}`,
+            interaction_at: t.created_at,
+            agent: t.agent || null,
+            _isTicket: true,
+            _ticketId: t.id,
+            _ticketNumber: t.ticket_number,
+            _ticketStatus: t.status,
+          }))
+        : [];
+
+      const merged = [...rawInteractions, ...ticketItems].sort(
+        (a, b) => new Date(b.interaction_at) - new Date(a.interaction_at)
+      );
+
+      setInteractions(merged);
     } catch (error) {
       console.error('Error loading interactions:', error);
       setInteractions([]);
@@ -49,7 +68,8 @@ const InteractionTimeline = ({ customerId }) => {
     setExpandedItems(newExpanded);
   };
 
-  const getChannelIcon = (channel) => {
+  const getChannelIcon = (channel, isTicket) => {
+    if (isTicket) return 'Ticket';
     const iconMap = {
       'phone': 'Phone',
       'email': 'Mail',
@@ -80,9 +100,19 @@ const InteractionTimeline = ({ customerId }) => {
       'chat': 'bg-purple-100 text-purple-700',
       'sms': 'bg-yellow-100 text-yellow-700',
       'meeting': 'bg-orange-100 text-orange-700',
-      'note': 'bg-gray-100 text-gray-700'
+      'note': 'bg-gray-100 text-gray-700',
+      'ticket': 'bg-indigo-100 text-indigo-700',
     };
     return colorMap[type] || 'bg-muted text-muted-foreground';
+  };
+
+  const getTicketStatusColor = (status) => {
+    if (!status) return 'bg-gray-100 text-gray-600';
+    const s = status.toLowerCase();
+    if (s === 'open' || s === 'new') return 'bg-blue-100 text-blue-700';
+    if (s === 'in progress' || s === 'in_progress') return 'bg-yellow-100 text-yellow-700';
+    if (s === 'resolved' || s === 'closed') return 'bg-green-100 text-green-700';
+    return 'bg-gray-100 text-gray-600';
   };
 
   const getSentimentIcon = (sentiment) => {
@@ -119,15 +149,17 @@ const InteractionTimeline = ({ customerId }) => {
   };
 
   const filteredInteractions = interactions.filter(interaction => {
-    const matchesType = filterType === 'all' || interaction.channel === filterType;
-    const matchesSearch = searchTerm === '' || 
+    const matchesType = filterType === 'all'
+      || (filterType === 'ticket' && interaction._isTicket)
+      || (!interaction._isTicket && interaction.channel === filterType);
+    const matchesSearch = searchTerm === '' ||
       interaction.subject?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       interaction.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       interaction.agent?.name?.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesType && matchesSearch;
   });
 
-  const channelTypes = ['all', 'phone', 'email', 'chat', 'social_media', 'walk-in', 'web'];
+  const channelTypes = ['all', 'phone', 'email', 'chat', 'social_media', 'walk-in', 'web', 'ticket'];
 
   return (
     <div className="bg-card border border-border rounded-lg">
@@ -197,8 +229,8 @@ const InteractionTimeline = ({ customerId }) => {
                   )}
                   <div className="flex gap-4">
                     {/* Timeline Icon */}
-                    <div className={`flex-shrink-0 w-12 h-12 rounded-full bg-background border-2 border-border flex items-center justify-center ${getChannelColor(interaction.channel)}`}>
-                      <Icon name={getChannelIcon(interaction.channel)} size={20} />
+                    <div className={`flex-shrink-0 w-12 h-12 rounded-full bg-background border-2 border-border flex items-center justify-center ${interaction._isTicket ? 'text-indigo-600' : getChannelColor(interaction.channel)}`}>
+                      <Icon name={getChannelIcon(interaction.channel, interaction._isTicket)} size={20} />
                     </div>
                     
                     {/* Content */}
@@ -229,9 +261,15 @@ const InteractionTimeline = ({ customerId }) => {
                           </div>
                           
                           <div className="flex items-center gap-2">
+                            {interaction._isTicket ? (
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${getTicketStatusColor(interaction._ticketStatus)}`}>
+                                {interaction._ticketStatus}
+                              </span>
+                            ) : (
                             <span className={`px-2 py-1 rounded-full text-xs font-medium ${getTypeColor(interaction.interaction_type)}`}>
                               {interaction.interaction_type}
                             </span>
+                            )}
                             {interaction.sentiment && (
                               <span className={`flex items-center ${getSentimentColor(interaction.sentiment)}`}>
                                 <Icon name={getSentimentIcon(interaction.sentiment)} size={14} />
