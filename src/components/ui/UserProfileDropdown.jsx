@@ -456,13 +456,13 @@ const UserProfileDropdown = ({ user = null }) => {
             <div className="border-t border-border my-2"></div>
 
             {/* Help & Support */}
-            <button
+            {/* <button
               onClick={() => setIsOpen(false)}
               className="w-full flex items-center space-x-3 px-4 py-2 text-sm text-popover-foreground hover:bg-muted transition-colors duration-200"
             >
               <Icon name="HelpCircle" size={16} />
               <span>Help & Support</span>
-            </button>
+            </button> */}
 
             {/* Session Info */}
             {/* <div className="px-4 py-2 border-t border-border">
