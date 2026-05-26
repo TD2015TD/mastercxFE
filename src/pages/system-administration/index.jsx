@@ -24,6 +24,7 @@ import { getUsers } from '../../services/userService';
 import { getSystemHealth } from '../../services/systemService';
 import { languageService } from '../../services/languageService';
 import { exportToCsv } from '../../utils/exportCsv';
+import api from '../../services/api';
 
 // Access Denied Component
 const AccessDenied = ({ feature }) => (

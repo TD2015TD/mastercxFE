@@ -352,15 +352,33 @@ const TicketList = ({ filter = 'all' }) => {
       <div className="space-y-3">
         {/* Search + Clear */}
         <div className="flex gap-2 items-center">
-          <div className="flex-1">
-            <Input
-              type="text"
-              placeholder="Search by Ticket ID, Case ID, subject, or customer..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              icon="Search"
-            />
-          </div>
+          <div className="relative flex-1">
+              <Icon
+                name="Search"
+                size={18}
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground z-10"
+              />
+
+              <Input
+                type="text"
+                placeholder="Search by Ticket ID, Case ID, subject, or customer..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="
+                  pl-12
+                  h-11
+                  rounded-xl
+                  border border-border
+                  bg-background
+                  shadow-sm
+                  focus:ring-2
+                  focus:ring-blue-500/20
+                  focus:border-blue-400
+                  transition-all
+                  duration-200
+                "
+              />
+            </div>
           <Can permission="report.export">
             <Button
               variant="outline"

@@ -3,7 +3,7 @@ import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
 import CategoryManagement from './components/CategoryManagement';
 import ArticleManagement from './components/ArticleManagement';
-import { knowledgeBaseService } from '../../../services/knowledgeBaseService';
+import api from '../../../services/api';
 
 const KnowledgeBaseAdmin = () => {
   const [activeTab, setActiveTab] = useState('articles');
@@ -17,9 +17,24 @@ const KnowledgeBaseAdmin = () => {
   const fetchStatistics = async () => {
     try {
       setIsLoadingStats(true);
-      const response = await knowledgeBaseService.getStatistics();
-      if (response.success) {
-        setStatistics(response.data);
+
+      const response = await api.get('/knowledge-base-articles');
+
+      if (response.data.success) {
+        const articlesData =
+          response.data.data.data ||
+          response.data.data ||
+          [];
+
+        setStatistics({
+          total_articles: articlesData.length,
+          published_articles: articlesData.filter(
+            (article) => article.status === 'published'
+          ).length,
+          draft_articles: articlesData.filter(
+            (article) => article.status === 'draft'
+          ).length,
+        });
       }
     } catch (err) {
       console.error('Error fetching statistics:', err);
@@ -28,16 +43,39 @@ const KnowledgeBaseAdmin = () => {
     }
   };
 
-  const tabs = [
-    { id: 'articles', label: 'Articles', icon: 'FileText', description: 'Manage knowledge base articles' },
-    { id: 'categories', label: 'Categories', icon: 'Folder', description: 'Manage article categories' }
-  ];
+  const getTotalArticles = () => {
+    if (!statistics) return 0;
+    return statistics.total_articles || 0;
+  };
 
   const getStatusCount = (statusKey) => {
-    if (!statistics || !statistics.by_status) return 0;
-    const status = statistics.by_status.find(s => s.key === statusKey);
-    return status ? status.doc_count : 0;
+    if (!statistics) return 0;
+
+    if (statusKey === 'published') {
+      return statistics.published_articles || 0;
+    }
+
+    if (statusKey === 'draft') {
+      return statistics.draft_articles || 0;
+    }
+
+    return 0;
   };
+
+  const tabs = [
+    {
+      id: 'articles',
+      label: 'Articles',
+      icon: 'FileText',
+      description: 'Manage knowledge base articles',
+    },
+    {
+      id: 'categories',
+      label: 'Categories',
+      icon: 'Folder',
+      description: 'Manage article categories',
+    },
+  ];
 
   return (
     <div className="space-y-6">
@@ -48,7 +86,7 @@ const KnowledgeBaseAdmin = () => {
             <div>
               <p className="text-sm text-muted-foreground">Total Articles</p>
               <p className="text-2xl font-bold text-foreground mt-1">
-                {isLoadingStats ? '...' : statistics?.total_articles || 0}
+                {isLoadingStats ? '...' : getTotalArticles()}
               </p>
             </div>
             <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -74,20 +112,6 @@ const KnowledgeBaseAdmin = () => {
         <div className="bg-card border border-border rounded-lg p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-muted-foreground">Total Views</p>
-              <p className="text-2xl font-bold text-foreground mt-1">
-                {isLoadingStats ? '...' : statistics?.total_views || 0}
-              </p>
-            </div>
-            <div className="w-12 h-12 rounded-lg bg-info/10 flex items-center justify-center">
-              <Icon name="Eye" size={24} className="text-info" />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-card border border-border rounded-lg p-6">
-          <div className="flex items-center justify-between">
-            <div>
               <p className="text-sm text-muted-foreground">Draft Articles</p>
               <p className="text-2xl font-bold text-warning mt-1">
                 {isLoadingStats ? '...' : getStatusCount('draft')}
@@ -99,24 +123,6 @@ const KnowledgeBaseAdmin = () => {
           </div>
         </div>
       </div>
-
-      {/* Category Distribution */}
-      {statistics && statistics.by_category && statistics.by_category.length > 0 && (
-        <div className="bg-card border border-border rounded-lg p-6">
-          <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center">
-            <Icon name="BarChart" size={18} className="mr-2" />
-            Articles by Category
-          </h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-            {statistics.by_category.slice(0, 6).map((cat, idx) => (
-              <div key={idx} className="text-center p-3 bg-muted/30 rounded-lg">
-                <p className="text-xs text-muted-foreground truncate">{cat.key}</p>
-                <p className="text-lg font-bold text-foreground mt-1">{cat.doc_count}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Tabs */}
       <div className="bg-card border border-border rounded-lg">
@@ -139,14 +145,12 @@ const KnowledgeBaseAdmin = () => {
           </nav>
         </div>
 
-        {/* Tab Description */}
         <div className="px-6 py-3 bg-muted/30 border-b border-border">
           <p className="text-sm text-muted-foreground">
-            {tabs.find(tab => tab.id === activeTab)?.description}
+            {tabs.find((tab) => tab.id === activeTab)?.description}
           </p>
         </div>
 
-        {/* Tab Content */}
         <div className="p-6">
           {activeTab === 'articles' && <ArticleManagement />}
           {activeTab === 'categories' && <CategoryManagement />}
@@ -155,7 +159,10 @@ const KnowledgeBaseAdmin = () => {
 
       {/* Quick Actions */}
       <div className="bg-card border border-border rounded-lg p-6">
-        <h3 className="text-sm font-semibold text-foreground mb-4">Quick Actions</h3>
+        <h3 className="text-sm font-semibold text-foreground mb-4">
+          Quick Actions
+        </h3>
+
         <div className="grid grid-cols-1 gap-4">
           <Button
             variant="outline"

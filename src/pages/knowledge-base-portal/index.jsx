@@ -355,46 +355,109 @@ const KnowledgeBasePortal = () => {
 
   const tabs = [
     { id: 'browse', label: 'Browse Articles', icon: 'List' },
-    { id: 'search', label: 'Search', icon: 'Search' },
-    { id: 'recent', label: 'Recently Updated', icon: 'Clock' },
     { id: 'categories', label: 'Categories', icon: 'Folder' },
+    // { id: 'search', label: 'Search', icon: 'Search' },
+    { id: 'recent', label: 'Recently Updated', icon: 'Clock' },
     ...(userRole === 'agent' ? [{ id: 'upload', label: 'Upload Article', icon: 'Upload' }] : []),
   ];
 
   const renderTabContent = () => {
     switch (activeTab) {
-      case 'browse':
-        return (
-          <div className="space-y-6">
-            <div className="bg-card rounded-lg border border-border p-6">
-              <h3 className="text-lg font-semibold text-foreground mb-4">All Articles</h3>
-              {loading ? (
-                <div className="text-center py-8 text-muted-foreground">Loading...</div>
-              ) : articles.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">No articles found</div>
-              ) : (
-                <div className="space-y-3">
-                  {articles.map((article) => (
-                    <div key={article.id} onClick={() => handleViewArticle(article)} className="flex items-center justify-between p-4 bg-muted/30 rounded-lg hover:bg-muted/50 cursor-pointer">
-                      <div className="flex items-center space-x-3 flex-1">
-                        <Icon name="FileText" size={20} className="text-primary" />
-                        <div className="flex-1">
-                          <p className="font-medium text-foreground">{article.title}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {getCategoryName(article.category_code)} • By {article.author}
-                          </p>
-                        </div>
-                      </div>
-                      <span className="text-sm text-muted-foreground">
-                        {getRelativeTime(article.updated_at || article.published_at)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+      case 'browse': {
+  const filteredArticles = articles.filter((article) => {
+    const keyword = searchTerm.toLowerCase();
+
+    return (
+      article.title?.toLowerCase().includes(keyword) ||
+      article.author?.toLowerCase().includes(keyword) ||
+      getCategoryName(article.category_code)
+        ?.toLowerCase()
+        .includes(keyword)
+    );
+  });
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-card rounded-lg border border-border p-6">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
+          <h3 className="text-lg font-semibold text-foreground">
+            All Articles
+          </h3>
+
+          <div className="relative w-full md:w-80">
+            <Icon
+              name="Search"
+              size={18}
+              className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground z-10"
+            />
+
+            <Input
+              type="text"
+              placeholder="Search articles..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="
+                pl-12
+                h-11
+                rounded-xl
+                border border-border
+                bg-background
+                shadow-sm
+                focus:ring-2
+                focus:ring-blue-500/20
+                focus:border-blue-400
+                transition-all
+                duration-200
+              "
+            />
           </div>
-        );
+        </div>
+
+        {loading ? (
+          <div className="text-center py-8 text-muted-foreground">
+            Loading...
+          </div>
+        ) : articles.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            No articles found
+          </div>
+        ) : filteredArticles.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            No articles found for "{searchTerm}"
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {filteredArticles.map((article) => (
+              <div
+                key={article.id}
+                onClick={() => handleViewArticle(article)}
+                className="flex items-center justify-between p-4 bg-muted/30 rounded-lg hover:bg-muted/50 cursor-pointer"
+              >
+                <div className="flex items-center space-x-3 flex-1">
+                  <Icon name="FileText" size={20} className="text-primary" />
+
+                  <div className="flex-1">
+                    <p className="font-medium text-foreground">
+                      {article.title}
+                    </p>
+
+                    <p className="text-sm text-muted-foreground">
+                      {getCategoryName(article.category_code)} • By {article.author}
+                    </p>
+                  </div>
+                </div>
+
+                <span className="text-sm text-muted-foreground">
+                  {getRelativeTime(article.updated_at || article.published_at)}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
       case 'search':
         return (
