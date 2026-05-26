@@ -271,14 +271,14 @@ const TicketManagement = () => {
           </div>
 
           {/* Tab Description */}
-          <div className="bg-muted/30 rounded-lg p-4 mb-6 border border-border">
+          {/* <div className="bg-muted/30 rounded-lg p-4 mb-6 border border-border">
             <p className="text-sm text-muted-foreground">
               {activeTab === 'all' && 'View and manage all tickets in the system across all departments and priorities.'}
               {activeTab === 'my-tickets' && 'View tickets assigned to you for tracking and resolution.'}
               {activeTab === 'unassigned' && 'View unassigned tickets that need to be assigned to agents.'}
               {activeTab === 'escalated' && 'View escalated tickets that require immediate attention.'}
             </p>
-          </div>
+          </div> */}
 
           {/* Tab Content */}
           <div className="mb-8">
