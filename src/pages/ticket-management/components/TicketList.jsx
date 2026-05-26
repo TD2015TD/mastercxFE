@@ -350,6 +350,7 @@ const TicketList = ({ filter = 'all' }) => {
     <div className="space-y-4w-full max-w-none">
       {/* Filters */}
       <div className="space-y-3">
+        <h1>Search Ticket</h1>
         {/* Search + Clear */}
         <div className="flex gap-2 items-center">
           <div className="relative flex-1">
