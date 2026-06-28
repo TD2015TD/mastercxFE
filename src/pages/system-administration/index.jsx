@@ -15,6 +15,7 @@ import SlaPerformanceMetrics from './sla-configuration/components/SlaPerformance
 import SlaRulesEngine from './sla-configuration/components/SlaRulesEngine';
 import ReportConfigurationPanel from './report-configuration';
 import KnowledgeBaseAdmin from './knowledge-base';
+import ChatbotLivechatHealth from './components/ChatbotLivechatHealth';
 import RoleManagement from './rbac/components/RoleManagement';
 import RoleMenuManagement from './rbac/components/RoleMenuManagement';
 import MenuPermissionMatrix from './rbac/components/MenuPermissionMatrix';
@@ -131,19 +132,37 @@ const SystemAdministration = () => {
     { id: 'users', label: t('systemAdmin.tabs.users'), icon: 'Users', description: t('systemAdmin.tabs.usersDesc'), permission: 'user.manage' },
     { id: 'rbac', label: 'RBAC Management', icon: 'Shield', description: 'Manage roles, permissions, and menu assignments', permission: 'role.manage' },
     { id: 'sla', label: 'SLA Management', icon: 'Clock', description: 'Configure and monitor Service Level Agreements', permission: 'sla.manage' },
-    { id: 'knowledge-base', label: 'Knowledge Base', icon: 'BookOpen', description: 'Manage knowledge base articles and categories', permission: null },
+    { id: 'knowledge-base', label: 'Knowledge Base', icon: 'BookOpen', description: 'Manage knowledge base articles and categories', permission: null, minRole: 'supervisor' },
     { id: 'reports', label: 'Report Configuration', icon: 'BarChart', description: 'Configure dashboards and assign role-based access to reports', permission: 'system.config' },
     { id: 'system', label: t('systemAdmin.tabs.system'), icon: 'Settings', description: t('systemAdmin.tabs.systemDesc'), permission: 'system.config' },
-    { id: 'health', label: t('systemAdmin.tabs.health'), icon: 'Activity', description: t('systemAdmin.tabs.healthDesc'), permission: null } // null means everyone can access
+    { id: 'health', label: t('systemAdmin.tabs.health'), icon: 'Activity', description: t('systemAdmin.tabs.healthDesc'), permission: null }, // null means everyone can access
+    { id: 'chatbot-health', label: 'Chatbot/Livechat Health', icon: 'HeartPulse', description: 'Integration reporting for CRM chatbot and livechat channels', permission: 'system.config', minRole: 'admin' }
   ];
   
-  // Filter tabs based on permissions
+  const ROLE_LEVEL = { agent: 1, user: 1, supervisor: 2, admin: 3, super_admin: 4, 'super admin': 4 };
+  const MIN_ROLE_LEVEL = { supervisor: 2, admin: 3, super_admin: 4 };
+
+  // Filter tabs based on permissions and minimum role level
   const tabs = allTabs.filter(tab => {
+    // Check minimum role requirement
+    if (tab.minRole) {
+      const userLevel = ROLE_LEVEL[currentUserRole] || 1;
+      const required = MIN_ROLE_LEVEL[tab.minRole] || 2;
+      if (userLevel < required) return false;
+    }
     // If no permission required, allow access
     if (!tab.permission) return true;
     // Check if user has the required permission
     return can(tab.permission);
   });
+
+  // Auto-select first accessible tab if the default tab isn't available for this role
+  const tabIds = tabs.map(t => t.id).join(',');
+  useEffect(() => {
+    if (tabs.length > 0 && !tabs.find(t => t.id === activeTab)) {
+      setActiveTab(tabs[0].id);
+    }
+  }, [tabIds]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const statsData = [
     {
@@ -213,9 +232,15 @@ const SystemAdministration = () => {
           </Can>
         );
       case 'knowledge-base':
-        return <KnowledgeBaseAdmin />;
+        return (ROLE_LEVEL[currentUserRole] || 1) >= 2
+          ? <KnowledgeBaseAdmin />
+          : <AccessDenied feature="Knowledge Base Management" />;
       case 'health':
         return <SystemHealthMonitor />;
+      case 'chatbot-health':
+        return (ROLE_LEVEL[currentUserRole] || 1) >= 3
+          ? <ChatbotLivechatHealth />
+          : <AccessDenied feature="Chatbot/Livechat Health" />;
       default:
         return <UserManagementPanel />;
     }
@@ -514,12 +539,12 @@ const SystemAdministration = () => {
         {/* Navigation Tabs */}
         <div className="bg-card rounded-lg border border-border mb-6">
           <div className="border-b border-border">
-            <nav className="flex space-x-8 px-6" aria-label="Administration Tabs">
+            <nav className="flex flex-wrap gap-x-6 gap-y-0 px-6" aria-label="Administration Tabs">
               {tabs?.map((tab) => (
                 <button
                   key={tab?.id}
                   onClick={() => setActiveTab(tab?.id)}
-                  className={`flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                  className={`flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors whitespace-nowrap ${
                     activeTab === tab?.id
                       ? 'border-primary text-primary' :'border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground'
                   }`}

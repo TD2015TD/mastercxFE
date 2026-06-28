@@ -4,6 +4,7 @@ import Icon from '../AppIcon';
 import Button from './Button';
 import { useMitelSignalR } from '../../hooks/useMitelSignalR';
 import mitelConfigService from '../../services/mitelConfigService';
+import api from '../../services/api';
 
 // ConversationNotification - Real-time Employee Inbox Notification Component
 // Shows active conversations from Mitel SignalR in a dropdown format
@@ -161,6 +162,15 @@ const ConversationNotification = ({ className = '', onConversationEvent }) => {
       idsToRemove.forEach(conversationId => {
         setConversations(prev => prev.filter(c => c.conversationId !== conversationId));
         onConversationEvent?.('inbox:conversation_removed', { conversationId });
+
+        // Auto-close the CRM ticket linked to this Mitel interaction when agent hangs up
+        api.post('/tickets/close-by-mitel-id', { mitel_interaction_id: conversationId })
+          .then(res => {
+            if (res.data?.data?.ticket_number) {
+              console.log('[CRM] Ticket auto-closed via Mitel hangup:', res.data.data.ticket_number);
+            }
+          })
+          .catch(err => console.warn('[CRM] close-by-mitel-id failed:', err?.response?.data || err.message));
       });
     });
 

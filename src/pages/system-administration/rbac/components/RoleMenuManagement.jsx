@@ -4,6 +4,7 @@ import Icon from '../../../../components/AppIcon';
 import Button from '../../../../components/ui/Button';
 import Modal from '../../../../components/ui/Modal';
 import api from '../../../../services/api';
+import { menuService } from '../../../../services/menuService';
 
 const RoleMenuManagement = () => {
   const [roles, setRoles] = useState([]);
@@ -147,6 +148,8 @@ const RoleMenuManagement = () => {
       setIsModalOpen(false);
       loadRoleMenuItems(selectedRole.id);
       loadRoles();
+      // Clear caches so all users with this role see updated menus immediately
+      await menuService.clearCache();
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to save menu assignments');
       console.error('Error saving menu assignments:', error);
@@ -168,6 +171,7 @@ const RoleMenuManagement = () => {
       toast.success('Menu removed successfully');
       loadRoleMenuItems(selectedRole.id);
       loadRoles();
+      await menuService.clearCache();
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to remove menu');
       console.error('Error removing menu:', error);

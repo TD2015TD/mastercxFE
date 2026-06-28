@@ -5,6 +5,7 @@ import { knowledgeBaseService } from '../../../../services/knowledgeBaseService'
 
 const CategoryManagement = () => {
   const [categories, setCategories] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [editingCategory, setEditingCategory] = useState(null);
@@ -161,6 +162,20 @@ const CategoryManagement = () => {
         </div>
       )}
 
+      {/* Search */}
+      <div className="bg-card border border-border rounded-lg p-4">
+        <div className="relative max-w-sm">
+          <Icon name="Search" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search categories..."
+            className="w-full pl-9 pr-3 py-2 border border-border rounded-md bg-background text-foreground focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
+          />
+        </div>
+      </div>
+
       {/* Categories Table */}
       <div className="bg-card border border-border rounded-lg overflow-hidden">
         <table className="min-w-full divide-y divide-border">
@@ -202,24 +217,35 @@ const CategoryManagement = () => {
                   </div>
                 </td>
               </tr>
-            ) : categories.length === 0 ? (
-              <tr>
-                <td colSpan="8" className="px-6 py-12 text-center">
-                  <Icon name="FolderOpen" size={48} className="mx-auto text-muted-foreground mb-2" />
-                  <p className="text-sm text-muted-foreground">No categories found</p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    iconName="Plus"
-                    className="mt-4"
-                    onClick={() => handleOpenModal()}
-                  >
-                    Create First Category
-                  </Button>
-                </td>
-              </tr>
-            ) : (
-              categories.map((category) => (
+            ) : (() => {
+                const filtered = categories.filter(c => {
+                  if (!searchQuery.trim()) return true;
+                  const q = searchQuery.toLowerCase();
+                  return (c.code || '').toLowerCase().includes(q)
+                    || (c.name_en || c.name || c.value || '').toLowerCase().includes(q)
+                    || (c.name_ms || '').toLowerCase().includes(q);
+                });
+                return filtered.length === 0 ? (
+                  <tr>
+                    <td colSpan="8" className="px-6 py-12 text-center">
+                      <Icon name="FolderOpen" size={48} className="mx-auto text-muted-foreground mb-2" />
+                      <p className="text-sm text-muted-foreground">
+                        {searchQuery ? `No categories matching "${searchQuery}"` : 'No categories found'}
+                      </p>
+                      {!searchQuery && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          iconName="Plus"
+                          className="mt-4"
+                          onClick={() => handleOpenModal()}
+                        >
+                          Create First Category
+                        </Button>
+                      )}
+                    </td>
+                  </tr>
+                ) : filtered.map((category) => (
                 <tr key={category.id} className="hover:bg-muted/30 transition-colors">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="text-sm font-mono text-foreground">{category.code}</span>
@@ -275,7 +301,7 @@ const CategoryManagement = () => {
                   </td>
                 </tr>
               ))
-            )}
+            })()}
           </tbody>
         </table>
       </div>

@@ -22,6 +22,7 @@ import AgentManagement from './pages/agent-management';
 import UserForm from './pages/system-administration/user-management/UserForm';
 import EmployeeInboxPage from './pages/employee-inbox';
 import LiveChatPage from './pages/live-chat/LiveChatPage';
+import EmailInteractionPage from './pages/email-interaction';
 
 function ChatWidgetController() {
   // Chat widget is disabled
@@ -58,6 +59,10 @@ const Routes = () => {
         <Route path="/agent-management" element={<Layout><AgentManagement /></Layout>} />
         <Route path="/employee-inbox" element={<Layout><EmployeeInboxPage /></Layout>} />
         <Route path="/communications/chat" element={<Layout><LiveChatPage /></Layout>} />
+        {/* Email interaction — no Layout, embedded as Mitel OpenMedia iframe */}
+        <Route path="/communications/email" element={<EmailInteractionPage />} />
+        {/* Alias used by Mitel Ignite targetUri */}
+        <Route path="/email-interaction" element={<EmailInteractionPage />} />
         <Route path="*" element={<NotFound />} />
       </RouterRoutes>
       <ChatWidgetController />

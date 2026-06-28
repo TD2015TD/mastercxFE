@@ -15,6 +15,13 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    // When the request body is FormData, remove the default Content-Type so the
+    // browser can set multipart/form-data with the correct boundary automatically.
+    // Keeping application/json here would cause axios to JSON-stringify the FormData,
+    // dropping File objects and breaking file uploads.
+    if (config.data instanceof FormData) {
+      delete config.headers['Content-Type'];
+    }
     return config;
   },
   (error) => {

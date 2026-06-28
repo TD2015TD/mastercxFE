@@ -13,6 +13,7 @@ import {
   getDepartmentPerformance,
   getLiveChatStatus,
   getTicketsByChannel,
+  getDepartments,
 } from '../../../services/dashboardService';
 import { authService } from '../../../services/authService';
 import { agentService } from '../../../services/agentService';
@@ -36,6 +37,7 @@ const SupervisorDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [agents, setAgents] = useState([]);
+  const [departments, setDepartments] = useState([]);
 
   // Get current user info
   useEffect(() => {
@@ -55,15 +57,18 @@ const SupervisorDashboard = () => {
     }
   }, []);
 
-  // Fetch agents list for the filter dropdown
+  // Fetch agents + departments for filter dropdowns
   useEffect(() => {
     agentService.getAgents({ status: 'active', per_page: 200 })
       .then(res => {
-        // API returns { success, data: { data: [...], ... } } (paginated)
         const list = res?.data?.data ?? res?.data ?? res ?? [];
         setAgents(Array.isArray(list) ? list : []);
       })
       .catch(() => setAgents([]));
+
+    getDepartments()
+      .then(list => setDepartments(Array.isArray(list) ? list : []))
+      .catch(() => setDepartments([]));
   }, []);
 
   // Fetch dashboard data
@@ -235,8 +240,9 @@ const SupervisorDashboard = () => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                 >
                   <option value="all">All Departments</option>
-                  <option value="BMC">BMC</option>
-                  <option value="TOC">TOC</option>
+                  {departments.map(dept => (
+                    <option key={dept} value={dept}>{dept}</option>
+                  ))}
                 </select>
               </div>
 

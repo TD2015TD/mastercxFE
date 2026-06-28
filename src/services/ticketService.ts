@@ -258,4 +258,9 @@ export const ticketService = {
     const response = await api.post('/tickets/reserve-number', params);
     return response.data;
   },
+
+  closeByMitelId: async (mitelInteractionId: string) => {
+    const response = await api.post('/tickets/close-by-mitel-id', { mitel_interaction_id: mitelInteractionId });
+    return response.data;
+  },
 };

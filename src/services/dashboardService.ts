@@ -167,6 +167,14 @@ export const getTicketsByChannel = async (department?: string | null, agentId?: 
   return response.data;
 };
 
+/**
+ * Get distinct department values from the agents table
+ */
+export const getDepartments = async (): Promise<string[]> => {
+  const response = await api.get('/dashboard/departments');
+  return response.data?.data ?? [];
+};
+
 export default {
   getAgentDashboard,
   getSupervisorDashboard,

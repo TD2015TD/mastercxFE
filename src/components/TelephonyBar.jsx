@@ -489,6 +489,12 @@ const TelephonyBar = ({ className = '', onCallEvent }) => {
         console.log('❌ Call disconnected/ended');
         setStatus('ENDED');
         onCallEvent?.('telephony:ended', conversation);
+
+        // Auto-close email ticket when an OpenMedia interaction ends
+        const mediaType = (conversation.mediaType || conversation.media_type || '').toLowerCase();
+        if ((mediaType === 'openmedia' || mediaType === 'email') && conversation.conversationId) {
+          ticketService.closeByMitelId(conversation.conversationId).catch(() => {});
+        }
       }
     });
 
@@ -497,6 +503,12 @@ const TelephonyBar = ({ className = '', onCallEvent }) => {
       console.log('📞 Conversation REMOVED:', JSON.stringify(data, null, 2));
       setStatus('ENDED');
       onCallEvent?.('telephony:ended', data);
+
+      // Auto-close email ticket when an OpenMedia interaction is removed
+      const mediaType = (data?.mediaType || data?.media_type || '').toLowerCase();
+      if ((mediaType === 'openmedia' || mediaType === 'email') && data?.conversationId) {
+        ticketService.closeByMitelId(data.conversationId).catch(() => {});
+      }
     });
 
     // Employee state changes

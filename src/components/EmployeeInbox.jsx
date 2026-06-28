@@ -5,6 +5,7 @@ import Button from './ui/Button';
 import { useMitelSignalR } from '../hooks/useMitelSignalR';
 import customerInteractionService from '../services/customerInteractionService';
 import mitelConfigService from '../services/mitelConfigService';
+import api from '../services/api';
 
 const EmployeeInbox = ({ className = '', onConversationEvent }) => {
   const navigate = useNavigate();
@@ -215,6 +216,15 @@ const EmployeeInbox = ({ className = '', onConversationEvent }) => {
             },
           });
         }
+
+        // Auto-close the CRM ticket linked to this Mitel interaction
+        api.post('/tickets/close-by-mitel-id', { mitel_interaction_id: conversationId })
+          .then(res => {
+            if (res.data?.data?.ticket_number) {
+              console.log('[CRM] Ticket auto-closed via Mitel hangup:', res.data.data.ticket_number);
+            }
+          })
+          .catch(err => console.warn('[CRM] close-by-mitel-id failed:', err?.response?.data || err.message));
 
         onConversationEvent?.('inbox:conversation_removed', { conversationId });
       });

@@ -37,39 +37,87 @@ const AgentDashboard = () => {
 
   // Get current user info
   useEffect(() => {
-    setUserName(currentUser?.name || 'Agent');
-    setAgentId(currentUser?.agent?.id || null);
-    
-    const userSession = localStorage.getItem('user-session');
-    if (userSession) {
-      try {
-        const userData = JSON.parse(userSession);
-        const dept = userData.agent?.department || userData.department || 'all';
-        setUserDepartment(dept);
-      } catch (err) {
-        console.error('Error parsing user session:', err);
+    const loadUserData = async () => {
+      setUserName(currentUser?.name || 'Agent');
+      
+      // If currentUser doesn't have agent data, try to fetch it
+      if (currentUser && !currentUser.agent) {
+        console.log('[AgentDashboard] Current user missing agent data, fetching from API...');
+        try {
+          const { user, agent } = await authService.me();
+          if (agent && agent.id) {
+            console.log('[AgentDashboard] Fetched agent ID from API:', agent.id);
+            setAgentId(agent.id);
+            setUserDepartment(agent.department || 'all');
+            return;
+          }
+        } catch (error) {
+          console.error('[AgentDashboard] Failed to fetch user data:', error);
+        }
       }
-    }
+      
+      setAgentId(currentUser?.agent?.id || null);
+      
+      console.log('[AgentDashboard] Current user:', currentUser);
+      console.log('[AgentDashboard] Has agent:', !!currentUser?.agent);
+      console.log('[AgentDashboard] Agent ID:', currentUser?.agent?.id);
+      console.log('[AgentDashboard] Set agentId to:', currentUser?.agent?.id || null);
+      
+      const userSession = localStorage.getItem('user-session');
+      if (userSession) {
+        try {
+          const userData = JSON.parse(userSession);
+          const dept = userData.agent?.department || userData.department || 'all';
+          setUserDepartment(dept);
+          console.log('[AgentDashboard] Parsed user session:', userData);
+          console.log('[AgentDashboard] Has agent in session:', !!userData.agent);
+          console.log('[AgentDashboard] Agent ID in session:', userData.agent?.id);
+        } catch (err) {
+          console.error('Error parsing user session:', err);
+        }
+      }
+    };
+    
+    loadUserData();
   }, [currentUser]);
 
   // Fetch dashboard data
   const fetchDashboardData = async () => {
-    if (!agentId) return;
+    console.log('[AgentDashboard] fetchDashboardData called with agentId:', agentId, 'userDepartment:', userDepartment);
+    
+    if (!agentId) {
+      console.log('[AgentDashboard] Skipping data fetch because agentId is:', agentId);
+      return;
+    }
     
     try {
       setLoading(true);
       const dept = userDepartment === 'all' ? null : userDepartment;
+      
+      // TEMPORARY FIX: Try without department filter
+      const deptParam = null; // Force null to test if department is the issue
+      
+      console.log('[AgentDashboard] Fetching dashboard data with params:', { dept, deptParam, agentId });
+      console.log('[AgentDashboard] Using deptParam (null for testing):', deptParam);
 
       const [metricsRes, closedRes, deptPerfRes, liveChatRes, channelRes] = await Promise.allSettled([
-        getTicketMetrics(dept, agentId),
-        getTicketsClosedByDay(dept, agentId),
+        getTicketMetrics(deptParam, agentId),
+        getTicketsClosedByDay(deptParam, agentId),
         getDepartmentPerformance(),
-        getLiveChatStatus(dept, agentId),
-        getTicketsByChannel(dept, agentId),
+        getLiveChatStatus(deptParam, agentId),
+        getTicketsByChannel(deptParam, agentId),
       ]);
 
+      console.log('[AgentDashboard] API Responses:', {
+        metricsRes: metricsRes.status === 'fulfilled' ? metricsRes.value.data : metricsRes.reason,
+        closedRes: closedRes.status === 'fulfilled' ? closedRes.value.data : closedRes.reason,
+      });
+
       if (metricsRes.status === 'fulfilled') {
+        console.log('[AgentDashboard] Setting ticket metrics:', metricsRes.value.data);
         setTicketMetrics(metricsRes.value.data);
+      } else {
+        console.error('[AgentDashboard] Metrics API failed:', metricsRes.reason);
       }
       if (closedRes.status === 'fulfilled') {
         setTicketsClosedData(closedRes.value.data);

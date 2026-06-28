@@ -100,6 +100,8 @@ export const authService = {
 
         console.log('authService.login - Storing tokens, user data, and permissions');
         console.log('authService.login - User object:', user);
+        console.log('authService.login - User has agent:', !!user.agent);
+        console.log('authService.login - Agent ID:', user.agent?.id);
         console.log('authService.login - User role:', user.role);
         console.log('authService.login - User role slug:', user.role?.slug);
         console.log('authService.login - Permissions:', permissions);

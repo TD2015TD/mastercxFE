@@ -87,35 +87,15 @@ class MenuService {
    */
   async getMenuItems(): Promise<MenuItem[]> {
     try {
-      // Check cache first (5 minutes cache)
-      const cacheKey = 'menu_items_cache';
-      const cacheTimestampKey = 'menu_items_cache_timestamp';
-      const cached = localStorage.getItem(cacheKey);
-      const cacheTimestamp = localStorage.getItem(cacheTimestampKey);
-      
-      if (cached && cacheTimestamp) {
-        const now = Date.now();
-        const cacheAge = now - parseInt(cacheTimestamp, 10);
-        // Cache valid for 5 minutes
-        if (cacheAge < 5 * 60 * 1000) {
-          return JSON.parse(cached);
-        }
-      }
-
+      // No frontend cache — backend caches per role (busted on every RBAC save).
+      // A frontend cache caused stale menus across all browsers when admin changed role assignments.
       const response = await apiClient.get<MenuResponse>('/menus');
-      
       if (response.data.success) {
-        // Cache the result
-        localStorage.setItem(cacheKey, JSON.stringify(response.data.data));
-        localStorage.setItem(cacheTimestampKey, Date.now().toString());
-        
         return response.data.data;
       }
-      
       return [];
     } catch (error) {
       console.error('Failed to fetch menu items:', error);
-      // Return empty array on error
       return [];
     }
   }

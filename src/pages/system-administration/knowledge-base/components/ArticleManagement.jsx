@@ -17,6 +17,7 @@ const ArticleManagement = () => {
   const [filters, setFilters] = useState({
     status: '',
     category: '',
+    search: '',
     page: 1,
     per_page: 20
   });
@@ -43,7 +44,8 @@ const ArticleManagement = () => {
       setIsLoading(true);
       const params = {};
       if (filters.status) params.status = filters.status;
-      if (filters.category) params.category_code = filters.category; // Use category_code for file-based articles
+      if (filters.category) params.category_code = filters.category;
+      if (filters.search) params.search = filters.search;
       if (filters.page) params.page = filters.page;
 
       // Use getArticlesWithFiles for file-based articles from database
@@ -210,7 +212,20 @@ const ArticleManagement = () => {
 
       {/* Filters */}
       <div className="bg-card border border-border rounded-lg p-4">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium text-foreground mb-2">Search</label>
+            <div className="relative">
+              <Icon name="Search" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <input
+                type="text"
+                value={filters.search}
+                onChange={(e) => setFilters({ ...filters, search: e.target.value, page: 1 })}
+                placeholder="Search by title or content..."
+                className="w-full pl-9 pr-3 py-2 border border-border rounded-md bg-background text-foreground focus:ring-2 focus:ring-primary focus:border-transparent"
+              />
+            </div>
+          </div>
           <div>
             <label className="block text-sm font-medium text-foreground mb-2">Status</label>
             <select
@@ -237,19 +252,15 @@ const ArticleManagement = () => {
               ))}
             </select>
           </div>
-          <div className="flex items-end">
-            <Button
-              variant="outline"
-              iconName="RefreshCw"
-              fullWidth
-              onClick={() => {
-                setFilters({ status: '', category: '', page: 1, per_page: 20 });
-                fetchArticles();
-              }}
-            >
-              Reset Filters
-            </Button>
-          </div>
+        </div>
+        <div className="mt-3 flex justify-end">
+          <Button
+            variant="outline"
+            iconName="RefreshCw"
+            onClick={() => setFilters({ status: '', category: '', search: '', page: 1, per_page: 20 })}
+          >
+            Reset Filters
+          </Button>
         </div>
       </div>
 

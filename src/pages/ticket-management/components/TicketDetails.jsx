@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import { ticketService } from '../../../services/ticketService';
 import lookupService from '../../../services/lookupService';
@@ -7,12 +7,76 @@ import { agentService } from '../../../services/agentService';
 import Button from '../../../components/ui/Button';
 import Input from '../../../components/ui/Input';
 import Select from '../../../components/ui/Select';
+import api from '../../../services/api';
+import Icon from '../../../components/AppIcon';
+
+// Strip Gmail/Outlook quoted-reply chains from HTML, returning the clean
+// content and whether any quotes were found.
+const stripEmailQuotes = (html) => {
+  if (!html) return { clean: html, hasQuotes: false };
+  try {
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    const selectors = [
+      '.gmail_quote', '.gmail_attr', '.gmail_quote_container',
+      '#divRepliedMessage', '#OLK_SRC_BODY_SECTION', '.OutlookMessageHeader',
+      'blockquote[type="cite"]', 'div[style*="border-left"]',
+    ];
+    let found = false;
+    selectors.forEach(sel => {
+      doc.querySelectorAll(sel).forEach(el => { el.remove(); found = true; });
+    });
+    // Trim trailing <br>/<p> whitespace
+    const body = doc.body;
+    while (body.lastElementChild) {
+      const last = body.lastElementChild;
+      if (['BR', 'P', 'DIV'].includes(last.tagName) && !last.textContent.trim() && !last.querySelector('img')) {
+        last.remove();
+      } else break;
+    }
+    return { clean: body.innerHTML, hasQuotes: found };
+  } catch {
+    return { clean: html, hasQuotes: false };
+  }
+};
 
 const TicketDetails = ({ ticket, onUpdate }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [departments, setDepartments] = useState([]);
   const [priorities, setPriorities] = useState([]);
+  const [emailMessages, setEmailMessages] = useState([]);
+  const [emailLoading, setEmailLoading] = useState(false);
+  // Track which messages are collapsed (by index); default all expanded
+  const [collapsedMsgs, setCollapsedMsgs] = useState(new Set());
+  // Track which messages are showing their quoted text
+  const [showQuotes, setShowQuotes] = useState(new Set());
+
+  const toggleCollapse = (idx) => {
+    setCollapsedMsgs(prev => {
+      const next = new Set(prev);
+      next.has(idx) ? next.delete(idx) : next.add(idx);
+      return next;
+    });
+  };
+
+  const toggleQuote = (idx) => {
+    setShowQuotes(prev => {
+      const next = new Set(prev);
+      next.has(idx) ? next.delete(idx) : next.add(idx);
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    if (ticket?.channel !== 'email' || !ticket?.ticket_number) return;
+    setEmailLoading(true);
+    api.get(`/tickets/${ticket.ticket_number}/email-thread`)
+      .then(res => {
+        if (res.data.success) setEmailMessages(res.data.data.messages || []);
+      })
+      .catch(() => {})
+      .finally(() => setEmailLoading(false));
+  }, [ticket?.ticket_number, ticket?.channel]);
   const [customerContacts, setCustomerContacts] = useState([]);
   const [agents, setAgents] = useState([]);
   const [isLoadingAgents, setIsLoadingAgents] = useState(false);
@@ -337,9 +401,148 @@ const TicketDetails = ({ ticket, onUpdate }) => {
       {/* Issue Description */}
       <div className="mt-6">
         <h4 className="font-medium text-foreground mb-3">Issue Description</h4>
-        <div className="bg-muted rounded-lg p-4">
-          <p className="text-sm text-foreground leading-relaxed" style={{ whiteSpace: 'pre-wrap' }}>{ticket?.description}</p>
-        </div>
+        {ticket?.channel === 'email' ? (
+          <div className="border border-border rounded-lg divide-y divide-border overflow-hidden">
+            {emailLoading ? (
+              <div className="p-4 text-xs text-muted-foreground">Loading email thread…</div>
+            ) : emailMessages.length === 0 ? (
+              <div className="bg-muted rounded-lg p-4">
+                <p className="text-sm text-foreground leading-relaxed" style={{ whiteSpace: 'pre-wrap' }}>{ticket?.description || '(no content)'}</p>
+              </div>
+            ) : (
+              emailMessages.map((msg, i) => {
+                const outbound = msg.direction === 'outbound';
+                const sender = msg.from_name || msg.from_email || '?';
+                const isCollapsed = collapsedMsgs.has(i);
+                const quoteVisible = showQuotes.has(i);
+
+                // Resolve cid: image refs → stored URLs
+                const resolveCids = (html) => {
+                  if (!html) return null;
+                  const atts = msg.attachments || [];
+                  const cidMap = {};
+                  const imageAtts = [];
+                  atts.forEach(att => {
+                    if (att.content_id) {
+                      cidMap[att.content_id] = att.url;
+                      const local = att.content_id.includes('@') ? att.content_id.split('@')[0] : null;
+                      if (local) cidMap[local] = att.url;
+                    }
+                    const fname = att.filename || att.name || '';
+                    if (fname) cidMap[fname] = att.url;
+                    const mime = (att.mime_type || '').toLowerCase();
+                    if (mime.startsWith('image/') || /\.(png|jpe?g|gif|webp|svg|bmp)$/i.test(fname)) {
+                      imageAtts.push(att);
+                    }
+                  });
+                  let fallbackIdx = 0;
+                  return html.replace(/<img([^>]*?)src=["']cid:([^"'>\s]+)["']([^>]*?)>/gi, (m, before, cid, after) => {
+                    const url = cidMap[cid] || cidMap[cid.split('@')[0]] || null;
+                    if (url) return `<img${before}src="${url}"${after}>`;
+                    const attrs = before + after;
+                    const altM = attrs.match(/alt=["']([^"']+)["']/i);
+                    if (altM) {
+                      const byAlt = atts.find(a => (a.filename || a.name) === altM[1]);
+                      if (byAlt?.url) return `<img${before}src="${byAlt.url}"${after}>`;
+                    }
+                    if (imageAtts[fallbackIdx]?.url) return `<img${before}src="${imageAtts[fallbackIdx++].url}"${after}>`;
+                    return `<img${before}src="" alt="[Image unavailable]" style="display:inline-block;padding:2px 6px;background:#f3f4f6;border:1px solid #e5e7eb;border-radius:3px;font-size:11px;color:#6b7280"${after}>`;
+                  });
+                };
+
+                // Strip quoted reply chains; keep originals for toggle
+                const { clean: cleanHtml, hasQuotes } = stripEmailQuotes(msg.body_html);
+                const displayHtml = resolveCids(quoteVisible ? msg.body_html : cleanHtml);
+                const plainText = msg.body_text || '(no content)';
+
+                return (
+                  <div key={msg.id} className={`${outbound ? 'bg-primary/5' : 'bg-background'}`}>
+                    {/* Clickable header — toggles collapse */}
+                    <button
+                      onClick={() => toggleCollapse(i)}
+                      className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/40 transition-colors text-left"
+                    >
+                      <div className="flex items-center gap-2">
+                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${outbound ? 'bg-primary/20 text-primary' : 'bg-purple-100 text-purple-700'}`}>
+                          {sender.charAt(0).toUpperCase()}
+                        </div>
+                        <span className="text-xs font-semibold text-foreground">{sender}</span>
+                        {outbound
+                          ? <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded font-medium">Sent</span>
+                          : <span className="text-[10px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded font-medium">Received</span>
+                        }
+                        {isCollapsed && (
+                          <span className="text-[10px] text-muted-foreground italic truncate max-w-[200px]">
+                            {(cleanHtml
+                              ? new DOMParser().parseFromString(cleanHtml, 'text/html').body.textContent
+                              : plainText
+                            ).trim().slice(0, 60) || '…'}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-[10px] text-muted-foreground">
+                          {msg.received_at ? new Date(msg.received_at).toLocaleString('en-MY', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : ''}
+                        </span>
+                        <Icon name={isCollapsed ? 'ChevronDown' : 'ChevronUp'} size={14} className="text-muted-foreground" />
+                      </div>
+                    </button>
+
+                    {/* Body — hidden when collapsed */}
+                    {!isCollapsed && (
+                      <div className="px-4 pb-4">
+                        {displayHtml ? (
+                          <div
+                            className="text-sm text-foreground leading-relaxed [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_li]:my-0.5 [&_p]:mb-1 [&_img]:max-w-full [&_img]:rounded"
+                            dangerouslySetInnerHTML={{ __html: displayHtml }}
+                          />
+                        ) : (
+                          <p className="text-sm text-foreground leading-relaxed" style={{ whiteSpace: 'pre-wrap' }}>
+                            {plainText}
+                          </p>
+                        )}
+
+                        {/* Show/hide quoted text toggle */}
+                        {hasQuotes && (
+                          <button
+                            onClick={() => toggleQuote(i)}
+                            className="mt-2 flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+                          >
+                            <Icon name={quoteVisible ? 'ChevronUp' : 'ChevronDown'} size={12} />
+                            {quoteVisible ? 'Hide quoted text' : 'Show quoted text'}
+                          </button>
+                        )}
+
+                        {/* Attachments */}
+                        {msg.attachments && msg.attachments.length > 0 && (
+                          <div className="mt-3 pt-2 border-t border-border flex flex-wrap gap-2">
+                            {msg.attachments.map((att, j) => (
+                              <a
+                                key={j}
+                                href={att.url || '#'}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="flex items-center gap-1.5 text-xs border border-border rounded-md px-2.5 py-1.5 bg-muted hover:bg-muted/80 transition-colors"
+                              >
+                                <Icon name="Paperclip" size={12} />
+                                <span className="max-w-[180px] truncate">{att.filename || att.name || `Attachment ${j + 1}`}</span>
+                                {att.size && <span className="text-muted-foreground">({(att.size / 1024).toFixed(0)} KB)</span>}
+                              </a>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            )}
+          </div>
+        ) : (
+          <div className="bg-muted rounded-lg p-4">
+            <p className="text-sm text-foreground leading-relaxed" style={{ whiteSpace: 'pre-wrap' }}>{ticket?.description}</p>
+          </div>
+        )}
       </div>
     </div>
   );

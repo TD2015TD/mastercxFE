@@ -13,6 +13,7 @@ const KnowledgeBasePortal = () => {
   const userRole = user?.role?.slug ?? 'agent';
 
   const [activeTab, setActiveTab] = useState('browse');
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState({
@@ -109,10 +110,12 @@ const KnowledgeBasePortal = () => {
   };
 
   // Fetch articles
-  const fetchArticles = async () => {
+  const fetchArticles = async (categoryCode = null) => {
     setLoading(true);
     try {
-      const response = await api.get('/knowledge-base-articles');
+      const params = {};
+      if (categoryCode) params.category_code = categoryCode;
+      const response = await api.get('/knowledge-base-articles', { params });
       if (response.data.success) {
         const articlesData = response.data.data.data || response.data.data || [];
         setArticles(articlesData);
@@ -202,24 +205,10 @@ const KnowledgeBasePortal = () => {
     }
   };
 
-  // Filter by category
-  const handleCategoryClick = async (categoryCode) => {
-    setLoading(true);
-    try {
-      const response = await api.get('/knowledge-base-articles', {
-        params: { category_code: categoryCode }
-      });
-      if (response.data.success) {
-        const articlesData = response.data.data.data || response.data.data || [];
-        setArticles(articlesData);
-        setActiveTab('browse');
-      }
-    } catch (error) {
-      console.error('Failed to fetch category articles:', error);
-      toast.error('Failed to load category articles');
-    } finally {
-      setLoading(false);
-    }
+  // Filter by category — just update state; useEffect drives the fetch
+  const handleCategoryClick = (categoryCode) => {
+    setSelectedCategoryFilter(categoryCode);
+    setActiveTab('browse');
   };
 
   // Get category icon based on name
@@ -268,19 +257,19 @@ const KnowledgeBasePortal = () => {
     fetchArticles();
   }, []);
 
-  // Fetch data when tab changes
+  // Fetch data when tab or category filter changes
   useEffect(() => {
     if (activeTab === 'recent') {
       fetchRecentViews();
     } else if (activeTab === 'browse') {
-      fetchArticles();
+      fetchArticles(selectedCategoryFilter);
     } else if (activeTab === 'categories') {
       fetchCategories();
     } else if (activeTab === 'upload') {
       fetchMyUploads();
       if (categories.length === 0) fetchCategories();
     }
-  }, [activeTab]);
+  }, [activeTab, selectedCategoryFilter]);
 
   const fetchMyUploads = async () => {
     setMyUploadsLoading(true);
@@ -706,7 +695,7 @@ const KnowledgeBasePortal = () => {
     fetchStats();
     fetchCategories();
     if (activeTab === 'browse') {
-      fetchArticles();
+      fetchArticles(selectedCategoryFilter);
     } else if (activeTab === 'recent') {
       fetchRecentViews();
     } else if (activeTab === 'upload') {
@@ -769,7 +758,7 @@ const KnowledgeBasePortal = () => {
                 {tabs.map((tab) => (
                   <button
                     key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
+                    onClick={() => { if (tab.id === 'browse') setSelectedCategoryFilter(null); setActiveTab(tab.id); }}
                     className={`flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap transition-colors duration-200 ${
                       activeTab === tab.id
                         ? 'border-primary text-primary'
@@ -794,6 +783,24 @@ const KnowledgeBasePortal = () => {
               {activeTab === 'upload' && 'Submit an article as a draft. A supervisor will review and publish it.'}
             </p>
           </div>
+
+          {/* Active category filter badge */}
+          {activeTab === 'browse' && selectedCategoryFilter && (
+            <div className="mb-4 flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Filtering by:</span>
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-primary/10 text-primary rounded-full text-sm font-medium">
+                <Icon name="Tag" size={13} />
+                {getCategoryName(selectedCategoryFilter)}
+                <button
+                  onClick={() => setSelectedCategoryFilter(null)}
+                  className="ml-1 hover:text-primary/70 transition-colors"
+                  title="Clear filter"
+                >
+                  <Icon name="X" size={13} />
+                </button>
+              </span>
+            </div>
+          )}
 
           {/* Tab Content */}
           <div className="mb-8">

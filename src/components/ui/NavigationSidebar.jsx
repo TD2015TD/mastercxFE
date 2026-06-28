@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Icon from '../AppIcon';
-// import { menuService } from '../../services/menuService'; // commented out: dynamic API menu (see below)
+import { menuService } from '../../services/menuService';
 import cxLogo from '../../assets/cxlogo.png';
 
 const NavigationSidebar = ({ isCollapsed = false, onToggleCollapse, userRole = 'agent' }) => {
@@ -19,50 +19,12 @@ const NavigationSidebar = ({ isCollapsed = false, onToggleCollapse, userRole = '
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // ─── DYNAMIC API MENU (commented out — to re-enable, uncomment below and remove the role-based block) ───
-  // const [navigationItems, setNavigationItems] = useState([]);
-  // const [isLoading, setIsLoading] = useState(true);
-  //
-  // useEffect(() => {
-  //   const fetchMenuItems = async () => {
-  //     setIsLoading(true);
-  //     try {
-  //       const items = await menuService.getMenuItems();
-  //       setNavigationItems(items);
-  //     } catch (error) {
-  //       console.error('Failed to load menu items:', error);
-  //       setNavigationItems(getDefaultMenuItems());
-  //     } finally {
-  //       setIsLoading(false);
-  //     }
-  //   };
-  //   fetchMenuItems();
-  // }, [userRole]);
-  //
-  // const getDefaultMenuItems = () => [
-  //   {
-  //     label: 'Dashboard',
-  //     path: userRole === 'supervisor'
-  //       ? '/supervisor-dashboard'
-  //       : (userRole === 'admin' || userRole === 'super admin')
-  //         ? '/system-administration'
-  //         : '/agent-dashboard',
-  //     icon: 'LayoutDashboard',
-  //     tooltip: 'View your daily workspace and active assignments'
-  //   },
-  //   { label: 'Tickets',        path: '/ticket-management',          icon: 'Ticket',    tooltip: 'Manage customer tickets and cases' },
-  //   { label: 'Customer 360',   path: '/customer-360-profile',       icon: 'Users',     tooltip: 'Complete customer profile and interaction history' },
-  //   { label: 'Knowledge Base', path: '/knowledge-base-portal',      icon: 'BookOpen',  tooltip: 'Access articles and documentation' },
-  //   { label: 'Analytics',      path: '/analytics-and-reporting',    icon: 'BarChart3', tooltip: 'Performance monitoring and reports' },
-  //   { label: 'Administration', path: '/system-administration',      icon: 'Settings',  tooltip: 'System configuration and user management' },
-  //   { label: 'Citizen Portal', path: '/citizen-self-service-portal',icon: 'Globe',     tooltip: 'Public self-service interface' },
-  // ];
-  // ─────────────────────────────────────────────────────────────────────────────────────────────────────────
+  // ─── DYNAMIC API MENU — reads from DB via role-based menu assignments ────────
+  const [navigationItems, setNavigationItems] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // ─── ROLE-BASED STATIC MENU (active) ─────────────────────────────────────────
-  const getMenuItems = (role) => {
-    const isSupervisorOrAbove = role === 'supervisor' || role === 'admin' || role === 'super_admin' || role === 'super admin';
-
+  const getDefaultMenuItems = () => {
+    const isSupervisorOrAbove = userRole === 'supervisor' || userRole === 'admin' || userRole === 'super_admin' || userRole === 'super admin';
     if (isSupervisorOrAbove) {
       return [
         { label: 'Dashboard',      path: '/supervisor-dashboard',    icon: 'LayoutDashboard', tooltip: 'Supervisor dashboard overview' },
@@ -73,17 +35,37 @@ const NavigationSidebar = ({ isCollapsed = false, onToggleCollapse, userRole = '
         { label: 'Administration', path: '/system-administration',   icon: 'Settings',        tooltip: 'System configuration and user management' },
       ];
     }
-
-    // Default: agent / user
     return [
-      { label: 'Dashboard', path: '/agent-dashboard', icon: 'LayoutDashboard', tooltip: 'View your daily workspace' },
-      { label: 'Tickets', path: '/ticket-management', icon: 'Ticket', tooltip: 'Manage customer tickets' },
-      { label: 'Customer 360', path: '/customer-360-profile', icon: 'Users', tooltip: 'Complete customer profile' },
-      { label: 'Knowledge Base', path: '/knowledge-base-portal', icon: 'BookOpen', tooltip: 'Access articles and documentation' },
+      { label: 'Dashboard',      path: '/agent-dashboard',          icon: 'LayoutDashboard', tooltip: 'View your daily workspace' },
+      { label: 'Tickets',        path: '/ticket-management',        icon: 'Ticket',          tooltip: 'Manage customer tickets' },
+      { label: 'Customer 360',   path: '/customer-360-profile',     icon: 'Users',           tooltip: 'Complete customer profile' },
+      { label: 'Knowledge Base', path: '/knowledge-base-portal',    icon: 'BookOpen',        tooltip: 'Access articles and documentation' },
     ];
   };
 
-  const navigationItems = getMenuItems(userRole);
+  useEffect(() => {
+    // Wipe any stale localStorage menu cache from the old caching implementation
+    localStorage.removeItem('menu_items_cache');
+    localStorage.removeItem('menu_items_cache_timestamp');
+
+    const fetchMenuItems = async () => {
+      setIsLoading(true);
+      try {
+        const items = await menuService.getMenuItems();
+        // Only show items where can_view is true (or has no permissions key = default menus)
+        const visible = (items || []).filter(item =>
+          !item.permissions || item.permissions.can_view !== false
+        );
+        setNavigationItems(visible.length > 0 ? visible : getDefaultMenuItems());
+      } catch (error) {
+        console.error('Failed to load menu items:', error);
+        setNavigationItems(getDefaultMenuItems());
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchMenuItems();
+  }, [userRole]);
   // ─────────────────────────────────────────────────────────────────────────────
 
   const handleNavigation = (path) => {
