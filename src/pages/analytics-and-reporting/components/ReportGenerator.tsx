@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import Icon from '../../../components/AppIcon';
 import type { SupersetDashboard } from '../../../types/superset';
 import api from '../../../services/api';
+import { usePermission } from '../../../components/Can';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 interface ReportGeneratorProps {
@@ -48,6 +49,7 @@ const DEPARTMENTS = ['Semua Jabatan', 'BMC', 'TOC'];
 
 // ─── Component ────────────────────────────────────────────────────────────────
 const ReportGenerator: React.FC<ReportGeneratorProps> = ({ dashboards, loading, onViewReport }) => {
+  const { can } = usePermission();
   const [selectedDashboardId, setSelectedDashboardId] = useState<number | ''>('');
   const [preset, setPreset]         = useState('last7');
   const [dateFrom, setDateFrom]     = useState(daysAgo(6));
@@ -221,14 +223,16 @@ const ReportGenerator: React.FC<ReportGeneratorProps> = ({ dashboards, loading, 
               <Icon name="Eye" size={16} />
               Lihat Laporan
             </button>
-            <button
-              onClick={handleExport}
-              disabled={!canGenerate || exporting}
-              className="flex-1 flex items-center justify-center gap-2 h-10 px-4 rounded-md border border-border bg-background text-foreground text-sm font-medium hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              <Icon name={exporting ? 'Loader' : 'Download'} size={16} className={exporting ? 'animate-spin' : ''} />
-              {exporting ? 'Menjana...' : 'Export PDF'}
-            </button>
+            {can('report.export') && (
+              <button
+                onClick={handleExport}
+                disabled={!canGenerate || exporting}
+                className="flex-1 flex items-center justify-center gap-2 h-10 px-4 rounded-md border border-border bg-background text-foreground text-sm font-medium hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                <Icon name={exporting ? 'Loader' : 'Download'} size={16} className={exporting ? 'animate-spin' : ''} />
+                {exporting ? 'Menjana...' : 'Export PDF'}
+              </button>
+            )}
           </div>
         </div>
 

@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import Icon from '../../components/AppIcon';
 import api from '../../services/api';
 import { acceptConversation } from '../../services/mitelService';
+import AgentScriptAssistant from '../../components/AgentScriptAssistant';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -299,6 +300,7 @@ const ComposeBox = ({ ticket, customerEmail, onSent, onError, mitelToken }) => {
   const editorRef    = useRef(null);
   const fileInputRef = useRef(null);
   const lastRangeRef = useRef(null); // cursor position saved before file-picker steals focus
+  const scriptAssistantRef = useRef(null);
   const [files, setFiles]         = useState([]);
   const [sending, setSending]     = useState(false);
   const [sent, setSent]           = useState(false);
@@ -446,6 +448,33 @@ const ComposeBox = ({ ticket, customerEmail, onSent, onError, mitelToken }) => {
     }
   }, []);
 
+  // Insert a canned script's text at the saved cursor position (or append to editor).
+  const insertScriptText = useCallback((content) => {
+    const editor = editorRef.current;
+    if (!editor || !content) return;
+    editor.focus();
+
+    const html = content
+      .split('\n')
+      .map((line) => `<p>${line || '<br>'}</p>`)
+      .join('');
+
+    const range = lastRangeRef.current;
+    if (range && editor.contains(range.commonAncestorContainer)) {
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+    } else {
+      const end = document.createRange();
+      end.selectNodeContents(editor);
+      end.collapse(false);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(end);
+    }
+    document.execCommand('insertHTML', false, html);
+  }, []);
+
   const handleImageUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -549,7 +578,17 @@ const ComposeBox = ({ ticket, customerEmail, onSent, onError, mitelToken }) => {
         <ToolBtn icon="AlignLeft"   title="Align left"   isActive={activeFormats.justifyLeft}   onClick={() => exec('justifyLeft')} />
         <ToolBtn icon="AlignCenter" title="Align center" isActive={activeFormats.justifyCenter} onClick={() => exec('justifyCenter')} />
         <ToolBtn icon="AlignRight"  title="Align right"  isActive={activeFormats.justifyRight}  onClick={() => exec('justifyRight')} />
+        <span className="w-px h-4 bg-border mx-1" />
+        <ToolBtn icon="MessageSquare" title="Email scripts" onClick={() => scriptAssistantRef.current?.toggle()} />
       </div>
+
+      <AgentScriptAssistant
+        ref={scriptAssistantRef}
+        hideTrigger
+        currentChannel="email"
+        currentTicket={ticket}
+        onInsertScript={insertScriptText}
+      />
 
       <div
         ref={editorRef}

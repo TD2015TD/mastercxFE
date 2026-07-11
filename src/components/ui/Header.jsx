@@ -6,6 +6,7 @@ import NotificationCenter from './NotificationCenter';
 import ConversationNotification from './ConversationNotification';
 import CommandPalette from './CommandPalette';
 import TelephonyBar from '../TelephonyBar';
+import Can from '../Can';
 import cxLogo from '../../assets/cxlogo.png';
 
 const Header = ({ user = null, onMenuToggle }) => {
@@ -263,7 +264,9 @@ const Header = ({ user = null, onMenuToggle }) => {
       {/* Communication Tools - Directly below header */}
       <div className="sticky top-16 z-40 space-y-2 px-6 pt-2 bg-background">
         {/* Telephony Bar */}
-        <TelephonyBar onCallEvent={handleCallEvent} />
+        <Can permission="mitel.view">
+          <TelephonyBar onCallEvent={handleCallEvent} />
+        </Can>
       </div>
 
       {/* Command Palette */}

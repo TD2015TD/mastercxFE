@@ -2,6 +2,7 @@ import React from 'react';
 import Icon from '../../../components/AppIcon';
 import Image from '../../../components/AppImage';
 import Button from '../../../components/ui/Button';
+import Can from '../../../components/Can';
 
 const CustomerProfileHeader = ({ customer, customerContacts = [], onEdit, onCreateTicket, onScheduleCallback }) => {
   const getStatusColor = (status) => {
@@ -128,16 +129,17 @@ const CustomerProfileHeader = ({ customer, customerContacts = [], onEdit, onCrea
           >
             Create Ticket
           </Button>
-          {/* Schedule Callback — hidden */}
-          <Button
-            variant="ghost"
-            iconName="Edit"
-            iconPosition="left"
-            onClick={onEdit}
-            className="w-full"
-          >
-            Edit Profile
-          </Button>
+          <Can permission="customer.edit">
+            <Button
+              variant="ghost"
+              iconName="Edit"
+              iconPosition="left"
+              onClick={onEdit}
+              className="w-full"
+            >
+              Edit Profile
+            </Button>
+          </Can>
         </div>
       </div>
       {/* Additional Information */}

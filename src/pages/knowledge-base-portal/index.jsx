@@ -7,10 +7,11 @@ import api from '../../services/api';
 import { knowledgeBaseService } from '../../services/knowledgeBaseService';
 import { useAuth } from '../../contexts/AuthContext';
 import { toast } from 'react-toastify';
+import Can, { usePermission } from '../../components/Can';
 
 const KnowledgeBasePortal = () => {
   const { user } = useAuth();
-  const userRole = user?.role?.slug ?? 'agent';
+  const { can } = usePermission();
 
   const [activeTab, setActiveTab] = useState('browse');
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState(null);
@@ -33,6 +34,9 @@ const KnowledgeBasePortal = () => {
   const [uploadLoading, setUploadLoading] = useState(false);
   const [myUploads, setMyUploads] = useState([]);
   const [myUploadsLoading, setMyUploadsLoading] = useState(false);
+
+  // Delete state
+  const [deletingId, setDeletingId] = useState(null);
 
   // Fetch stats from knowledge-base-articles
   const fetchStats = async () => {
@@ -318,6 +322,28 @@ const KnowledgeBasePortal = () => {
     }
   };
 
+  const handleDeleteArticle = async (article, e) => {
+    e.stopPropagation();
+    if (!window.confirm(`Delete "${article.title}"? This cannot be undone.`)) return;
+    setDeletingId(article.id);
+    try {
+      const res = await knowledgeBaseService.deleteFileArticle(article.id);
+      if (res?.data?.success !== false) {
+        toast.success('Article deleted');
+        setArticles(prev => prev.filter(a => a.id !== article.id));
+        setRecentViews(prev => prev.filter(a => a.id !== article.id));
+        setMyUploads(prev => prev.filter(a => a.id !== article.id));
+        fetchStats();
+      } else {
+        toast.error(res?.data?.message || 'Failed to delete article');
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to delete article');
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   const statsDisplay = [
     {
       label: 'Total Articles',
@@ -347,7 +373,7 @@ const KnowledgeBasePortal = () => {
     { id: 'categories', label: 'Categories', icon: 'Folder' },
     // { id: 'search', label: 'Search', icon: 'Search' },
     { id: 'recent', label: 'Recently Updated', icon: 'Clock' },
-    ...(userRole === 'agent' ? [{ id: 'upload', label: 'Upload Article', icon: 'Upload' }] : []),
+    ...(can('kb.create') ? [{ id: 'upload', label: 'Upload Article', icon: 'Upload' }] : []),
   ];
 
   const renderTabContent = () => {
@@ -424,21 +450,28 @@ const KnowledgeBasePortal = () => {
               >
                 <div className="flex items-center space-x-3 flex-1">
                   <Icon name="FileText" size={20} className="text-primary" />
-
                   <div className="flex-1">
-                    <p className="font-medium text-foreground">
-                      {article.title}
-                    </p>
-
+                    <p className="font-medium text-foreground">{article.title}</p>
                     <p className="text-sm text-muted-foreground">
                       {getCategoryName(article.category_code)} • By {article.author}
                     </p>
                   </div>
                 </div>
-
-                <span className="text-sm text-muted-foreground">
-                  {getRelativeTime(article.updated_at || article.published_at)}
-                </span>
+                <div className="flex items-center gap-3">
+                  <span className="text-sm text-muted-foreground">
+                    {getRelativeTime(article.updated_at || article.published_at)}
+                  </span>
+                  {can('kb.delete') && (
+                    <button
+                      onClick={(e) => handleDeleteArticle(article, e)}
+                      disabled={deletingId === article.id}
+                      className="p-1.5 text-red-500 hover:bg-red-50 rounded transition-colors disabled:opacity-50"
+                      title="Delete article"
+                    >
+                      <Icon name="Trash2" size={15} />
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>
@@ -531,9 +564,21 @@ const KnowledgeBasePortal = () => {
                         </p>
                       </div>
                     </div>
-                    <span className="text-sm text-muted-foreground">
-                      {getRelativeTime(article.updated_at || article.published_at)}
-                    </span>
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm text-muted-foreground">
+                        {getRelativeTime(article.updated_at || article.published_at)}
+                      </span>
+                      {can('kb.delete') && (
+                        <button
+                          onClick={(e) => handleDeleteArticle(article, e)}
+                          disabled={deletingId === article.id}
+                          className="p-1.5 text-red-500 hover:bg-red-50 rounded transition-colors disabled:opacity-50"
+                          title="Delete article"
+                        >
+                          <Icon name="Trash2" size={15} />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -674,10 +719,22 @@ const KnowledgeBasePortal = () => {
                           <p className="text-xs text-muted-foreground">{getCategoryName(article.category_code)} • {new Date(article.created_at).toLocaleDateString()}</p>
                         </div>
                       </div>
-                      <span className="ml-3 shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground">
-                        <Icon name="Clock" size={10} className="mr-1" />
-                        Pending Review
-                      </span>
+                      <div className="flex items-center gap-2 ml-3 shrink-0">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground">
+                          <Icon name="Clock" size={10} className="mr-1" />
+                          Pending Review
+                        </span>
+                        {can('kb.delete') && (
+                          <button
+                            onClick={(e) => handleDeleteArticle(article, e)}
+                            disabled={deletingId === article.id}
+                            className="p-1 text-red-500 hover:bg-red-50 rounded transition-colors disabled:opacity-50"
+                            title="Delete submission"
+                          >
+                            <Icon name="Trash2" size={14} />
+                          </button>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -710,6 +767,20 @@ const KnowledgeBasePortal = () => {
         <meta name="description" content="Search and browse the knowledge base for information and solutions" />
       </Helmet>
 
+      <Can
+        permission="kb.view"
+        fallback={
+          <div className="flex items-center justify-center min-h-[60vh]">
+            <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-8 text-center max-w-md">
+              <Icon name="Lock" size={48} className="text-amber-600 dark:text-amber-400 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-foreground mb-2">Access Denied</h3>
+              <p className="text-muted-foreground">
+                You do not have permission to view the Knowledge Base.
+              </p>
+            </div>
+          </div>
+        }
+      >
       <div className="min-h-screen bg-background">
         <main className="w-full max-w-none">
           {/* Header */}
@@ -962,6 +1033,7 @@ const KnowledgeBasePortal = () => {
           </div>
         </div>
       )}
+      </Can>
     </>
   );
 };

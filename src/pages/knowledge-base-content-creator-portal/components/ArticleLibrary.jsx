@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import Icon from '../../../components/AppIcon';
+import { usePermission } from '../../../components/Can';
 
-const ArticleLibrary = ({ userRole, filterBy = 'all', userId = null, onArticleSelect, onNewArticle }) => {
+const ArticleLibrary = ({ filterBy = 'all', onArticleSelect, onNewArticle, onDeleteArticle }) => {
+  const { can } = usePermission();
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('updated_desc');
   const [filterStatus, setFilterStatus] = useState('all');
@@ -178,7 +180,7 @@ const ArticleLibrary = ({ userRole, filterBy = 'all', userId = null, onArticleSe
           </p>
         </div>
         
-        {(userRole === 'content_creator' || userRole === 'approver') && (
+        {can('kb.create') && (
           <button
             onClick={onNewArticle}
             className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors duration-200 flex items-center space-x-2"
@@ -313,25 +315,29 @@ const ArticleLibrary = ({ userRole, filterBy = 'all', userId = null, onArticleSe
               </div>
 
               {/* Stats */}
-              {article?.status === 'published' && (
-                <div className="flex items-center justify-between text-xs">
+              <div className="flex items-center justify-between text-xs">
+                {article?.status === 'published' ? (
                   <div className="flex items-center space-x-3 text-muted-foreground">
                     <span className="flex items-center space-x-1">
                       <Icon name="Eye" size={12} />
                       <span>{article?.view_count}</span>
                     </span>
-                    
                     <span className="flex items-center space-x-1">
                       <Icon name="ThumbsUp" size={12} className="text-green-500" />
                       <span>{getHelpfulPercentage(article)}%</span>
                     </span>
                   </div>
-                  
-                  <span className="text-muted-foreground">
-                    v1.0
-                  </span>
-                </div>
-              )}
+                ) : <span />}
+                {can('kb.delete') && onDeleteArticle && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onDeleteArticle(article); }}
+                    className="p-1 text-red-500 hover:bg-red-50 rounded transition-colors"
+                    title="Delete article"
+                  >
+                    <Icon name="Trash2" size={13} />
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         ))}
@@ -348,7 +354,7 @@ const ArticleLibrary = ({ userRole, filterBy = 'all', userId = null, onArticleSe
             }
           </p>
           
-          {(userRole === 'content_creator' || userRole === 'approver') && (
+          {can('kb.create') && (
             <button
               onClick={onNewArticle}
               className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors duration-200"

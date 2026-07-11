@@ -15,6 +15,16 @@ import Select from '../../../components/ui/Select';
 import Textarea from '../../../components/ui/Textarea';
 import Checkbox from '../../../components/ui/Checkbox';
 
+const STATUS_COLORS: Record<string, string> = {
+  'Open': 'bg-blue-100 text-blue-800 border-blue-200',
+  'In Progress': 'bg-yellow-100 text-yellow-800 border-yellow-200',
+  'On Hold': 'bg-orange-100 text-orange-800 border-orange-200',
+  'Resolved': 'bg-green-100 text-green-800 border-green-200',
+  'Closed': 'bg-gray-100 text-gray-800 border-gray-200',
+};
+
+const getStatusColor = (status?: string) => STATUS_COLORS[status || ''] || STATUS_COLORS['Open'];
+
 interface TicketFormData {
   // Customer Information
   customer_name: string;
@@ -67,7 +77,7 @@ const TicketCreateForm: React.FC<{
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [createdTicket, setCreatedTicket] = useState<{ id: number; ticket_number: string } | null>(null);
+  const [createdTicket, setCreatedTicket] = useState<{ id: number; ticket_number: string; status: string } | null>(null);
   
   // User and Agent Management
   const [currentUser, setCurrentUser] = useState<{ id: number; role: string; agent?: { id: number; mitel_agent_id?: string } } | null>(null);
@@ -864,7 +874,8 @@ const TicketCreateForm: React.FC<{
         // Show success modal with ticket number
         setCreatedTicket({
           id: response.data.id,
-          ticket_number: response.data.ticket_number
+          ticket_number: response.data.ticket_number,
+          status: response.data.status
         });
         setShowSuccessModal(true);
 
@@ -1644,8 +1655,8 @@ const TicketCreateForm: React.FC<{
               <div className="w-20 h-20 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Icon name="CheckCircle" size={40} className="text-green-600 dark:text-green-400" />
               </div>
-              <h2 className="text-2xl font-semibold text-foreground mb-2">Ticket Created &amp; Closed!</h2>
-              <p className="text-sm text-muted-foreground">Your ticket has been created and automatically closed</p>
+              <h2 className="text-2xl font-semibold text-foreground mb-2">Ticket Created!</h2>
+              <p className="text-sm text-muted-foreground">Your ticket has been created successfully</p>
             </div>
 
             {/* Content */}
@@ -1657,10 +1668,13 @@ const TicketCreateForm: React.FC<{
                   <div className="text-2xl md:text-3xl font-mono font-bold text-primary mb-3 tracking-tight select-all">
                     {createdTicket.ticket_number}
                   </div>
-                  <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+                  <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground mb-4">
                     <Icon name="Info" size={12} />
                     <span>Click to select and copy</span>
                   </div>
+                  <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(createdTicket.status)}`}>
+                    {createdTicket.status}
+                  </span>
                 </div>
               </div>
 

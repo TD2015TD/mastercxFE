@@ -5,6 +5,8 @@ export interface Role {
   name: string;
   slug: string;
   description: string;
+  users_count?: number;
+  permissions_count?: number;
   created_at: string;
   updated_at: string;
 }
@@ -24,8 +26,8 @@ export interface RoleResponse {
 /**
  * Get all roles
  */
-export const getRoles = async (): Promise<RoleResponse> => {
-  const response = await api.get('/roles');
+export const getRoles = async (params?: { with_users?: boolean; per_page?: number }): Promise<RoleResponse> => {
+  const response = await api.get('/roles', { params });
   return response.data;
 };
 

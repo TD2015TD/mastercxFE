@@ -22,7 +22,7 @@ const CommandPalette = ({ isOpen, onClose, onCommandSelect, navigationItems = []
       label: 'Create New Ticket',
       description: 'Start a new customer support ticket',
       action: 'navigate',
-      path: '/ticket/new',
+      path: '/ticket-management/create',
       icon: 'Plus',
       shortcut: 'Ctrl+N'
     },
@@ -42,27 +42,9 @@ const CommandPalette = ({ isOpen, onClose, onCommandSelect, navigationItems = []
       path: '/knowledge-base-portal',
       icon: 'Book'
     },
-    {
-      id: 'directory-search',
-      label: 'Directory Search',
-      description: 'Browse knowledge base by department and category',
-      action: 'navigate',
-      path: '/directory-search-and-browsing',
-      icon: 'FolderTree'
-    }
   ];
 
-  // Add navigation items as commands
-  const navigationCommands = navigationItems?.map(item => ({
-    id: `nav-${item?.path}`,
-    label: `Go to ${item?.label}`,
-    description: `Navigate to ${item?.label}`,
-    action: 'navigate',
-    path: item?.path,
-    icon: getIconForPath(item?.path)
-  })) || [];
-
-  const allCommands = [...baseCommands, ...navigationCommands];
+  const allCommands = baseCommands;
 
   // Filter commands based on search query
   useEffect(() => {
@@ -129,21 +111,6 @@ const CommandPalette = ({ isOpen, onClose, onCommandSelect, navigationItems = []
       onClose();
     }
   };
-
-  function getIconForPath(path) {
-    const iconMap = {
-      '/agent-dashboard': 'LayoutDashboard',
-      '/supervisor-dashboard': 'LayoutDashboard',
-      '/ticket-management': 'Ticket',
-      '/knowledge-base-portal': 'Book',
-      '/analytics-and-reporting': 'BarChart3',
-      '/customer-360-profile': 'User',
-      '/system-administration': 'Settings',
-      '/citizen-self-service-portal': 'Users',
-      '/directory-search-and-browsing': 'FolderTree'
-    };
-    return iconMap?.[path] || 'ArrowRight';
-  }
 
   if (!isOpen) return null;
 

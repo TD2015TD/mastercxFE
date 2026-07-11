@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import Icon from '../../../components/AppIcon';
+import { usePermission } from '../../../components/Can';
 
-const ArticleEditor = ({ article = null, userRole, onSave, onWorkflowAction }) => {
+const ArticleEditor = ({ article = null, onSave, onWorkflowAction }) => {
+  const { can } = usePermission();
   const [formData, setFormData] = useState({
     title: '',
     summary: '',
@@ -139,21 +141,10 @@ const ArticleEditor = ({ article = null, userRole, onSave, onWorkflowAction }) =
     return subcategories?.[formData?.category_main] || [];
   };
 
-  const canEdit = () => {
-    return userRole === 'content_creator' || userRole === 'approver';
-  };
-
-  const canSubmitForReview = () => {
-    return userRole === 'content_creator' && formData?.status === 'draft';
-  };
-
-  const canPublish = () => {
-    return userRole === 'approver' && (formData?.status === 'in_review' || formData?.status === 'draft');
-  };
-
-  const canReject = () => {
-    return userRole === 'approver' && formData?.status === 'in_review';
-  };
+  const canEdit = () => can('kb.edit');
+  const canSubmitForReview = () => can('kb.create') && formData?.status === 'draft';
+  const canPublish = () => can('kb.approve') && (formData?.status === 'in_review' || formData?.status === 'draft');
+  const canReject = () => can('kb.approve') && formData?.status === 'in_review';
 
   return (
     <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">

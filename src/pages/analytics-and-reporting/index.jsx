@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import Icon from '../../components/AppIcon';
-import Can from '../../components/Can';
+import Can, { usePermission } from '../../components/Can';
 import SupersetDashboardList from './components/SupersetDashboardList';
 import ReportGenerator from './components/ReportGenerator';
 import SupersetDashboardModal from '../../components/SupersetDashboardModal';
 import { useSupersetDashboards } from '../../hooks/useSupersetDashboards';
 
 const AnalyticsAndReporting = () => {
+  const { can } = usePermission();
   // Shared dashboard list (used by both ReportGenerator and the card grid)
   const { dashboards, loading } = useSupersetDashboards({ is_active: true });
 
@@ -66,25 +67,31 @@ const AnalyticsAndReporting = () => {
               </p>
             </div>
 
-            {/* ── Report Generator (NEW) ─────────────────────────────────── */}
-            <ReportGenerator
-              dashboards={dashboards}
-              loading={loading}
-              onViewReport={handleViewReport}
-            />
+            {/* ── Report Generator — requires report.create ──────────────── */}
+            {can('report.create') && (
+              <ReportGenerator
+                dashboards={dashboards}
+                loading={loading}
+                onViewReport={handleViewReport}
+              />
+            )}
 
             {/* ── Divider ───────────────────────────────────────────────── */}
-            <div className="flex items-center gap-4 mb-6">
-              <div className="flex-1 h-px bg-border" />
-              <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted px-3 py-1 rounded-full">
-                <Icon name="LayoutGrid" size={12} />
-                Semua Laporan Tersedia
-              </div>
-              <div className="flex-1 h-px bg-border" />
-            </div>
+            {can('analytics.view') && (
+              <>
+                <div className="flex items-center gap-4 mb-6">
+                  <div className="flex-1 h-px bg-border" />
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted px-3 py-1 rounded-full">
+                    <Icon name="LayoutGrid" size={12} />
+                    Semua Laporan Tersedia
+                  </div>
+                  <div className="flex-1 h-px bg-border" />
+                </div>
 
-            {/* ── Dashboard card grid (existing) ─────────────────────────── */}
-            <SupersetDashboardList onViewDashboard={handleViewReport} />
+                {/* ── Dashboard card grid — requires analytics.view ──────── */}
+                <SupersetDashboardList onViewDashboard={handleViewReport} />
+              </>
+            )}
 
           </main>
         </div>

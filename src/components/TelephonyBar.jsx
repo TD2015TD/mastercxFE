@@ -11,9 +11,11 @@ import { ticketService } from '../services/ticketService';
 import { toast } from 'react-toastify';
 import { authService } from '../services/authService';
 import VoiceContactsModal from './VoiceContactsModal';
+import { usePermission } from './Can';
 
 const TelephonyBar = ({ className = '', onCallEvent }) => {
   const navigate = useNavigate();
+  const { can } = usePermission();
 
   // Check if user is an agent
   const [isAgent, setIsAgent] = useState(false);
@@ -1079,11 +1081,19 @@ const TelephonyBar = ({ className = '', onCallEvent }) => {
         </div>
 
         <div className="flex items-center space-x-2">
-          <Button variant="ghost" size="sm" iconName={status==='RINGING'?'PhoneCall':'Phone'} onClick={status==='RINGING'?acceptCall:demoIncoming} disabled={['IN_CALL','TRANSFERRING','ENDED'].includes(status)} title={status==='RINGING'?'Accept Call (A)':'Demo Incoming Call (Ctrl+Shift+P)'} />
-          <Button variant="ghost" size="sm" iconName="PhoneOff" onClick={hangUp} disabled={!['IN_CALL','RINGING','TRANSFERRING'].includes(status)} title="Hang Up (H)" />
-          <Button variant="ghost" size="sm" iconName="PhoneForwarded" onClick={startTransfer} disabled={status!=='IN_CALL'} title="Transfer Call (T)" />
+          {can('mitel.call') && (
+            <>
+              <Button variant="ghost" size="sm" iconName={status==='RINGING'?'PhoneCall':'Phone'} onClick={status==='RINGING'?acceptCall:demoIncoming} disabled={['IN_CALL','TRANSFERRING','ENDED'].includes(status)} title={status==='RINGING'?'Accept Call (A)':'Demo Incoming Call (Ctrl+Shift+P)'} />
+              <Button variant="ghost" size="sm" iconName="PhoneOff" onClick={hangUp} disabled={!['IN_CALL','RINGING','TRANSFERRING'].includes(status)} title="Hang Up (H)" />
+            </>
+          )}
+          {can('mitel.transfer') && (
+            <Button variant="ghost" size="sm" iconName="PhoneForwarded" onClick={startTransfer} disabled={status!=='IN_CALL'} title="Transfer Call (T)" />
+          )}
           <Button variant="ghost" size="sm" iconName="FileText" onClick={()=>setShowWrapUp(true)} disabled={status!=='ENDED'} title="Wrap-Up" />
-          <Button variant="ghost" size="sm" iconName={muted?'MicOff':'Mic'} onClick={toggleMute} disabled={status!=='IN_CALL'} title="Mute/Unmute (M)" />
+          {can('mitel.call') && (
+            <Button variant="ghost" size="sm" iconName={muted?'MicOff':'Mic'} onClick={toggleMute} disabled={status!=='IN_CALL'} title="Mute/Unmute (M)" />
+          )}
         </div>
 
         {(status==='RINGING'||status==='IN_CALL') && caller && (
@@ -1098,7 +1108,7 @@ const TelephonyBar = ({ className = '', onCallEvent }) => {
       </div>
 
       {/* Transfer Modal */}
-      {isTransferModalOpen && (
+      {isTransferModalOpen && can('mitel.transfer') && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]" onClick={()=>{setIsTransferModalOpen(false);setTransferTarget('');setTransferType('blind');}}>
           <div className="bg-card border border-border rounded-lg p-6 w-[500px]" onClick={e=>e.stopPropagation()}>
             <h3 className="text-lg font-semibold mb-4 flex items-center">

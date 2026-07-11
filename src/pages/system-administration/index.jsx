@@ -16,6 +16,7 @@ import SlaRulesEngine from './sla-configuration/components/SlaRulesEngine';
 import ReportConfigurationPanel from './report-configuration';
 import KnowledgeBaseAdmin from './knowledge-base';
 import ChatbotLivechatHealth from './components/ChatbotLivechatHealth';
+import CategoriesAdminPanel from './components/CategoriesAdminPanel';
 import RoleManagement from './rbac/components/RoleManagement';
 import RoleMenuManagement from './rbac/components/RoleMenuManagement';
 import MenuPermissionMatrix from './rbac/components/MenuPermissionMatrix';
@@ -133,8 +134,10 @@ const SystemAdministration = () => {
     { id: 'rbac', label: 'RBAC Management', icon: 'Shield', description: 'Manage roles, permissions, and menu assignments', permission: 'role.manage' },
     { id: 'sla', label: 'SLA Management', icon: 'Clock', description: 'Configure and monitor Service Level Agreements', permission: 'sla.manage' },
     { id: 'knowledge-base', label: 'Knowledge Base', icon: 'BookOpen', description: 'Manage knowledge base articles and categories', permission: null, minRole: 'supervisor' },
+    { id: 'categories', label: 'Categories & Sub-categories', icon: 'FolderTree', description: 'Manage ticket categories and sub-categories hierarchy', permission: 'category.manage' },
     { id: 'reports', label: 'Report Configuration', icon: 'BarChart', description: 'Configure dashboards and assign role-based access to reports', permission: 'system.config' },
     { id: 'system', label: t('systemAdmin.tabs.system'), icon: 'Settings', description: t('systemAdmin.tabs.systemDesc'), permission: 'system.config' },
+    { id: 'audit', label: 'Audit Trail', icon: 'FileSearch', description: 'View audit logs and compliance reports', permission: 'audit.view' },
     { id: 'health', label: t('systemAdmin.tabs.health'), icon: 'Activity', description: t('systemAdmin.tabs.healthDesc'), permission: null }, // null means everyone can access
     { id: 'chatbot-health', label: 'Chatbot/Livechat Health', icon: 'HeartPulse', description: 'Integration reporting for CRM chatbot and livechat channels', permission: 'system.config', minRole: 'admin' }
   ];
@@ -209,6 +212,12 @@ const SystemAdministration = () => {
         return (
           <Can permission="sla.manage" fallback={<AccessDenied feature="SLA Management" />}>
             {renderSlaManagement()}
+          </Can>
+        );
+      case 'categories':
+        return (
+          <Can permission="category.manage" fallback={<AccessDenied feature="Categories & Sub-categories" />}>
+            <CategoriesAdminPanel />
           </Can>
         );
       case 'reports':

@@ -4,10 +4,18 @@ import Icon from '../AppIcon';
 import { menuService } from '../../services/menuService';
 import cxLogo from '../../assets/cxlogo.png';
 
+// Maps a parent menu path to its "Create" child route shown when can_create is true
+const CREATE_CHILD_ROUTES = {
+  '/ticket-management':      { label: 'Create Ticket',  path: '/ticket-management/create',              icon: 'Plus' },
+  '/knowledge-base-portal':  { label: 'Create Article', path: '/knowledge-base-content-creator-portal', icon: 'Plus' },
+  '/system-administration':  { label: 'Add User',       path: '/system-administration/users/create',    icon: 'UserPlus' },
+};
+
 const NavigationSidebar = ({ isCollapsed = false, onToggleCollapse, userRole = 'agent' }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const [isMobile, setIsMobile] = useState(false);
+  const [expandedItems, setExpandedItems] = useState({});
 
   useEffect(() => {
     const checkMobile = () => {
@@ -75,6 +83,26 @@ const NavigationSidebar = ({ isCollapsed = false, onToggleCollapse, userRole = '
   const isActive = (path) => {
     return location?.pathname === path;
   };
+
+  const isParentActive = (item) => {
+    if (isActive(item?.path)) return true;
+    const child = CREATE_CHILD_ROUTES[item?.path];
+    return child ? isActive(child.path) : false;
+  };
+
+  const toggleExpand = (path) => {
+    setExpandedItems(prev => ({ ...prev, [path]: !prev[path] }));
+  };
+
+  // Auto-expand parent when a child route is active
+  useEffect(() => {
+    const currentPath = location?.pathname;
+    Object.entries(CREATE_CHILD_ROUTES).forEach(([parentPath, child]) => {
+      if (currentPath === child.path) {
+        setExpandedItems(prev => ({ ...prev, [parentPath]: true }));
+      }
+    });
+  }, [location?.pathname]);
 
   // Loading spinner — only used with the dynamic API menu above
   // if (isLoading) {
@@ -153,34 +181,80 @@ const NavigationSidebar = ({ isCollapsed = false, onToggleCollapse, userRole = '
         {/* Navigation Items */}
         <div className="flex-1 overflow-y-auto py-4">
           <div className="space-y-1 px-3">
-            {navigationItems?.map((item) => (
-              <button
-                key={item?.path}
-                onClick={() => handleNavigation(item?.path)}
-                className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-all duration-200 group ${
-                  isActive(item?.path)
-                    ? 'bg-primary text-primary-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                }`}
-                title={isCollapsed ? item?.tooltip : ''}
-              >
-                <Icon 
-                  name={item?.icon} 
-                  size={20} 
-                  className={`flex-shrink-0 ${
-                    isActive(item?.path) ? 'text-primary-foreground' : ''
-                  }`}
-                />
-                {!isCollapsed && (
-                  <span className="font-medium text-sm truncate">{item?.label}</span>
-                )}
-                {isCollapsed && (
-                  <div className="absolute left-16 bg-popover border border-border rounded-md px-2 py-1 text-sm font-medium text-popover-foreground shadow-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50">
-                    {item?.label}
+            {navigationItems?.map((item) => {
+              const hasCreate = item?.permissions?.can_create && CREATE_CHILD_ROUTES[item?.path];
+              const childRoute = CREATE_CHILD_ROUTES[item?.path];
+              const isExpanded = expandedItems[item?.path];
+              const parentActive = isParentActive(item);
+
+              return (
+                <div key={item?.path}>
+                  {/* Parent row */}
+                  <div className="flex items-center">
+                    <button
+                      onClick={() => hasCreate ? toggleExpand(item?.path) : handleNavigation(item?.path)}
+                      className={`flex-1 flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-all duration-200 group ${
+                        parentActive
+                          ? 'bg-primary text-primary-foreground shadow-sm'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                      }`}
+                      title={isCollapsed ? item?.tooltip : ''}
+                    >
+                      <Icon
+                        name={item?.icon}
+                        size={20}
+                        className={`flex-shrink-0 ${parentActive ? 'text-primary-foreground' : ''}`}
+                      />
+                      {!isCollapsed && (
+                        <span className="font-medium text-sm truncate flex-1">{item?.label}</span>
+                      )}
+                      {!isCollapsed && hasCreate && (
+                        <Icon
+                          name={isExpanded ? 'ChevronDown' : 'ChevronRight'}
+                          size={14}
+                          className={`flex-shrink-0 ${parentActive ? 'text-primary-foreground' : 'text-muted-foreground'}`}
+                        />
+                      )}
+                      {isCollapsed && (
+                        <div className="absolute left-16 bg-popover border border-border rounded-md px-2 py-1 text-sm font-medium text-popover-foreground shadow-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50">
+                          {item?.label}
+                        </div>
+                      )}
+                    </button>
                   </div>
-                )}
-              </button>
-            ))}
+
+                  {/* Child rows — shown when expanded and not collapsed */}
+                  {!isCollapsed && hasCreate && isExpanded && (
+                    <div className="ml-4 mt-1 space-y-1">
+                      {/* View All */}
+                      <button
+                        onClick={() => handleNavigation(item?.path)}
+                        className={`w-full flex items-center space-x-2 px-3 py-1.5 rounded-lg text-left transition-all duration-200 text-xs ${
+                          isActive(item?.path)
+                            ? 'bg-primary/10 text-primary font-medium'
+                            : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                        }`}
+                      >
+                        <Icon name="List" size={14} className="flex-shrink-0" />
+                        <span>View All</span>
+                      </button>
+                      {/* Create child */}
+                      <button
+                        onClick={() => handleNavigation(childRoute.path)}
+                        className={`w-full flex items-center space-x-2 px-3 py-1.5 rounded-lg text-left transition-all duration-200 text-xs ${
+                          isActive(childRoute.path)
+                            ? 'bg-primary/10 text-primary font-medium'
+                            : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                        }`}
+                      >
+                        <Icon name={childRoute.icon} size={14} className="flex-shrink-0" />
+                        <span>{childRoute.label}</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
 

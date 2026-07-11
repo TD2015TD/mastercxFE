@@ -1,14 +1,15 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import Icon from './AppIcon';
 import Button from './ui/Button';
 import Input from './ui/Input';
 
-const AgentScriptAssistant = ({ 
-  currentTicket = null, 
-  currentChannel = null, 
+const AgentScriptAssistant = forwardRef(({
+  currentTicket = null,
+  currentChannel = null,
   onInsertScript = null,
-  className = "" 
-}) => {
+  hideTrigger = false,
+  className = ""
+}, ref) => {
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('call');
   const [searchQuery, setSearchQuery] = useState('');
@@ -224,25 +225,33 @@ const AgentScriptAssistant = ({
     setIsOpen(prev => !prev);
   };
 
+  useImperativeHandle(ref, () => ({
+    open: () => setIsOpen(true),
+    close: () => setIsOpen(false),
+    toggle: togglePanel,
+  }));
+
   return (
     <>
       {/* Floating Action Button */}
-      <div className={`fixed bottom-6 right-6 z-50 ${className}`}>
-        <Button
-          onClick={togglePanel}
-          size="lg"
-          className={`rounded-full shadow-lg transition-all duration-300 ${
-            isOpen 
-              ? 'bg-primary/90 hover:bg-primary scale-110' :'bg-primary hover:bg-primary/90'
-          }`}
-          title="Script Assistant (Ctrl+Shift+S)"
-        >
-          <div className="flex items-center gap-2">
-            <Icon name="MessageSquare" size={20} />
-            <span className="hidden sm:inline text-sm font-medium">Scripts</span>
-          </div>
-        </Button>
-      </div>
+      {!hideTrigger && (
+        <div className={`fixed bottom-6 right-6 z-50 ${className}`}>
+          <Button
+            onClick={togglePanel}
+            size="lg"
+            className={`rounded-full shadow-lg transition-all duration-300 ${
+              isOpen
+                ? 'bg-primary/90 hover:bg-primary scale-110' :'bg-primary hover:bg-primary/90'
+            }`}
+            title="Script Assistant (Ctrl+Shift+S)"
+          >
+            <div className="flex items-center gap-2">
+              <Icon name="MessageSquare" size={20} />
+              <span className="hidden sm:inline text-sm font-medium">Scripts</span>
+            </div>
+          </Button>
+        </div>
+      )}
       {/* Slide-out Panel */}
       {isOpen && (
         <>
@@ -409,6 +418,6 @@ const AgentScriptAssistant = ({
       )}
     </>
   );
-};
+});
 
 export default AgentScriptAssistant;

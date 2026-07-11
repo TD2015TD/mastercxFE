@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import Icon from '../../../components/AppIcon';
 import { knowledgeBaseService } from '../../../services/knowledgeBaseService';
+import { usePermission } from '../../../components/Can';
 
-const ReviewQueue = ({ userRole, onArticleSelect, onWorkflowAction }) => {
+const ReviewQueue = ({ onArticleSelect, onWorkflowAction }) => {
+  const { can } = usePermission();
   const [filterDepartment, setFilterDepartment] = useState('all');
   const [filterCategory, setFilterCategory] = useState('all');
   const [sortBy, setSortBy] = useState('submitted_desc');
@@ -275,7 +277,7 @@ const ReviewQueue = ({ userRole, onArticleSelect, onWorkflowAction }) => {
 
           {/* Bulk Actions */}
           <div className="flex items-end">
-            {selectedArticles?.length > 0 && (
+            {selectedArticles?.length > 0 && can('kb.approve') && (
               <div className="flex space-x-2">
                 <button
                   onClick={() => handleBulkAction('approve')}
@@ -395,22 +397,24 @@ const ReviewQueue = ({ userRole, onArticleSelect, onWorkflowAction }) => {
                   {/* Actions */}
                   <div className="col-span-1">
                     <div className="flex items-center space-x-1">
-                      <button
-                        onClick={() => onWorkflowAction('approve', article)}
-                        className="p-1 text-green-600 hover:bg-green-100 rounded transition-colors duration-200"
-                        title="Approve & Publish"
-                      >
-                        <Icon name="CheckCircle" size={16} />
-                      </button>
-                      
-                      <button
-                        onClick={() => onWorkflowAction('reject', article)}
-                        className="p-1 text-red-600 hover:bg-red-100 rounded transition-colors duration-200"
-                        title="Reject with Comments"
-                      >
-                        <Icon name="XCircle" size={16} />
-                      </button>
-                      
+                      {can('kb.approve') && (
+                        <>
+                          <button
+                            onClick={() => onWorkflowAction('approve', article)}
+                            className="p-1 text-green-600 hover:bg-green-100 rounded transition-colors duration-200"
+                            title="Approve & Publish"
+                          >
+                            <Icon name="CheckCircle" size={16} />
+                          </button>
+                          <button
+                            onClick={() => onWorkflowAction('reject', article)}
+                            className="p-1 text-red-600 hover:bg-red-100 rounded transition-colors duration-200"
+                            title="Reject with Comments"
+                          >
+                            <Icon name="XCircle" size={16} />
+                          </button>
+                        </>
+                      )}
                       <button
                         onClick={() => onArticleSelect(article)}
                         className="p-1 text-blue-600 hover:bg-blue-100 rounded transition-colors duration-200"

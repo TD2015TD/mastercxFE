@@ -180,12 +180,15 @@ const MenuPermissionMatrix = () => {
     ? roles
     : roles.filter(r => r.id.toString() === filterRole);
 
-  const filteredMenus = filterMenu
-    ? menuItems.filter(m =>
-        m.label.toLowerCase().includes(filterMenu.toLowerCase()) ||
-        m.path.toLowerCase().includes(filterMenu.toLowerCase())
-      )
-    : menuItems;
+  const HIDDEN_MENU_PATHS = ['/knowledge-base-content-creator-portal'];
+
+  const filteredMenus = menuItems
+    .filter(m => !HIDDEN_MENU_PATHS.includes(m.path))
+    .filter(m =>
+      !filterMenu ||
+      m.label.toLowerCase().includes(filterMenu.toLowerCase()) ||
+      m.path.toLowerCase().includes(filterMenu.toLowerCase())
+    );
 
   const renderPermissionCell = (role, menu, permission, permissionLabel, icon) => {
     const hasValue = hasPermission(role.id, menu.id, permission);

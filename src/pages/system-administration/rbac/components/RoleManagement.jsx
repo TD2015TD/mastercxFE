@@ -3,62 +3,24 @@ import Icon from '../../../../components/AppIcon';
 import Button from '../../../../components/ui/Button';
 import Modal from '../../../../components/ui/Modal';
 import Input from '../../../../components/ui/Input';
+import { getRoles } from '../../../../services/roleService';
+
+// Seeded roles (see api/database/seeders/RoleSeeder.php) — the only ones we treat as
+// system-protected / get a fixed color. Roles created later via "Create Role" fall
+// back to a neutral color and no System badge. super_admin is deliberately excluded
+// here — it's filtered out of the list entirely (see loadRoles) since it's never
+// managed from this screen.
+const SYSTEM_ROLE_COLORS = {
+  admin: 'red',
+  supervisor: 'blue',
+  agent: 'green',
+  user: 'gray'
+};
 
 const RoleManagement = () => {
-  const [roles, setRoles] = useState([
-    {
-      id: 1,
-      name: 'Administrator',
-      code: 'admin',
-      description: 'Full system access with all permissions',
-      userCount: 5,
-      permissionCount: 32,
-      isSystem: true,
-      isActive: true,
-      color: 'red',
-      createdAt: '2024-01-15',
-      updatedAt: '2024-11-20'
-    },
-    {
-      id: 2,
-      name: 'Supervisor',
-      code: 'supervisor',
-      description: 'Team management and oversight capabilities',
-      userCount: 12,
-      permissionCount: 24,
-      isSystem: true,
-      isActive: true,
-      color: 'blue',
-      createdAt: '2024-01-15',
-      updatedAt: '2024-11-18'
-    },
-    {
-      id: 3,
-      name: 'Agent',
-      code: 'agent',
-      description: 'Standard agent with ticket and customer management',
-      userCount: 215,
-      permissionCount: 16,
-      isSystem: true,
-      isActive: true,
-      color: 'green',
-      createdAt: '2024-01-15',
-      updatedAt: '2024-11-15'
-    },
-    {
-      id: 4,
-      name: 'Customer',
-      code: 'customer',
-      description: 'Limited access for citizen portal users',
-      userCount: 15420,
-      permissionCount: 4,
-      isSystem: true,
-      isActive: true,
-      color: 'gray',
-      createdAt: '2024-01-15',
-      updatedAt: '2024-11-22'
-    }
-  ]);
+  const [roles, setRoles] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedRole, setSelectedRole] = useState(null);
@@ -79,6 +41,42 @@ const RoleManagement = () => {
     { value: 'orange', label: 'Orange', class: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400' },
     { value: 'gray', label: 'Gray', class: 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400' }
   ];
+
+  useEffect(() => {
+    loadRoles();
+  }, []);
+
+  const loadRoles = async () => {
+    try {
+      setIsLoading(true);
+      setLoadError(null);
+      const response = await getRoles({ with_users: true, per_page: 100 });
+      const rolesData = response?.data?.data || [];
+
+      // Super Admin is the root role — it's never edited/managed from this screen
+      const manageableRoles = rolesData.filter((role) => role.slug !== 'super_admin');
+
+      setRoles(manageableRoles.map((role) => ({
+        id: role.id,
+        name: role.name,
+        code: role.slug,
+        description: role.description || '',
+        userCount: role.users_count ?? 0,
+        permissionCount: role.permissions_count ?? 0,
+        isSystem: Object.prototype.hasOwnProperty.call(SYSTEM_ROLE_COLORS, role.slug),
+        isActive: true,
+        color: SYSTEM_ROLE_COLORS[role.slug] || 'purple',
+        createdAt: role.created_at,
+        updatedAt: role.updated_at
+      })));
+    } catch (error) {
+      console.error('Error loading roles:', error);
+      setLoadError('Failed to load roles');
+      setRoles([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleCreateRole = () => {
     setSelectedRole(null);
@@ -152,7 +150,22 @@ const RoleManagement = () => {
         </div>
       </div>
 
+      {/* Loading / Error States */}
+      {isLoading && (
+        <div className="flex items-center justify-center py-12">
+          <Icon name="Loader" size={32} className="animate-spin text-primary" />
+        </div>
+      )}
+
+      {!isLoading && loadError && (
+        <div className="bg-card rounded-lg border border-border p-12 text-center">
+          <Icon name="AlertCircle" size={32} className="mx-auto mb-3 text-error" />
+          <p className="text-muted-foreground">{loadError}</p>
+        </div>
+      )}
+
       {/* Roles Grid */}
+      {!isLoading && !loadError && (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredRoles.map((role) => (
           <div key={role.id} className="bg-card rounded-lg border border-border hover:border-primary/50 transition-all duration-200">
@@ -250,6 +263,7 @@ const RoleManagement = () => {
           </div>
         ))}
       </div>
+      )}
 
       {/* Create/Edit Role Modal */}
       <Modal
@@ -346,7 +360,7 @@ const RoleManagement = () => {
       </Modal>
 
       {/* Empty State */}
-      {filteredRoles.length === 0 && (
+      {!isLoading && !loadError && filteredRoles.length === 0 && (
         <div className="bg-card rounded-lg border border-border p-12 text-center">
           <div className="w-16 h-16 rounded-full bg-muted/30 flex items-center justify-center mx-auto mb-4">
             <Icon name="Shield" size={32} className="text-muted-foreground" />

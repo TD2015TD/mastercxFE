@@ -11,10 +11,12 @@ import TicketDetails from './components/TicketDetails';
 import TicketActivityTimeline from './components/TicketActivityTimeline';
 import TicketAttachments from './components/TicketAttachments';
 import { toast } from 'react-toastify';
+import Can, { usePermission } from '../../components/Can';
 
 const TicketDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { can } = usePermission();
   const [ticket, setTicket] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -23,6 +25,8 @@ const TicketDetailPage = () => {
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState('');
   const [showTransferModal, setShowTransferModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [agents, setAgents] = useState([]);
   const [selectedAgent, setSelectedAgent] = useState(null);
   const [isLoadingAgents, setIsLoadingAgents] = useState(false);
@@ -240,6 +244,26 @@ const TicketDetailPage = () => {
     }
   };
 
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    try {
+      const response = await ticketService.deleteTicket(ticket.id);
+      if (response.success) {
+        toast.success('Ticket deleted successfully');
+        navigate('/ticket-management');
+      } else {
+        toast.error(response.message || 'Failed to delete ticket');
+        setShowDeleteModal(false);
+      }
+    } catch (err) {
+      console.error('Error deleting ticket:', err);
+      toast.error('Failed to delete ticket');
+      setShowDeleteModal(false);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const handleAddAttachment = () => {
     // Switch to attachments tab and trigger file input
     setActiveTab('attachments');
@@ -420,6 +444,18 @@ const TicketDetailPage = () => {
                   >
                     Transfer
                   </Button>
+                  <Can permission="ticket.delete">
+                    <Button
+                      variant="outline"
+                      fullWidth
+                      iconName="Trash2"
+                      iconPosition="left"
+                      className="text-red-600 hover:text-red-700 hover:border-red-300 hover:bg-red-50"
+                      onClick={() => setShowDeleteModal(true)}
+                    >
+                      Delete Ticket
+                    </Button>
+                  </Can>
                 </div>
               </div>
 
@@ -468,7 +504,9 @@ const TicketDetailPage = () => {
               Select New Status
             </label>
             <div className="grid grid-cols-1 gap-2">
-              {['Open', 'In Progress', 'Pending', 'On Hold', 'Resolved', 'Closed', 'Cancelled'].map((status) => (
+              {['Open', 'In Progress', 'Pending', 'On Hold', 'Resolved', 'Closed', 'Cancelled']
+                .filter(status => status !== 'Closed' || can('ticket.close'))
+                .map((status) => (
                 <button
                   key={status}
                   onClick={() => setSelectedStatus(status)}
@@ -500,6 +538,42 @@ const TicketDetailPage = () => {
                 </button>
               ))}
             </div>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        title="Delete Ticket"
+        size="sm"
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setShowDeleteModal(false)} disabled={isDeleting}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={isDeleting}
+            >
+              {isDeleting ? 'Deleting...' : 'Delete'}
+            </Button>
+          </>
+        }
+      >
+        <div className="flex items-start gap-4">
+          <div className="flex-shrink-0 w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+            <Icon name="Trash2" size={20} className="text-red-600" />
+          </div>
+          <div>
+            <p className="text-sm text-foreground font-medium mb-1">
+              Are you sure you want to delete <span className="font-semibold">{ticket?.ticket_number}</span>?
+            </p>
+            <p className="text-sm text-muted-foreground">
+              This action cannot be undone. The ticket and all its data will be permanently removed.
+            </p>
           </div>
         </div>
       </Modal>

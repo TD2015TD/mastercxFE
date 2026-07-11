@@ -16,10 +16,13 @@ import CustomerDocuments from './components/CustomerDocuments';
 import CustomerNotes from './components/CustomerNotes';
 import { customerService } from '../../services/customerService';
 import { contactService } from '../../services/contactService';
+import Can, { usePermission } from '../../components/Can';
+import Modal from '../../components/ui/Modal';
 
 const CustomerDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { can } = usePermission();
   const [customer, setCustomer] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -27,6 +30,8 @@ const CustomerDetailPage = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [customerContacts, setCustomerContacts] = useState([]);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -204,6 +209,57 @@ const CustomerDetailPage = () => {
     }
   };
 
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    try {
+      const response = await customerService.deleteCustomer(parseInt(id));
+      if (response.success) {
+        toast.success('Customer deleted successfully');
+        navigate('/customer-360-profile');
+      } else {
+        toast.error(response.message || 'Failed to delete customer');
+        setShowDeleteModal(false);
+      }
+    } catch (err) {
+      console.error('Error deleting customer:', err);
+      toast.error('Failed to delete customer');
+      setShowDeleteModal(false);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleExport = () => {
+    if (!customer) return;
+    const rows = [
+      ['Field', 'Value'],
+      ['Name', customer.name || ''],
+      ['Email', customer.email || ''],
+      ['ID Type', customer.id_type || ''],
+      ['ID No', customer.id_no || ''],
+      ['Customer Type', customer.customer_type || ''],
+      ['Status', customer.status || ''],
+      ['Company', customer.company_name || ''],
+      ['Address', customer.address || ''],
+      ['Total Tickets', customer.total_tickets || 0],
+      ['Open Tickets', customer.open_tickets_count || 0],
+      ['Satisfaction Rating', customer.satisfaction_rating || 'N/A'],
+      ['Last Contact', customer.last_contact_at ? new Date(customer.last_contact_at).toLocaleDateString('en-GB') : 'N/A'],
+      ['Created At', customer.created_at ? new Date(customer.created_at).toLocaleDateString('en-GB') : 'N/A'],
+    ];
+    const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `customer-${customer.name?.replace(/\s+/g, '_') || id}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success('Customer data exported');
+  };
+
   const tabs = [
     { id: 'overview', label: 'Profile Overview', icon: 'User' },
     { id: 'history', label: 'Ticket History', icon: 'Ticket' },
@@ -322,9 +378,27 @@ const CustomerDetailPage = () => {
                 <Button variant="outline" iconName="RefreshCw" iconPosition="left" onClick={loadCustomer}>
                   Refresh
                 </Button>
-                <Button variant="outline" iconName="Edit" iconPosition="left" onClick={handleEditProfile}>
-                  Edit Profile
-                </Button>
+                <Can permission="customer.export">
+                  <Button variant="outline" iconName="Download" iconPosition="left" onClick={handleExport}>
+                    Export
+                  </Button>
+                </Can>
+                <Can permission="customer.edit">
+                  <Button variant="outline" iconName="Edit" iconPosition="left" onClick={handleEditProfile}>
+                    Edit Profile
+                  </Button>
+                </Can>
+                <Can permission="customer.delete">
+                  <Button
+                    variant="outline"
+                    iconName="Trash2"
+                    iconPosition="left"
+                    className="text-red-600 hover:text-red-700 hover:border-red-300 hover:bg-red-50"
+                    onClick={() => setShowDeleteModal(true)}
+                  >
+                    Delete
+                  </Button>
+                </Can>
                 <Button iconName="Plus" iconPosition="left" onClick={handleCreateTicket}>
                   Create Ticket
                 </Button>
@@ -399,6 +473,38 @@ const CustomerDetailPage = () => {
           customer={customer}
           isLoading={isSaving}
         />
+
+        {/* Delete Confirmation Modal */}
+        <Modal
+          isOpen={showDeleteModal}
+          onClose={() => setShowDeleteModal(false)}
+          title="Delete Customer"
+          size="sm"
+          footer={
+            <>
+              <Button variant="outline" onClick={() => setShowDeleteModal(false)} disabled={isDeleting}>
+                Cancel
+              </Button>
+              <Button variant="destructive" onClick={handleDelete} disabled={isDeleting}>
+                {isDeleting ? 'Deleting...' : 'Delete'}
+              </Button>
+            </>
+          }
+        >
+          <div className="flex items-start gap-4">
+            <div className="flex-shrink-0 w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+              <Icon name="Trash2" size={20} className="text-red-600" />
+            </div>
+            <div>
+              <p className="text-sm text-foreground font-medium mb-1">
+                Are you sure you want to delete <span className="font-semibold">{customer?.name}</span>?
+              </p>
+              <p className="text-sm text-muted-foreground">
+                This action cannot be undone. All customer data and history will be permanently removed.
+              </p>
+            </div>
+          </div>
+        </Modal>
       </div>
     </>
   );

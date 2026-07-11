@@ -16,15 +16,7 @@ import SupersetConfiguration from '../superset-configuration/SupersetConfigurati
 const SystemConfigurationPanel = () => {
   const { can } = usePermission();
   
-  // Determine default tab based on permissions
-  const getDefaultTab = () => {
-    if (can('category.manage')) return 'categories';
-    if (can('system.config')) return 'email';
-    // If no permissions, default to email (will show access denied)
-    return 'email';
-  };
-  
-  const [activeTab, setActiveTab] = useState(getDefaultTab());
+  const [activeTab, setActiveTab] = useState('lookups');
   const [categories, setCategories] = useState([]);
   const [allCategories, setAllCategories] = useState([]);
   const [lookups, setLookups] = useState({});
@@ -42,7 +34,6 @@ const SystemConfigurationPanel = () => {
   const CAT_PER_PAGE = 15;
 
   const tabs = [
-    { id: 'categories', label: 'Categories & Sub-categories', icon: 'FolderTree' },
     { id: 'lookups', label: 'Lookup Configuration', icon: 'List' },
     { id: 'email', label: 'Email Configuration', icon: 'Mail' },
     { id: 'mitel', label: 'Mitel Configuration', icon: 'Phone' },

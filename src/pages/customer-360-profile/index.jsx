@@ -6,10 +6,11 @@ import Icon from '../../components/AppIcon';
 import Button from '../../components/ui/Button';
 import CustomerFormModal from './components/CustomerFormModal';
 import { customerService } from '../../services/customerService';
-import Can from '../../components/Can';
+import Can, { usePermission } from '../../components/Can';
 
 const CustomerListingPage = () => {
   const navigate = useNavigate();
+  const { can } = usePermission();
 
   const [customers, setCustomers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -19,6 +20,18 @@ const CustomerListingPage = () => {
   const searchDebounceTimer = useRef(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+
+  const [activeCustomerCount, setActiveCustomerCount] = useState(null);
+
+  useEffect(() => {
+    customerService.getCustomers({ status: 'active', per_page: 1 })
+      .then(res => {
+        if (res.success && res.data?.total !== undefined) {
+          setActiveCustomerCount(res.data.total);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const [filters, setFilters] = useState({
     customer_type: '',
@@ -116,6 +129,26 @@ const CustomerListingPage = () => {
     setIsAddModalOpen(true);
   };
 
+  const handleExportCustomers = () => {
+    if (!customers.length) { toast.info('No customers to export'); return; }
+    const headers = ['ID', 'Name', 'Email', 'ID Type', 'ID No', 'Customer Type', 'Status', 'Company', 'Total Tickets', 'Open Tickets'];
+    const rows = customers.map(c => [
+      c.id, c.name, c.email, c.id_type, c.id_no, c.customer_type, c.status,
+      c.company_name, c.total_tickets || 0, c.open_tickets_count || 0,
+    ]);
+    const csv = [headers, ...rows].map(r => r.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `customers-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success(`Exported ${customers.length} customer(s)`);
+  };
+
   const handleSaveCustomer = async (formData) => {
     setIsSaving(true);
 
@@ -193,7 +226,7 @@ const CustomerListingPage = () => {
     },
     {
       label: 'Active Customers',
-      value: customers.filter(c => c.status === 'active').length.toString(),
+      value: activeCustomerCount !== null ? activeCustomerCount.toString() : '...',
       icon: 'UserCheck',
       color: 'text-green-600'
     }
@@ -249,6 +282,17 @@ const CustomerListingPage = () => {
                   >
                     Refresh
                   </Button>
+
+                  <Can permission="customer.export">
+                    <Button
+                      variant="outline"
+                      iconName="Download"
+                      iconPosition="left"
+                      onClick={handleExportCustomers}
+                    >
+                      Export
+                    </Button>
+                  </Can>
 
                   <Can permission="customer.create">
                     <Button

@@ -9,6 +9,7 @@ import Input from '../../../components/ui/Input';
 import Select from '../../../components/ui/Select';
 import api from '../../../services/api';
 import Icon from '../../../components/AppIcon';
+import Can, { usePermission } from '../../../components/Can';
 
 // Strip Gmail/Outlook quoted-reply chains from HTML, returning the clean
 // content and whether any quotes were found.
@@ -40,6 +41,7 @@ const stripEmailQuotes = (html) => {
 };
 
 const TicketDetails = ({ ticket, onUpdate }) => {
+  const { can } = usePermission();
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [departments, setDepartments] = useState([]);
@@ -215,15 +217,17 @@ const TicketDetails = ({ ticket, onUpdate }) => {
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-lg font-semibold text-foreground">Ticket Details</h3>
         {!isEditing ? (
-          <Button
-            variant="outline"
-            size="sm"
-            iconName="Edit"
-            iconPosition="left"
-            onClick={() => setIsEditing(true)}
-          >
-            Edit
-          </Button>
+          <Can permission="ticket.edit">
+            <Button
+              variant="outline"
+              size="sm"
+              iconName="Edit"
+              iconPosition="left"
+              onClick={() => setIsEditing(true)}
+            >
+              Edit
+            </Button>
+          </Can>
         ) : (
           <div className="flex gap-2">
             <Button
@@ -332,19 +336,28 @@ const TicketDetails = ({ ticket, onUpdate }) => {
                   onChange={(e) => setEditData({...editData, category: e?.target?.value})}
                 />
                 
-                <Select
-                  label="Assigned To"
-                  options={[
-                    { value: '', label: 'Unassigned' },
-                    ...agents.map(agent => ({
-                      value: agent.id,
-                      label: `${agent.user?.name || agent.agent_code} (${agent.department})`
-                    }))
-                  ]}
-                  value={editData?.assignedTo || ''}
-                  onChange={(value) => setEditData({...editData, assignedTo: value === '' ? null : parseInt(value)})}
-                  disabled={isLoadingAgents}
-                />
+                {can('ticket.assign') ? (
+                  <Select
+                    label="Assigned To"
+                    options={[
+                      { value: '', label: 'Unassigned' },
+                      ...agents.map(agent => ({
+                        value: agent.id,
+                        label: `${agent.user?.name || agent.agent_code} (${agent.department})`
+                      }))
+                    ]}
+                    value={editData?.assignedTo || ''}
+                    onChange={(value) => setEditData({...editData, assignedTo: value === '' ? null : parseInt(value)})}
+                    disabled={isLoadingAgents}
+                  />
+                ) : (
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Assigned To</label>
+                    <p className="text-sm text-foreground mt-1">
+                      {ticket?.assigned_to_name || 'Unassigned'}
+                    </p>
+                  </div>
+                )}
               </>
             ) : (
               <>
