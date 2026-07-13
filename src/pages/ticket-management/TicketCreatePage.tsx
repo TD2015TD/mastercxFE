@@ -543,12 +543,12 @@ const TicketCreatePage: React.FC = () => {
       </div>
 
       {/* Right Side Script Tab */}
-      <div className="fixed right-0 top-1/2 z-50 -translate-y-1/2">
+      <div className="fixed right-0 top-1/2 z-50 -translate-y-1/2 pointer-events-none">
         {/* Always Visible Button */}
         <button
           type="button"
           onClick={() => setShowScriptTab((prev) => !prev)}
-          className="absolute right-0 top-1/2 z-[60] -translate-y-1/2 rounded-l-lg bg-blue-600 px-3 py-4 text-xs font-semibold text-white shadow-lg hover:bg-blue-700"
+          className="pointer-events-auto absolute right-0 top-1/2 z-[60] -translate-y-1/2 rounded-l-lg bg-blue-600 px-3 py-4 text-xs font-semibold text-white shadow-lg hover:bg-blue-700"
           style={{ writingMode: 'vertical-rl' }}
         >
           {showScriptTab ? 'Hide Script' : 'Show Script'}
@@ -556,7 +556,7 @@ const TicketCreatePage: React.FC = () => {
 
         {/* Sliding Panel */}
         <div
-          className={`w-[520px] rounded-l-xl border border-gray-200 bg-white pr-10 shadow-xl transition-transform duration-300 ${
+          className={`pointer-events-auto w-[520px] rounded-l-xl border border-gray-200 bg-white pr-10 shadow-xl transition-transform duration-300 ${
             showScriptTab ? 'translate-x-0' : 'translate-x-full'
           }`}
         >
