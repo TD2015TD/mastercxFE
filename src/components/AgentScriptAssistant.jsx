@@ -11,7 +11,7 @@ const AgentScriptAssistant = forwardRef(({
   className = ""
 }, ref) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState('call');
+  const [activeTab, setActiveTab] = useState(currentChannel || 'call');
   const [searchQuery, setSearchQuery] = useState('');
   const [copiedId, setCopiedId] = useState(null);
   const [autoSuggestMode, setAutoSuggestMode] = useState(true);
@@ -113,36 +113,100 @@ const AgentScriptAssistant = forwardRef(({
     ],
     email: [
       {
-        id: 12,
-        title: 'Email Opening - Formal',
-        content: 'Dear Mr./Ms. [Customer Name],\n\nThank you for contacting JKDM Customer Service. I have received your inquiry regarding [subject].',
-        tags: ['opening', 'formal', 'acknowledgment'],
+        id: 101,
+        title: 'Default Template General (BI)',
+        content: 'Dear Valued Customer,\n\nThank you for using the Customs Call Centre service.\n\nReferring to your inquiry, \n\n\n\nThank you.\n\nCustoms Call Centre\nTel: 03-78067200\nE-mail: ccc@customs.gov.my\nWebsite: Royal Malaysian Customs Department\n\nDisclaimer: Please be advised that all efforts have been made to ensure that this information is in line with existing legislation, policies, and procedures. In the event of any legal, policy, or procedure changes, RMCD reserves the right to amend or withdraw this information at any time without prior notice.\n\n---- This is a system-generated e-mail.  Signature is not required  ----',
+        tags: ['general', 'greeting', 'opening', 'bi'],
         category: 'General',
-        favorites: 44
+        favorites: 0
       },
       {
-        id: 13,
-        title: 'Document Request Email',
-        content: 'To proceed with your request, we require the following documents:\n\n• Commercial Invoice\n• Packing List\n• Bill of Lading\n• Copy of ID\n\nPlease reply to this email with the attached documents.',
-        tags: ['documentation', 'requirements', 'attachments'],
-        category: 'Documentation',
-        favorites: 37
-      },
-      {
-        id: 14,
-        title: 'Resolution Confirmation',
-        content: 'I am pleased to inform you that your issue has been resolved. The system has been updated and you should now be able to proceed with your import declaration.',
-        tags: ['resolution', 'confirmation', 'update'],
-        category: 'Resolution',
-        favorites: 33
-      },
-      {
-        id: 15,
-        title: 'Email Closing - Professional',
-        content: 'Should you require any further assistance, please do not hesitate to contact us.\n\nBest regards,\nAhmad Rahman\nCustomer Service Officer\nJKDM Contact Centre',
-        tags: ['closing', 'professional', 'contact'],
+        id: 102,
+        title: 'Default Template General (BM)',
+        content: 'Kepada pelanggan yang dihormati,\n\nTerima kasih kerana menggunakan perkhidmatan Pusat Panggilan Kastam.\n\nMerujuk kepada pertanyaan tuan/puan,\n\n\n\n\nSekian, terima kasih.\n\nPusat Panggilan Kastam\nTel: 03-78067200\nE-mail: ccc@customs.gov.my\nLaman Web: Jabatan Kastam Diraja Malaysia\n\nPenafian: Sila ambil maklum bahawa segala usaha telah dibuat untuk memastikan maklumat ini adalah selaras dengan peruntukan perundangan, polisi dan prosedur sedia ada. Sekiranya terdapat apa-apa perubahan perundangan, polisi dan prosedur, JKDM berhak untuk meminda atau menarik balik maklumat ini pada bila-bila masa tanpa sebarang notis.\n\n---- E-mel ini dijana oleh sistem. Tandatangan tidak diperlukan ----',
+        tags: ['general', 'greeting', 'opening', 'bm'],
         category: 'General',
-        favorites: 48
+        favorites: 0
+      },
+      {
+        id: 103,
+        title: 'Default Template Amend SST Registration Details (BM)',
+        content: 'Kepada pelanggan yang dihormati,\n\nTerima kasih kerana menggunakan perkhidmatan Pusat Panggilan Kastam.\n\nMerujuk kepada pertanyaan tuan/puan, adalah dimaklumkan bahawa sistem MySST tidak membenarkan mengemas kini dalam talian bagi butiran berikut :-\nE-mel & Kata Laluan\nNama & Jenis Perniagaan\nAlamat & Nombor Telefon Syarikat\nNama Pengarah\nTahun Kewangan Berakhir (Financial Year End)\nBagi membuat sebarang pindaan di atas, pihak syarikat perlu mengemukakan permohonan bertulis. Permohonan tersebut mesti diserahkan secara manual (serahan tangan) ke kaunter stesen kawalan di pejabat [ nama stesen pengawal ].\n\n[ nama & alamat stesen pengawal ]\n\nSila sediakan dokumen-dokumen berikut untuk tindakan pegawai :\nSurat Permohonan Rasmi\nDokumen SSM / Dokumen Sokongan (yang menyatakan nama syarikat semasa)\nBorang pindaan maklumat SST seperti dilampirkan\n\n**Sekiranya individu yang menyerahkan permohonan tersebut bukanlah salah seorang Pengarah yang berdaftar dalam MySST, beliau wajib membawa Surat Perwakilan Kuasa.\n**Surat ini diperlukan sebagai bukti bahawa wakil tersebut telah diberi kebenaran untuk bertindak bagi pihak syarikat\n\nDilampirkan Borang Pindaan Maklumat SST untuk tindakan pihak tuan/puan selanjutnya.\n\nSekian, terima kasih.\n\nPusat Panggilan Kastam\nTel: 03-78067200\nE-mail: ccc@customs.gov.my\nLaman Web: Jabatan Kastam Diraja Malaysia\n\nPenafian: Sila ambil maklum, segala usaha telah dibuat untuk memastikan maklumat ini adalah selaras dengan peruntukan perundangan, polisi dan prosedur sedia ada. Sekiranya terdapat apa-apa perubahan perundangan, polisi dan prosedur, JKDM berhak untuk meminda atau menarik balik maklumat ini pada bila-bila masa tanpa sebarang notis.\n\n---- E-mel ini dijana oleh sistem. Tandatangan tidak diperlukan ----',
+        tags: ['sst', 'registration', 'amend', 'bm'],
+        category: 'SST',
+        favorites: 0
+      },
+      {
+        id: 104,
+        title: 'Default Template Apply HS Code (BI)',
+        content: 'Dear Valued Customer,\n\nThank you for using the Customs Call Centre service.\n\nReferring to your inquiry, please be advised to refer to the Cawangan Klasifikasi, Bahagian Perkhidmatan Teknik, Jabatan Kastam Diraja Malaysia at the nearest location.\n\nThe classification of goods can be done precisely at Customs by completing the required form and attaching supporting documents for assessment by a Customs Officer.\n\nCLASSIFICATION ADVISORY SERVICES AND HS CODE APPLICATION\n\nAdvisory services are available at any Cawangan Klasifikasi, Bahagian Perkhidmatan Teknik, Jabatan Kastam Diraja Malaysia in each state.\n\nThis application must be hand-delivered to the Cawangan Klasifikasi, Bahagian Perkhidmatan Teknik Counter.\n\nEach application must be accompanied by the following documents/information: -\nOfficial Letter (Request for Nasihat Penjenisan) with the Person In charge Contact Details.\nProduct Sample\nProduct Brochure\nProduct Catalog\nColored Photographs\n**Please refer to the document attached for application purposes.\n\nThank you.\n\nCustoms Call Centre\nTel: 03-78067200\nE-mail: ccc@customs.gov.my\nWebsite: Royal Malaysian Customs Department\n\nDisclaimer: Please be advised that all efforts have been made to ensure that this information is in line with existing legislation, policies, and procedures. In the event of any legal, policy, or procedure changes, RMCD reserves the right to amend or withdraw this information at any time without prior notice.\n\n---- This is a system-generated e-mail.  Signature is not required  ----',
+        tags: ['hs code', 'classification', 'tariff', 'bi'],
+        category: 'HS Code',
+        favorites: 0
+      },
+      {
+        id: 105,
+        title: 'Default Template Apply HS Code (BM)',
+        content: 'Kepada pelanggan yang dihormati,\n\nTerima kasih kerana menggunakan perkhidmatan Pusat Panggilan Kastam.\n\nMerujuk kepada pertanyaan tuan/puan, sila tuan dapatkan HS Code / Kod Tarif yang telah disahkan oleh Pegawai Kastam (Pegawai Klasifikasi di Bahagian Perkhidmatan Teknik, Cawangan Klasifikasi).\nSekiranya tuan/puan telah menerima maklumat HS code / Kod Tarif daripada Pegawai Kastam, sila lawati laman web rasmi, JKDM HS EXPLORER, untuk mendapatkan maklumat berkaitan duti / cukai serta permit yang diperlukan bagi urusan import dan eksport.\n\nSila rujuk langkah-langkah berikut :\n\n1.   Tariff Type : PDK 2022 : Perintah Duti Kastam 2022\n\n2.   Search Criteria: HS CODE\n\n3.   Masukkan 4 digit pertama HS Code / Tariff Code di ruangan KEYWORD dan tekan butang FIND.\n\n4.   Cari HS Code / Tariff Code yang lengkap (Rujuk HS Code / Tariff Code yang diberikan oleh pegawai) dan klik pada Description.\n\n5.   Rujuk kepada Import / Eksport dan Related Prohibition Schedule yang dipaparkan dan sila hubungi agensi berkaitan bagi tujuan Permit Import / Eksport.\n\nSekian, terima kasih.\n\nPusat Panggilan Kastam\nTel: 03-78067200\nE-mail: ccc@customs.gov.my\nLaman Web: Jabatan Kastam Diraja Malaysia\n\nPenafian: Sila ambil maklum bahawa segala usaha telah dibuat untuk memastikan maklumat ini adalah selaras dengan peruntukan perundangan, polisi dan prosedur sedia ada. Sekiranya terdapat apa-apa perubahan perundangan, polisi dan prosedur, JKDM berhak untuk meminda atau menarik balik maklumat ini pada bila-bila masa tanpa sebarang notis.\n\n---- E-mel ini dijana oleh sistem. Tandatangan tidak diperlukan ----',
+        tags: ['hs code', 'kod tarif', 'classification', 'bm'],
+        category: 'HS Code',
+        favorites: 0
+      },
+      {
+        id: 106,
+        title: 'Default Template MYCIEDS (BM)',
+        content: 'Kepada Pasukan MyCIEDS [ negeri ],\nDimajukan emel pertanyaan daripada pelanggan ini untuk perhatian dan maklum balas pihak tuan/puan selanjutnya.\n\nKepada Pelanggan,\nTerima kasih kerana menggunakan perkhidmatan Pusat Panggilan Kastam.\n\nMerujuk kepada pertanyaan tuan/puan, untuk makluman kelulusan borang Kastam adalah di bawah tanggungjawab pihak MyCIEDS  [ negeri ].\nOleh yang demikian, pihak kami menyarankan agar tuan/puan dapat mengemukakan pertanyaan tersebut secara terus kepada MyCIEDS  [ negeri ] melalui alamat e-mel rasmi mycieds.[negeri]@customs.gov.my untuk tindakan dan maklum balas lanjut supaya tindakan boleh diambil dengan lebih cepat dan pantas.\nWalau bagaimanapun, Pusat Panggilan Kastam masih menerima pertanyaan berkaitan MyCIEDS selain daripada kelulusan borang kastam. Segala kesulitan amat dikesali.\n\nSekian, terima kasih.\n\nPusat Panggilan Kastam\nTel: 03-78067200\nE-mail: ccc@customs.gov.my\nLaman Web: Jabatan Kastam Diraja Malaysia\n\nPenafian: Sila ambil maklum bahawa segala usaha telah dibuat untuk memastikan maklumat ini adalah selaras dengan peruntukan perundangan, polisi dan prosedur sedia ada. Sekiranya terdapat apa-apa perubahan perundangan, polisi dan prosedur, JKDM berhak untuk meminda atau menarik balik maklumat ini pada bila-bila masa tanpa sebarang notis.\n\n---- E-mel ini dijana oleh sistem. Tandatangan tidak diperlukan -----',
+        tags: ['mycieds', 'bm'],
+        category: 'MYCIEDS',
+        favorites: 0
+      },
+      {
+        id: 107,
+        title: 'Default Template Log In SST (BM)',
+        content: 'Kepada pelanggan yang dihormati,\n\nTerima kasih kerana menggunakan perkhidmatan Pusat Panggilan Kastam.\nMerujuk kepada pertanyaan tuan/puan, sila masukkan Nombor Pendaftaran SST dan klik Save sebelum memasukkan ID Pengguna dan Kata Laluan.\n\nTuan/Puan boleh merujuk kepada Surat Kelulusan Pendaftaran yang dihantar oleh pihak Kastam melalui e-mel yang telah didaftarkan, bersama-sama dengan ID Pengguna dan Kata Laluan.\nPada bahagian atas kanan surat tersebut, terdapat No. Daftar CP (Cukai Perkhidmatan) / No. Daftar CJ (Cukai Jualan) yang merupakan Nombor Pendaftaran SST. Sila rujuk gambar seperti di bawah : -\n\nTurut dilampirkan manual Online Payment and Return Submission sebagai rujukan pihak tuan selanjutnya.\nSila rujuk laman web rasmi MySST pada bahagian Panduan Industri  : Versi English and Malay untuk maklumat lanjut berkaitan SST.\n\nSekian, terima kasih.\n\nPusat Panggilan Kastam\nTel: 03-78067200\nE-mail: ccc@customs.gov.my\nLaman Web: Jabatan Kastam Diraja Malaysia\n\nPenafian: Sila ambil maklum bahawa segala usaha telah dibuat untuk memastikan maklumat ini adalah selaras dengan peruntukan perundangan, polisi dan prosedur sedia ada. Sekiranya terdapat apa-apa perubahan perundangan, polisi dan prosedur, JKDM berhak untuk meminda atau menarik balik maklumat ini pada bila-bila masa tanpa sebarang notis.\n\n---- E-mel ini dijana oleh sistem. Tandatangan tidak diperlukan ----',
+        tags: ['sst', 'login', 'password', 'bm'],
+        category: 'SST',
+        favorites: 0
+      },
+      {
+        id: 108,
+        title: 'Default Template - Courier (BI)',
+        content: 'Dear Valued Customer,\n\nThank you for using the Customs Call Centre service.\n\nKindly contact your appointed courier service provider directly for an update on your parcel\'s status. It is your contracted provider\'s responsibility to ensure the shipment\'s continuity and to advise their customers immediately if any issues occur during transit.\n\nThank you.\n\nCustoms Call Centre\nTel: 03-78067200\nE-mail: ccc@customs.gov.my\nWebsite: Royal Malaysian Customs Department\n\nDisclaimer: Please be advised that all efforts have been made to ensure that this information is in line with existing legislation, policies, and procedures. In the event of any legal, policy, or procedure changes, RMCD reserves the right to amend or withdraw this information at any time without prior notice.\n\n---- This is a system-generated e-mail.  Signature is not required  ----',
+        tags: ['courier', 'parcel', 'shipment', 'bi'],
+        category: 'Courier',
+        favorites: 0
+      },
+      {
+        id: 109,
+        title: 'Default Template - Taxability of a service (BI)',
+        content: 'Dear Valued Customer,\n\nThank you for using the Customs Call Centre service.\n\nTo determine whether a service is taxable, our officer will need to review the service\'s contract. It is essential to understand the service structure and how it is delivered to your client to ensure accuracy and prevent errors caused by overlooking specific details.\n\nIf you require assistance in interpreting your service, you are welcome to visit the Consultation Unit at your nearest Customs station. Our officers are available to review the service details. This service is provided free of charge, and no prior appointment is necessary. You may visit us at any time during official business hours.\n\nThank you.\n\nCustoms Call Centre\nTel: 03-78067200\nE-mail: ccc@customs.gov.my\nWebsite: Royal Malaysian Customs Department\n\nDisclaimer: Please be advised that all efforts have been made to ensure that this information is in line with existing legislation, policies, and procedures. In the event of any legal, policy, or procedure changes, RMCD reserves the right to amend or withdraw this information at any time without prior notice.\n\n---- This is a system-generated e-mail.  Signature is not required  ----',
+        tags: ['tax', 'service', 'taxability', 'bi'],
+        category: 'Tax & Duties',
+        favorites: 0
+      },
+      {
+        id: 110,
+        title: 'Default Template - Tariff Code (BI)',
+        content: 'Dear Valued Customer,\n\nThank you for using the Customs Call Centre service.\n\nRegarding your inquiry, please complete the attached form and submit it in person to the Classification Unit at your nearest Customs station to obtain a formal tariff code confirmation.\n\nKindly ensure all supporting documents required by the form are included. We also recommend sending a representative who is familiar with the technical specifications of the item, as our officers may require further clarification during the submission.\n\nThank you.\n\nCustoms Call Centre\nTel: 03-78067200\nE-mail: ccc@customs.gov.my\nWebsite: Royal Malaysian Customs Department\n\nDisclaimer: Please be advised that all efforts have been made to ensure that this information is in line with existing legislation, policies, and procedures. In the event of any legal, policy, or procedure changes, RMCD reserves the right to amend or withdraw this information at any time without prior notice.\n\n---- This is a system-generated e-mail.  Signature is not required  ----',
+        tags: ['tariff', 'classification', 'bi'],
+        category: 'Tariff',
+        favorites: 0
+      },
+      {
+        id: 111,
+        title: 'Default Template Application Follow-up (BI)',
+        content: 'Dear Valued Customer,\n\nThank you for using the Customs Call Centre service.\n\nPlease note that status updates are unavailable through the Call Centre due to the lack of a centralized online tracing system. Should you have the contact details or the name of the officer in charge of your submission, please provide them so we may redirect your correspondence accordingly.\n\nThank you.\n\nCustoms Call Centre\nTel: 03-78067200\nE-mail: ccc@customs.gov.my\nWebsite: Royal Malaysian Customs Department\n\nDisclaimer: Please be advised that all efforts have been made to ensure that this information is in line with existing legislation, policies, and procedures. In the event of any legal, policy, or procedure changes, RMCD reserves the right to amend or withdraw this information at any time without prior notice.\n\n---- This is a system-generated e-mail.  Signature is not required  ----',
+        tags: ['follow-up', 'status', 'bi'],
+        category: 'Follow-up',
+        favorites: 0
+      },
+      {
+        id: 112,
+        title: 'Default Template - Technical Question (BI)',
+        content: 'Dear Valued Customer,\n\nThank you for using the Customs Call Centre service.\n\nRegarding your inquiry, please be advised that providing technical confirmations is outside the scope of the Customs Call Centre. To obtain formal confirmation, you may email our technical team directly at gerak.dasarcp@customs.gov.my or visit the Consultation Unit at your nearest Customs station. We recommend bringing all relevant documentation to assist our officers in reviewing your case thoroughly.\n\nThank you.\n\nCustoms Call Centre\nTel: 03-78067200\nE-mail: ccc@customs.gov.my\nWebsite: Royal Malaysian Customs Department\n\nDisclaimer: Please be advised that all efforts have been made to ensure that this information is in line with existing legislation, policies, and procedures. In the event of any legal, policy, or procedure changes, RMCD reserves the right to amend or withdraw this information at any time without prior notice.\n\n---- This is a system-generated e-mail.  Signature is not required  ----',
+        tags: ['technical', 'confirmation', 'bi'],
+        category: 'Technical',
+        favorites: 0
       }
     ]
   };
@@ -152,7 +216,9 @@ const AgentScriptAssistant = forwardRef(({
     const savedState = localStorage.getItem('script-assistant-state');
     if (savedState) {
       const { isOpen: savedIsOpen, activeTab: savedTab } = JSON.parse(savedState);
-      setActiveTab(savedTab || 'call');
+      if (!currentChannel) {
+        setActiveTab(savedTab || 'call');
+      }
       // Don't restore isOpen state - let user control visibility
     }
   }, []);
@@ -318,7 +384,7 @@ const AgentScriptAssistant = forwardRef(({
                 { id: 'call', label: 'Call Scripts', icon: 'Phone' },
                 { id: 'chat', label: 'Chat Scripts', icon: 'MessageCircle' },
                 { id: 'email', label: 'Email', icon: 'Mail' }
-              ]?.map((tab) => (
+              ]?.filter((tab) => !currentChannel || tab?.id === currentChannel)?.map((tab) => (
                 <button
                   key={tab?.id}
                   onClick={() => setActiveTab(tab?.id)}
