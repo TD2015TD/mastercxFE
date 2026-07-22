@@ -7,6 +7,63 @@ import AgentScriptAssistant from '../../components/AgentScriptAssistant';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
+const COLORS = [
+  '#000000', '#434343', '#666666', '#999999', '#b7b7b7', '#cccccc', '#efefef', '#f3f3f3', '#ffffff',
+  '#980000', '#ff0000', '#ff9900', '#ffff00', '#00ff00', '#00ffff', '#4a86e8', '#0000ff', '#9900ff', '#ff00ff',
+  '#e6b8af', '#f4cccc', '#fce5cd', '#fff2cc', '#d9ead3', '#d0e0e3', '#c9daf8', '#cfe2f3', '#d9d2e9', '#ead1dc',
+  '#dd7e6b', '#ea9999', '#f9cb9c', '#ffe599', '#b6d7a8', '#a2c4c9', '#a4c2f4', '#9fc5e8', '#b4a7d6', '#d5a6bd',
+  '#cc4125', '#e06666', '#f6b26b', '#ffd966', '#93c47d', '#76a5af', '#6d9eeb', '#6fa8dc', '#8e7cc3', '#c27ba0',
+  '#a61c00', '#cc0000', '#e69138', '#f1c232', '#6aa84f', '#45818e', '#3c78d8', '#3d85c6', '#674ea7', '#a64d79',
+];
+
+function ColorBtn({ icon, title, onSelect, activeColor }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [open]);
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        title={title}
+        onClick={() => setOpen(o => !o)}
+        className="p-1.5 rounded hover:bg-muted transition-colors text-muted-foreground flex flex-col items-center"
+      >
+        <Icon name={icon} size={14} />
+        <span
+          className="block w-3.5 h-[3px] rounded-sm mt-0.5"
+          style={{ backgroundColor: activeColor || 'transparent' }}
+        />
+      </button>
+      {open && (
+        <div className="absolute top-full left-0 mt-1 z-50 bg-background border border-border rounded-lg shadow-lg p-2 grid grid-cols-9 gap-1 w-max">
+          {COLORS.map(c => (
+            <button
+              key={c}
+              type="button"
+              title={c}
+              onClick={() => { onSelect(c); setOpen(false); }}
+              className="w-4 h-4 rounded-sm border border-black/10 hover:scale-110 transition-transform relative"
+              style={{ backgroundColor: c }}
+            >
+              {c === activeColor && (
+                <Icon name="Check" size={10} className="absolute inset-0 m-auto text-white drop-shadow" />
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+
 const fmtDate = (iso) => {
   if (!iso) return '';
   return new Date(iso).toLocaleString('en-MY', {
@@ -536,6 +593,9 @@ const ComposeBox = ({ ticket, customerEmail, onSent, onError, mitelToken }) => {
     }
   };
 
+  const [bgColor, setBgColor] = useState(null);
+  const [textColor, setTextColor] = useState(null);
+
   return (
     <div className="shrink-0 border-t border-border bg-card">
       {sent && (
@@ -580,6 +640,9 @@ const ComposeBox = ({ ticket, customerEmail, onSent, onError, mitelToken }) => {
         <ToolBtn icon="AlignRight"  title="Align right"  isActive={activeFormats.justifyRight}  onClick={() => exec('justifyRight')} />
         <span className="w-px h-4 bg-border mx-1" />
         <ToolBtn icon="MessageSquare" title="Email scripts" onClick={() => scriptAssistantRef.current?.toggle()} />
+          <span className="w-px h-4 bg-border mx-1" />
+        <ColorBtn icon="Highlighter" title="Background colour"  onSelect={(c) => { exec('backColor', c); setBgColor(c); }} />
+        <ColorBtn icon="Baseline"    title="Text colour"        onSelect={(c) => { exec('foreColor', c); setTextColor(c); }} />
       </div>
 
       <AgentScriptAssistant
@@ -955,6 +1018,8 @@ const EmailInteractionPage = () => {
       </div>
     </div>
   );
+
+  
 
   const { ticket, messages } = data;
   const isClosed = TERMINAL.includes(ticket.status);

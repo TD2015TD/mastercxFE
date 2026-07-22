@@ -403,7 +403,7 @@ const AgentScriptAssistant = forwardRef(({
             {/* Scripts List */}
             <div className="flex-1 overflow-y-auto">
               {filteredScripts?.length > 0 ? (
-                <div className="p-4 space-y-3">
+                <div className="p-3 grid grid-cols-2 gap-2">
                   {filteredScripts?.map((script) => (
                     <div
                       key={script?.id}
@@ -411,10 +411,10 @@ const AgentScriptAssistant = forwardRef(({
                     >
                       <div className="flex items-start justify-between mb-2">
                         <div className="flex-1">
-                          <h4 className="font-medium text-foreground text-sm">
+                          <h4 className="font-medium text-foreground text-xs leading-snug line-clamp-2">
                             {script?.title}
                           </h4>
-                          <div className="flex items-center gap-2 mt-1">
+                          {/*<div className="flex items-center gap-2 mt-1">
                             <span className="text-xs px-2 py-1 bg-muted rounded text-muted-foreground">
                               {script?.category}
                             </span>
@@ -422,13 +422,13 @@ const AgentScriptAssistant = forwardRef(({
                               <Icon name="Heart" size={12} />
                               {script?.favorites}
                             </div>
-                          </div>
+                          </div>*/}
                         </div>
                       </div>
                       
-                      <p className="text-sm text-muted-foreground mb-3 line-clamp-3">
+                      {/*<p className="text-sm text-muted-foreground mb-3 line-clamp-3">
                         {script?.content}
-                      </p>
+                      </p>*/}
                       
                       <div className="flex items-center gap-2">
                         <Button
