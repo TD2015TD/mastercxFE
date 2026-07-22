@@ -224,7 +224,7 @@ const LiveChatPage = () => {
               src={iframeSrc}
               title="Customer Chat View"
               className="w-full h-40 border-0"
-              sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-downloads"
+              sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-downloads"
             />
           </div>
         )}
