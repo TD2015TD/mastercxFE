@@ -712,10 +712,58 @@ const ComposeBox = ({ ticket, customerEmail, onSent, onError, mitelToken }) => {
 
 const EmailInteractionPage = () => {
   const [searchParams] = useSearchParams();
-  const ticketParam   = searchParams.get('ticket') || searchParams.get('conversationId');
+  const pendingParam   = searchParams.get('pending'); // email_message_id — no Ticket exists yet
+  const [createdTicketNumber, setCreatedTicketNumber] = useState(null);
+  const ticketParam   = searchParams.get('ticket') || searchParams.get('conversationId') || createdTicketNumber;
   const refParam      = searchParams.get('ref'); // previous closed ticket number for context
   // agent_id in URL takes priority (set by TicketObserver when interaction is pre-assigned)
   const urlAgentId    = searchParams.get('agent_id');
+
+  // ── Pending-email triage (no Ticket yet — agent must pick department/category) ──
+  const [pendingEmail, setPendingEmail]   = useState(null);
+  const [pendingLoading, setPendingLoading] = useState(false);
+  const [pendingError, setPendingError]   = useState(null);
+  const [triageDept, setTriageDept]       = useState('Customer Service');
+  const [triageCategory, setTriageCategory] = useState('general');
+  const [creatingTicket, setCreatingTicket] = useState(false);
+
+  useEffect(() => {
+    if (!pendingParam || ticketParam) return; // already resolved to a real ticket
+    setPendingLoading(true);
+    api.get(`/tickets/pending-email/${pendingParam}`)
+      .then(res => {
+        if (!res.data.success) { setPendingError(res.data.message || 'Failed to load email.'); return; }
+        if (res.data.data.ticket_number) {
+          // Race: a ticket already exists for this email — switch straight to it.
+          setCreatedTicketNumber(res.data.data.ticket_number);
+        } else {
+          setPendingEmail(res.data.data);
+        }
+      })
+      .catch(err => setPendingError(err?.response?.data?.message || 'Unable to load email.'))
+      .finally(() => setPendingLoading(false));
+  }, [pendingParam, ticketParam]);
+
+  const handleCreateTicket = async () => {
+    setCreatingTicket(true);
+    setPendingError(null);
+    try {
+      const res = await api.post('/tickets/from-email', {
+        email_message_id: pendingParam,
+        department: triageDept,
+        category: triageCategory,
+      });
+      if (res.data.success) {
+        setCreatedTicketNumber(res.data.data.ticket_number);
+      } else {
+        setPendingError(res.data.message || 'Failed to create ticket.');
+      }
+    } catch (err) {
+      setPendingError(err?.response?.data?.message || 'Failed to create ticket.');
+    } finally {
+      setCreatingTicket(false);
+    }
+  };
 
   const [data, setData]         = useState(null);
   const [loading, setLoading]   = useState(true);
@@ -731,7 +779,11 @@ const EmailInteractionPage = () => {
   const handleCloseRef          = useRef(null); // stable ref for SignalR/postMessage handlers
 
   const load = useCallback(async () => {
-    if (!ticketParam) { setError('No ticket specified.'); setLoading(false); return; }
+    if (!ticketParam) {
+      if (!pendingParam) setError('No ticket specified.');
+      setLoading(false);
+      return;
+    }
     try {
       // Only show the full-page loading spinner on the very first fetch.
       // Background refreshes (auto-assign, onSent, MCX poll) must NOT set
@@ -750,7 +802,7 @@ const EmailInteractionPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [ticketParam]);
+  }, [ticketParam, pendingParam]);
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => { dataRef.current = data; }, [data]);
@@ -1019,7 +1071,80 @@ const EmailInteractionPage = () => {
     </div>
   );
 
-  
+  // ── Triage screen: email arrived but no Ticket exists yet. Agent must pick a
+  // department + category and confirm before a Ticket is created and they can reply. ──
+  if (pendingParam && !ticketParam) {
+    if (pendingLoading) return (
+      <div className="flex items-center justify-center min-h-screen bg-background">
+        <div className="text-center">
+          <Icon name="Mail" size={40} className="text-muted-foreground mx-auto mb-3 animate-pulse" />
+          <p className="text-sm text-muted-foreground">Loading email…</p>
+        </div>
+      </div>
+    );
+
+    if (!pendingEmail) return (
+      <div className="flex items-center justify-center min-h-screen bg-background">
+        <div className="text-center max-w-sm">
+          <Icon name="AlertCircle" size={40} className="text-red-500 mx-auto mb-3" />
+          <p className="text-sm text-red-600">{pendingError || 'Email not found.'}</p>
+        </div>
+      </div>
+    );
+
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-background p-6">
+        <div className="w-full max-w-lg bg-card border border-border rounded-lg shadow-lg p-6">
+          <h2 className="text-base font-semibold mb-1">New Email — Create Ticket</h2>
+          <p className="text-xs text-muted-foreground mb-4">
+            Choose a department and category before a ticket is created. You can't reply until this is done.
+          </p>
+
+          <div className="bg-muted/50 rounded-md p-3 mb-4 text-sm">
+            <p><span className="text-muted-foreground">From:</span> {pendingEmail.from_name || pendingEmail.from_email} &lt;{pendingEmail.from_email}&gt;</p>
+            <p className="mt-1"><span className="text-muted-foreground">Subject:</span> {pendingEmail.subject || '(no subject)'}</p>
+          </div>
+
+          <div className="mb-3">
+            <label className="block text-xs font-medium mb-1">Department</label>
+            <select
+              value={triageDept}
+              onChange={(e) => setTriageDept(e.target.value)}
+              className="w-full border border-border rounded-md px-2 py-2 text-sm bg-background"
+            >
+              <option value="Customer Service">Customer Service</option>
+              <option value="Customs Operations">Customs Operations</option>
+              <option value="Trade Compliance">Trade Compliance</option>
+            </select>
+          </div>
+
+          <div className="mb-4">
+            <label className="block text-xs font-medium mb-1">Category</label>
+            <select
+              value={triageCategory}
+              onChange={(e) => setTriageCategory(e.target.value)}
+              className="w-full border border-border rounded-md px-2 py-2 text-sm bg-background"
+            >
+              <option value="permit">Permit Inquiry</option>
+              <option value="declaration">Customs Declaration</option>
+              <option value="enforcement">Enforcement Matter</option>
+              <option value="general">General Inquiry</option>
+            </select>
+          </div>
+
+          {pendingError && <p className="text-xs text-red-600 mb-3">{pendingError}</p>}
+
+          <button
+            onClick={handleCreateTicket}
+            disabled={creatingTicket}
+            className="w-full bg-primary text-primary-foreground rounded-md py-2 text-sm font-medium disabled:opacity-50"
+          >
+            {creatingTicket ? 'Creating…' : 'Create Ticket'}
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const { ticket, messages } = data;
   const isClosed = TERMINAL.includes(ticket.status);
