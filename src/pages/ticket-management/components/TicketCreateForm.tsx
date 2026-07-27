@@ -14,6 +14,7 @@ import Input from '../../../components/ui/Input';
 import Select from '../../../components/ui/Select';
 import Textarea from '../../../components/ui/Textarea';
 import Checkbox from '../../../components/ui/Checkbox';
+import { calculatePriorityFromMatrix } from '../../../utils/priorityMatrix';
 
 const STATUS_COLORS: Record<string, string> = {
   'Open': 'bg-blue-100 text-blue-800 border-blue-200',
@@ -97,7 +98,6 @@ const TicketCreateForm: React.FC<{
   const [lastPhoneSearchValue, setLastPhoneSearchValue] = useState<string>('');
   
   // Lookups
-  const [priorities, setPriorities] = useState<Array<{ value: string; label: string; hours: number }>>([]);
   const [departments, setDepartments] = useState<Array<{ code: string; name: string }>>([]);
   const [channelOptions, setChannelOptions] = useState<Array<{ value: string; label: string }>>([]);
   const [urgencyOptions, setUrgencyOptions] = useState<Array<{ value: string; label: string }>>([]);
@@ -130,8 +130,8 @@ const TicketCreateForm: React.FC<{
     department: '',
     category: '',
     sub_category: '',
-    urgency: 'Medium',
-    impact: 'Low',
+    urgency: '',
+    impact: '',
     subject: '',
     description: '',
     channel: 'phone',
@@ -681,9 +681,8 @@ const TicketCreateForm: React.FC<{
 
   const loadLookups = async () => {
     try {
-      const [deptData, prioData, channelData, urgencyData, impactData, idTypeData, contactTypeData] = await Promise.all([
+      const [deptData, channelData, urgencyData, impactData, idTypeData, contactTypeData] = await Promise.all([
         lookupService.getDepartments(),
-        lookupService.getPriorities(),
         lookupService.getChannels(),
         lookupService.getUrgencies(),
         lookupService.getImpacts(),
@@ -692,26 +691,7 @@ const TicketCreateForm: React.FC<{
       ]);
 
       setDepartments(deptData.map((d) => ({ code: d.code, name: d.name })));
-      
-      const mappedPrios = prioData.map((p) => {
-        let metadata: { hours?: number } = {};
-        if (typeof p.metadata === 'string') {
-          try {
-            metadata = JSON.parse(p.metadata);
-          } catch {
-            metadata = {};
-          }
-        } else if (p.metadata && typeof p.metadata === 'object') {
-          metadata = p.metadata as { hours?: number };
-        }
-        return {
-          value: p.code,
-          label: `${p.name} (${metadata.hours || 24}h SLA)`,
-          hours: metadata.hours || 24
-        };
-      });
-      
-      setPriorities(mappedPrios);
+
       // Filter channels to show only Phone, Email, and LiveChat
       const allowedChannels = ['phone', 'email', 'chat'];
       setChannelOptions(
@@ -773,7 +753,12 @@ const TicketCreateForm: React.FC<{
       setError('Sub Category is required');
       return false;
     }
-    
+
+    if (!formData.urgency || !formData.impact) {
+      setError('Urgency and Impact are required (Priority is derived from them)');
+      return false;
+    }
+
     return true;
   };
 
@@ -843,8 +828,9 @@ const TicketCreateForm: React.FC<{
         call_id: initialData?.callId || null,
         case_id: initialData?.caseId || null,
 
-        // Ticket classification
-        priority: formData.priority,
+        // Ticket classification — priority is derived server-side from urgency/impact
+        // (Priority Matrix), but sent as a sane fallback in case either is somehow missing.
+        priority: calculatePriorityFromMatrix(formData.urgency, formData.impact) || formData.priority,
         department: formData.department,
         category: formData.category || undefined,
         sub_category: formData.sub_category || undefined,
@@ -924,8 +910,8 @@ const TicketCreateForm: React.FC<{
       department: '',
       category: '',
       sub_category: '',
-      urgency: 'Medium',
-      impact: 'Low',
+      urgency: '',
+      impact: '',
       subject: '',
       description: '',
       channel: 'phone',
@@ -1238,16 +1224,14 @@ const TicketCreateForm: React.FC<{
             required
           />
           
-          {/* Priority hidden — tickets are auto-closed on creation; kept for future use */}
-          <div className="hidden">
-            <Select
-              label="Priority"
-              value={formData.priority}
-              onChange={(value) => handleInputChange('priority', value as string)}
-              options={priorities.map(p => ({ value: p.value, label: p.label }))}
-            />
+          {/* Priority is derived from Urgency x Impact (Priority Matrix) — not manually picked. */}
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1">Priority</label>
+            <div className="px-3 py-2 border border-border rounded-md bg-muted text-foreground text-sm">
+              {calculatePriorityFromMatrix(formData.urgency, formData.impact) || 'Select Urgency & Impact'}
+            </div>
           </div>
-          
+
           <Select
             label="Category *"
             value={formData.category}
@@ -1272,25 +1256,21 @@ const TicketCreateForm: React.FC<{
             required
           />
           
-          {/* Urgency hidden — kept for future use */}
-          <div className="hidden">
-            <Select
-              label="Urgency"
-              value={formData.urgency}
-              onChange={(value) => handleInputChange('urgency', value as string)}
-              options={urgencyOptions}
-            />
-          </div>
+          <Select
+            label="Urgency *"
+            value={formData.urgency}
+            onChange={(value) => handleInputChange('urgency', value as string)}
+            options={[{ value: '', label: 'Select Urgency' }, ...urgencyOptions]}
+            required
+          />
 
-          {/* Impact hidden — kept for future use */}
-          <div className="hidden">
-            <Select
-              label="Impact"
-              value={formData.impact}
-              onChange={(value) => handleInputChange('impact', value as string)}
-              options={impactOptions}
-            />
-          </div>
+          <Select
+            label="Impact *"
+            value={formData.impact}
+            onChange={(value) => handleInputChange('impact', value as string)}
+            options={[{ value: '', label: 'Select Impact' }, ...impactOptions]}
+            required
+          />
         </div>
       </div>
 

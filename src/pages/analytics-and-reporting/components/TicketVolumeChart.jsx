@@ -1,31 +1,18 @@
 import React, { useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
 import Icon from '../../../components/AppIcon';
+import { exportToCsv } from '../../../utils/exportCsv';
 
-const TicketVolumeChart = () => {
+const TicketVolumeChart = ({ data, loading, timeframe, onTimeframeChange }) => {
   const [chartType, setChartType] = useState('bar');
-  const [timeframe, setTimeframe] = useState('7days');
 
-  const chartData = [
-    { name: 'Mon', tickets: 245, resolved: 198, pending: 47 },
-    { name: 'Tue', tickets: 312, resolved: 267, pending: 45 },
-    { name: 'Wed', tickets: 189, resolved: 156, pending: 33 },
-    { name: 'Thu', tickets: 278, resolved: 234, pending: 44 },
-    { name: 'Fri', tickets: 356, resolved: 298, pending: 58 },
-    { name: 'Sat', tickets: 167, resolved: 145, pending: 22 },
-    { name: 'Sun', tickets: 134, resolved: 112, pending: 22 }
-  ];
-
-  const monthlyData = [
-    { name: 'Jan', tickets: 1847, resolved: 1623, pending: 224 },
-    { name: 'Feb', tickets: 2156, resolved: 1934, pending: 222 },
-    { name: 'Mar', tickets: 1923, resolved: 1745, pending: 178 },
-    { name: 'Apr', tickets: 2234, resolved: 2012, pending: 222 },
-    { name: 'May', tickets: 2567, resolved: 2298, pending: 269 },
-    { name: 'Jun', tickets: 2134, resolved: 1923, pending: 211 }
-  ];
-
-  const currentData = timeframe === '7days' ? chartData : monthlyData;
+  const handleExport = () => {
+    const rows = [
+      ['Date', 'Call', 'Email', 'Chat', 'Total', 'Resolved', 'Pending'],
+      ...(data || []).map((d) => [d.date, d.call, d.email, d.chat, d.total, d.resolved, d.pending]),
+    ];
+    exportToCsv(rows, 'ticket-volume-by-date');
+  };
 
   const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload?.length) {
@@ -50,32 +37,32 @@ const TicketVolumeChart = () => {
           <h3 className="text-lg font-semibold text-foreground mb-1">Ticket Volume Trends</h3>
           <p className="text-sm text-muted-foreground">Track ticket creation and resolution patterns</p>
         </div>
-        
+
         <div className="flex items-center space-x-3 mt-4 sm:mt-0">
           <div className="flex items-center space-x-1 bg-muted rounded-lg p-1">
             <button
-              onClick={() => setTimeframe('7days')}
+              onClick={() => onTimeframeChange?.('last_7_days')}
               className={`px-3 py-1 text-xs font-medium rounded transition-colors duration-200 ${
-                timeframe === '7days' ?'bg-primary text-primary-foreground' :'text-muted-foreground hover:text-foreground'
+                timeframe === 'last_7_days' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
               }`}
             >
               7 Days
             </button>
             <button
-              onClick={() => setTimeframe('6months')}
+              onClick={() => onTimeframeChange?.('last_30_days')}
               className={`px-3 py-1 text-xs font-medium rounded transition-colors duration-200 ${
-                timeframe === '6months' ?'bg-primary text-primary-foreground' :'text-muted-foreground hover:text-foreground'
+                timeframe === 'last_30_days' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
               }`}
             >
-              6 Months
+              30 Days
             </button>
           </div>
-          
+
           <div className="flex items-center space-x-1 bg-muted rounded-lg p-1">
             <button
               onClick={() => setChartType('bar')}
               className={`p-2 rounded transition-colors duration-200 ${
-                chartType === 'bar' ?'bg-primary text-primary-foreground' :'text-muted-foreground hover:text-foreground'
+                chartType === 'bar' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
               }`}
             >
               <Icon name="BarChart3" size={16} />
@@ -83,80 +70,91 @@ const TicketVolumeChart = () => {
             <button
               onClick={() => setChartType('line')}
               className={`p-2 rounded transition-colors duration-200 ${
-                chartType === 'line' ?'bg-primary text-primary-foreground' :'text-muted-foreground hover:text-foreground'
+                chartType === 'line' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
               }`}
             >
               <Icon name="TrendingUp" size={16} />
             </button>
           </div>
+
+          <button
+            onClick={handleExport}
+            disabled={!data?.length}
+            title="Export CSV"
+            className="p-2 rounded transition-colors duration-200 text-muted-foreground hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <Icon name="Download" size={16} />
+          </button>
         </div>
       </div>
 
       <div className="h-80">
-        <ResponsiveContainer width="100%" height="100%">
-          {chartType === 'bar' ? (
-            <BarChart data={currentData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-              <XAxis 
-                dataKey="name" 
-                stroke="var(--color-muted-foreground)"
-                fontSize={12}
-              />
-              <YAxis 
-                stroke="var(--color-muted-foreground)"
-                fontSize={12}
-              />
-              <Tooltip content={<CustomTooltip />} />
-              <Bar dataKey="tickets" fill="var(--color-primary)" name="Total Tickets" radius={[2, 2, 0, 0]} />
-              <Bar dataKey="resolved" fill="var(--color-accent)" name="Resolved" radius={[2, 2, 0, 0]} />
-              <Bar dataKey="pending" fill="var(--color-warning)" name="Pending" radius={[2, 2, 0, 0]} />
-            </BarChart>
-          ) : (
-            <LineChart data={currentData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-              <XAxis 
-                dataKey="name" 
-                stroke="var(--color-muted-foreground)"
-                fontSize={12}
-              />
-              <YAxis 
-                stroke="var(--color-muted-foreground)"
-                fontSize={12}
-              />
-              <Tooltip content={<CustomTooltip />} />
-              <Line 
-                type="monotone" 
-                dataKey="tickets" 
-                stroke="var(--color-primary)" 
-                strokeWidth={3}
-                name="Total Tickets"
-                dot={{ fill: 'var(--color-primary)', strokeWidth: 2, r: 4 }}
-              />
-              <Line 
-                type="monotone" 
-                dataKey="resolved" 
-                stroke="var(--color-accent)" 
-                strokeWidth={3}
-                name="Resolved"
-                dot={{ fill: 'var(--color-accent)', strokeWidth: 2, r: 4 }}
-              />
-            </LineChart>
-          )}
-        </ResponsiveContainer>
+        {loading ? (
+          <div className="w-full h-full animate-pulse bg-muted rounded-lg" />
+        ) : !data || data.length === 0 ? (
+          <div className="w-full h-full flex items-center justify-center text-muted-foreground text-sm">
+            No tickets in this period.
+          </div>
+        ) : (
+          <ResponsiveContainer width="100%" height="100%">
+            {chartType === 'bar' ? (
+              <BarChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                <XAxis dataKey="date" stroke="var(--color-muted-foreground)" fontSize={12} />
+                <YAxis stroke="var(--color-muted-foreground)" fontSize={12} />
+                <Tooltip content={<CustomTooltip />} />
+                <Bar dataKey="call" fill="var(--color-primary)" name="Call" radius={[2, 2, 0, 0]} />
+                <Bar dataKey="email" fill="var(--color-accent)" name="Email" radius={[2, 2, 0, 0]} />
+                <Bar dataKey="chat" fill="var(--color-warning)" name="Chat" radius={[2, 2, 0, 0]} />
+              </BarChart>
+            ) : (
+              <LineChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                <XAxis dataKey="date" stroke="var(--color-muted-foreground)" fontSize={12} />
+                <YAxis stroke="var(--color-muted-foreground)" fontSize={12} />
+                <Tooltip content={<CustomTooltip />} />
+                <Line
+                  type="monotone"
+                  dataKey="call"
+                  stroke="var(--color-primary)"
+                  strokeWidth={3}
+                  name="Call"
+                  dot={{ fill: 'var(--color-primary)', strokeWidth: 2, r: 4 }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="email"
+                  stroke="var(--color-accent)"
+                  strokeWidth={3}
+                  name="Email"
+                  dot={{ fill: 'var(--color-accent)', strokeWidth: 2, r: 4 }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="chat"
+                  stroke="var(--color-warning)"
+                  strokeWidth={3}
+                  name="Chat"
+                  dot={{ fill: 'var(--color-warning)', strokeWidth: 2, r: 4 }}
+                />
+              </LineChart>
+            )}
+          </ResponsiveContainer>
+        )}
       </div>
 
       <div className="flex items-center justify-center space-x-6 mt-4 pt-4 border-t border-border">
         <div className="flex items-center space-x-2">
           <div className="w-3 h-3 bg-primary rounded-full"></div>
-          <span className="text-sm text-muted-foreground">Total Tickets</span>
+          <span className="text-sm text-muted-foreground">Call</span>
         </div>
         <div className="flex items-center space-x-2">
           <div className="w-3 h-3 bg-accent rounded-full"></div>
-          <span className="text-sm text-muted-foreground">Resolved</span>
+          <span className="text-sm text-muted-foreground">Email</span>
         </div>
         <div className="flex items-center space-x-2">
           <div className="w-3 h-3 bg-warning rounded-full"></div>
-          <span className="text-sm text-muted-foreground">Pending</span>
+          <span className="text-sm text-muted-foreground">Chat</span>
         </div>
       </div>
     </div>

@@ -7,9 +7,11 @@ import { agentService } from '../../../services/agentService';
 import Button from '../../../components/ui/Button';
 import Input from '../../../components/ui/Input';
 import Select from '../../../components/ui/Select';
+import Textarea from '../../../components/ui/Textarea';
 import api from '../../../services/api';
 import Icon from '../../../components/AppIcon';
 import Can, { usePermission } from '../../../components/Can';
+import { calculatePriorityFromMatrix } from '../../../utils/priorityMatrix';
 
 // Strip Gmail/Outlook quoted-reply chains from HTML, returning the clean
 // content and whether any quotes were found.
@@ -46,6 +48,8 @@ const TicketDetails = ({ ticket, onUpdate }) => {
   const [isSaving, setIsSaving] = useState(false);
   const [departments, setDepartments] = useState([]);
   const [priorities, setPriorities] = useState([]);
+  const [urgencyOptions, setUrgencyOptions] = useState([]);
+  const [impactOptions, setImpactOptions] = useState([]);
   const [emailMessages, setEmailMessages] = useState([]);
   const [emailLoading, setEmailLoading] = useState(false);
   // Track which messages are collapsed (by index); default all expanded
@@ -82,18 +86,89 @@ const TicketDetails = ({ ticket, onUpdate }) => {
   const [customerContacts, setCustomerContacts] = useState([]);
   const [agents, setAgents] = useState([]);
   const [isLoadingAgents, setIsLoadingAgents] = useState(false);
+
+  const [escalations, setEscalations] = useState([]);
+  const [isLoadingEscalations, setIsLoadingEscalations] = useState(false);
+  const [showEscalateForm, setShowEscalateForm] = useState(false);
+  const [isEscalating, setIsEscalating] = useState(false);
+  const [escalateForm, setEscalateForm] = useState({ to_agent_id: '', level: 'L1', reason: '' });
   
   const [editData, setEditData] = useState({
     priority: ticket?.priority,
     department: ticket?.department,
     assignedTo: ticket?.assigned_to,
-    category: ticket?.category
+    category: ticket?.category,
+    urgency: ticket?.urgency || '',
+    impact: ticket?.impact || ''
   });
 
   // Load agents on mount for better performance
   React.useEffect(() => {
     loadAgents();
   }, []);
+
+  const loadEscalations = React.useCallback(async () => {
+    if (!ticket?.id) return;
+    setIsLoadingEscalations(true);
+    try {
+      const res = await api.get('/escalations', { params: { ticket_id: ticket.id, per_page: 10 } });
+      setEscalations(res.data?.data || []);
+    } catch (err) {
+      console.error('Error loading escalations:', err);
+    } finally {
+      setIsLoadingEscalations(false);
+    }
+  }, [ticket?.id]);
+
+  React.useEffect(() => {
+    loadEscalations();
+  }, [loadEscalations]);
+
+  const handleEscalate = async () => {
+    if (!escalateForm.to_agent_id || !escalateForm.reason) {
+      toast.error('Please select an agent and provide a reason');
+      return;
+    }
+    setIsEscalating(true);
+    try {
+      await api.post('/escalations', {
+        ticket_id: ticket.id,
+        to_agent_id: escalateForm.to_agent_id,
+        level: escalateForm.level,
+        reason: escalateForm.reason,
+        escalation_type: 'manual'
+      });
+      toast.success('Ticket escalated successfully');
+      setShowEscalateForm(false);
+      setEscalateForm({ to_agent_id: '', level: 'L1', reason: '' });
+      loadEscalations();
+      if (onUpdate) onUpdate({});
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to escalate ticket');
+    } finally {
+      setIsEscalating(false);
+    }
+  };
+
+  const handleAcknowledgeEscalation = async (id) => {
+    try {
+      await api.post(`/escalations/${id}/acknowledge`);
+      toast.success('Escalation acknowledged');
+      loadEscalations();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to acknowledge escalation');
+    }
+  };
+
+  const handleResolveEscalation = async (id) => {
+    try {
+      await api.post(`/escalations/${id}/resolve`);
+      toast.success('Escalation resolved');
+      loadEscalations();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to resolve escalation');
+    }
+  };
 
   // Load lookups when entering edit mode
   React.useEffect(() => {
@@ -141,13 +216,17 @@ const TicketDetails = ({ ticket, onUpdate }) => {
 
   const loadLookups = async () => {
     try {
-      const [deptData, prioData] = await Promise.all([
+      const [deptData, prioData, urgencyData, impactData] = await Promise.all([
         lookupService.getDepartments(),
-        lookupService.getPriorities()
+        lookupService.getPriorities(),
+        lookupService.getUrgencies(),
+        lookupService.getImpacts()
       ]);
 
       setDepartments(deptData.map(d => ({ value: d.name, label: d.name })));
       setPriorities(prioData.map(p => ({ value: p.code, label: `${p.code} - ${p.name}` })));
+      setUrgencyOptions(urgencyData.map(u => ({ value: u.code, label: u.name })));
+      setImpactOptions(impactData.map(i => ({ value: i.code, label: i.name })));
     } catch (err) {
       console.error('Error loading lookups:', err);
     }
@@ -155,14 +234,17 @@ const TicketDetails = ({ ticket, onUpdate }) => {
 
   const handleSave = async () => {
     setIsSaving(true);
-    
+
     try {
-      // Call API to update ticket
+      // Priority is derived from Urgency x Impact server-side (Priority Matrix); still send the
+      // computed value as a fallback in case either is missing.
       const response = await ticketService.updateTicket(ticket.id, {
-        priority: editData.priority,
+        priority: calculatePriorityFromMatrix(editData.urgency, editData.impact) || editData.priority,
         department: editData.department,
         category: editData.category,
-        assigned_to: editData.assignedTo
+        assigned_to: editData.assignedTo,
+        urgency: editData.urgency || undefined,
+        impact: editData.impact || undefined
       });
 
       if (response.success) {
@@ -188,28 +270,11 @@ const TicketDetails = ({ ticket, onUpdate }) => {
       priority: ticket?.priority,
       department: ticket?.department,
       assignedTo: ticket?.assigned_to,
-      category: ticket?.category
+      category: ticket?.category,
+      urgency: ticket?.urgency || '',
+      impact: ticket?.impact || ''
     });
     setIsEditing(false);
-  };
-
-  const getImpactUrgencyMatrix = () => {
-    const impact = ticket?.impact || 'Medium';
-    const urgency = ticket?.urgency || 'Medium';
-    
-    const matrix = {
-      'High-High': 'P1',
-      'High-Medium': 'P2',
-      'High-Low': 'P3',
-      'Medium-High': 'P2',
-      'Medium-Medium': 'P3',
-      'Medium-Low': 'P4',
-      'Low-High': 'P3',
-      'Low-Medium': 'P4',
-      'Low-Low': 'P5'
-    };
-    
-    return matrix?.[`${impact}-${urgency}`] || 'P3';
   };
 
   return (
@@ -304,21 +369,37 @@ const TicketDetails = ({ ticket, onUpdate }) => {
           <div className="space-y-3">
             {isEditing ? (
               <>
-                {/* Priority hidden — auto-closed tickets; kept for future use */}
-                <div className="hidden">
-                  <Select
-                    label="Priority"
-                    options={priorities.length > 0 ? priorities : [
-                      { value: 'P1', label: 'P1 - Critical' },
-                      { value: 'P2', label: 'P2 - High' },
-                      { value: 'P3', label: 'P3 - Medium' },
-                      { value: 'P4', label: 'P4 - Low' }
-                    ]}
-                    value={editData?.priority}
-                    onChange={(value) => setEditData({...editData, priority: value})}
-                  />
+                <Select
+                  label="Urgency"
+                  options={urgencyOptions.length > 0 ? urgencyOptions : [
+                    { value: 'Critical', label: 'Critical' },
+                    { value: 'High', label: 'High' },
+                    { value: 'Medium', label: 'Medium' },
+                    { value: 'Low', label: 'Low' }
+                  ]}
+                  value={editData?.urgency}
+                  onChange={(value) => setEditData({...editData, urgency: value})}
+                />
+
+                <Select
+                  label="Impact"
+                  options={impactOptions.length > 0 ? impactOptions : [
+                    { value: 'Critical', label: 'Critical' },
+                    { value: 'High', label: 'High' },
+                    { value: 'Medium', label: 'Medium' },
+                    { value: 'Low', label: 'Low' }
+                  ]}
+                  value={editData?.impact}
+                  onChange={(value) => setEditData({...editData, impact: value})}
+                />
+
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Priority (auto)</label>
+                  <p className="text-sm font-medium text-foreground mt-1">
+                    {calculatePriorityFromMatrix(editData?.urgency, editData?.impact) || 'Select Urgency & Impact'}
+                  </p>
                 </div>
-                
+
                 <Select
                   label="Department"
                   options={departments.length > 0 ? departments : [
@@ -366,12 +447,19 @@ const TicketDetails = ({ ticket, onUpdate }) => {
                   <p className="text-sm text-foreground mt-1 capitalize">{ticket?.channel?.replace('-', ' ') || '-'}</p>
                 </div>
 
-                {/* Priority hidden — auto-closed tickets; kept for future use */}
-                <div className="hidden">
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">Priority</label>
-                    <p className="text-sm text-foreground mt-1">{ticket?.priority}</p>
-                  </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Urgency</label>
+                  <p className="text-sm text-foreground mt-1">{ticket?.urgency || '—'}</p>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Impact</label>
+                  <p className="text-sm text-foreground mt-1">{ticket?.impact || '—'}</p>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Priority</label>
+                  <p className="text-sm text-foreground mt-1">{ticket?.priority}</p>
                 </div>
 
                 <div>
@@ -393,24 +481,112 @@ const TicketDetails = ({ ticket, onUpdate }) => {
           </div>
         </div>
       </div>
-      {/* Priority Matrix — hidden; kept for future use */}
-      <div className="hidden mt-6 p-4 bg-muted rounded-lg">
-        <h4 className="font-medium text-foreground mb-3">Priority Matrix (Impact × Urgency)</h4>
-        <div className="grid grid-cols-2 gap-4 text-sm">
-          <div>
-            <span className="text-muted-foreground">Impact: </span>
-            <span className="text-foreground font-medium">{ticket?.impact || 'Medium'}</span>
-          </div>
-          <div>
-            <span className="text-muted-foreground">Urgency: </span>
-            <span className="text-foreground font-medium">{ticket?.urgency || 'Medium'}</span>
-          </div>
-          <div className="col-span-2">
-            <span className="text-muted-foreground">Calculated Priority: </span>
-            <span className="text-foreground font-medium">{getImpactUrgencyMatrix()}</span>
+      {ticket?.urgency && ticket?.impact && (
+        <div className="mt-6 p-4 bg-muted rounded-lg">
+          <h4 className="font-medium text-foreground mb-3">Priority Matrix (Urgency × Impact)</h4>
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <span className="text-muted-foreground">Urgency: </span>
+              <span className="text-foreground font-medium">{ticket.urgency}</span>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Impact: </span>
+              <span className="text-foreground font-medium">{ticket.impact}</span>
+            </div>
+            <div className="col-span-2">
+              <span className="text-muted-foreground">Calculated Priority: </span>
+              <span className="text-foreground font-medium">{calculatePriorityFromMatrix(ticket.urgency, ticket.impact)}</span>
+            </div>
           </div>
         </div>
-      </div>
+      )}
+
+      {/* Escalation */}
+      <Can permission="ticket.escalate">
+        <div className="mt-6 p-4 border border-border rounded-lg">
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="font-medium text-foreground">Escalation</h4>
+            {!showEscalateForm && (
+              <Button variant="outline" size="sm" iconName="ArrowUpCircle" iconPosition="left" onClick={() => setShowEscalateForm(true)}>
+                Escalate
+              </Button>
+            )}
+          </div>
+
+          {showEscalateForm && (
+            <div className="space-y-3 mb-4 p-3 bg-muted rounded-lg">
+              <Select
+                label="Escalate To"
+                options={[
+                  { value: '', label: 'Select Agent' },
+                  ...agents
+                    .filter((a) => a.id !== ticket?.assigned_to)
+                    .map((a) => ({ value: a.id, label: `${a.user?.name || a.agent_code} (${a.department})` }))
+                ]}
+                value={escalateForm.to_agent_id}
+                onChange={(value) => setEscalateForm({ ...escalateForm, to_agent_id: value })}
+              />
+              <Select
+                label="Level"
+                options={[
+                  { value: 'L1', label: 'L1' },
+                  { value: 'L2', label: 'L2' },
+                  { value: 'Supervisor', label: 'Supervisor' },
+                  { value: 'Manager', label: 'Manager' }
+                ]}
+                value={escalateForm.level}
+                onChange={(value) => setEscalateForm({ ...escalateForm, level: value })}
+              />
+              <Textarea
+                label="Reason"
+                value={escalateForm.reason}
+                onChange={(e) => setEscalateForm({ ...escalateForm, reason: e?.target?.value })}
+                placeholder="Why is this ticket being escalated?"
+              />
+              <div className="flex items-center space-x-2">
+                <Button size="sm" onClick={handleEscalate} loading={isEscalating}>Submit</Button>
+                <Button size="sm" variant="ghost" onClick={() => setShowEscalateForm(false)} disabled={isEscalating}>Cancel</Button>
+              </div>
+            </div>
+          )}
+
+          {isLoadingEscalations ? (
+            <p className="text-sm text-muted-foreground">Loading escalations...</p>
+          ) : escalations.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No escalations for this ticket.</p>
+          ) : (
+            <div className="space-y-2">
+              {escalations.map((esc) => (
+                <div key={esc.id} className="flex items-start justify-between p-3 bg-muted rounded-lg text-sm">
+                  <div>
+                    <p className="text-foreground font-medium">
+                      {esc.level} &middot; {esc.escalation_type} &middot;{' '}
+                      <span className={
+                        esc.status === 'pending' ? 'text-amber-600' :
+                        esc.status === 'acknowledged' ? 'text-blue-600' : 'text-green-600'
+                      }>{esc.status}</span>
+                    </p>
+                    <p className="text-muted-foreground mt-1">{esc.reason}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {esc.from_agent?.user?.name || 'System'} &rarr; {esc.to_agent?.user?.name || 'Unknown'}
+                      {' '}&middot; {new Date(esc.escalated_at).toLocaleString()}
+                    </p>
+                  </div>
+                  <div className="flex items-center space-x-2 flex-shrink-0 ml-3">
+                    {esc.status === 'pending' && (
+                      <Button size="sm" variant="outline" onClick={() => handleAcknowledgeEscalation(esc.id)}>Acknowledge</Button>
+                    )}
+                    {esc.status !== 'completed' && (
+                      <Button size="sm" variant="outline" onClick={() => handleResolveEscalation(esc.id)}>Resolve</Button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </Can>
+
       {/* Issue Description */}
       <div className="mt-6">
         <h4 className="font-medium text-foreground mb-3">Issue Description</h4>

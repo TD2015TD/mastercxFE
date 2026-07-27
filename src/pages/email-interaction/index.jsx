@@ -353,7 +353,7 @@ const ToolBtn = ({ icon, title, onClick, isActive = false }) => (
 
 // ─── Compose Box ─────────────────────────────────────────────────────────────
 
-const ComposeBox = ({ ticket, customerEmail, onSent, onError, mitelToken }) => {
+const ComposeBox = ({ ticket, customerEmail, onSent, onError, mitelToken, ticketEmbedToken }) => {
   const editorRef    = useRef(null);
   const fileInputRef = useRef(null);
   const lastRangeRef = useRef(null); // cursor position saved before file-picker steals focus
@@ -540,7 +540,9 @@ const ComposeBox = ({ ticket, customerEmail, onSent, onError, mitelToken }) => {
     try {
       const form = new FormData();
       form.append('image', file);
-      const res = await api.post('/email/upload-inline-image', form);
+      const uploadUrl = ticketEmbedToken ? '/public/email/upload-inline-image' : '/email/upload-inline-image';
+      if (ticketEmbedToken) form.append('token', ticketEmbedToken);
+      const res = await api.post(uploadUrl, form);
       if (res.data?.url) {
         insertImageNode(res.data.url);
       }
@@ -572,12 +574,19 @@ const ComposeBox = ({ ticket, customerEmail, onSent, onError, mitelToken }) => {
       const form = new FormData();
       form.append('body', html);
       files.forEach(f => form.append('attachments[]', f));
+      if (ticketEmbedToken) form.append('token', ticketEmbedToken);
 
-      await api.post(`/tickets/${ticket.ticket_number}/reply-email`, form);
+      const replyUrl = ticketEmbedToken
+        ? `/public/tickets/${ticket.ticket_number}/reply-email`
+        : `/tickets/${ticket.ticket_number}/reply-email`;
+      await api.post(replyUrl, form);
 
       // Tell Mitel the agent-side conversation is done so Ignite shows "Handled"
       if (ticket.mitel_interaction_id && mitelToken) {
-        api.post(`/tickets/${ticket.id}/mitel-end-conversation`, { mitel_token: mitelToken }).catch(() => {});
+        const endUrl = ticketEmbedToken
+          ? `/public/tickets/${ticket.id}/mitel-end-conversation?token=${encodeURIComponent(ticketEmbedToken)}`
+          : `/tickets/${ticket.id}/mitel-end-conversation`;
+        api.post(endUrl, { mitel_token: mitelToken }).catch(() => {});
       }
 
       setSent(true);
@@ -718,6 +727,17 @@ const EmailInteractionPage = () => {
   const refParam      = searchParams.get('ref'); // previous closed ticket number for context
   // agent_id in URL takes priority (set by TicketObserver when interaction is pre-assigned)
   const urlAgentId    = searchParams.get('agent_id');
+  // Present when embedded in Mitel Ignite's OpenMedia iframe — that browsing context can't
+  // see the agent's normal localStorage login, so these requests use token auth instead
+  // (see EmbedTokenService on the backend) via the /public/pending-emails/* routes.
+  const embedToken    = searchParams.get('embed_token');
+  // Ticket-scoped embed token — carries the same token-auth forward once a Ticket
+  // exists (either it already existed, or triage just created one), so the rest of
+  // this page (thread view, reply, close, hangup polling) never has to fall back to
+  // the normal JWT-authenticated /tickets/* routes inside the embedded iframe.
+  const [ticketEmbedToken, setTicketEmbedToken] = useState(() =>
+    ticketParam ? searchParams.get('embed_token') : null
+  );
 
   // ── Pending-email triage (no Ticket yet — agent must pick department/category) ──
   const [pendingEmail, setPendingEmail]   = useState(null);
@@ -730,31 +750,45 @@ const EmailInteractionPage = () => {
   useEffect(() => {
     if (!pendingParam || ticketParam) return; // already resolved to a real ticket
     setPendingLoading(true);
-    api.get(`/tickets/pending-email/${pendingParam}`)
+
+    const request = embedToken
+      ? api.get(`/public/pending-emails/${pendingParam}`, { params: { token: embedToken } })
+      : api.get(`/tickets/pending-email/${pendingParam}`);
+
+    request
       .then(res => {
         if (!res.data.success) { setPendingError(res.data.message || 'Failed to load email.'); return; }
-        if (res.data.data.ticket_number) {
+        const payload = res.data.data;
+        if (payload.ticket_number || payload.already_ticketed) {
           // Race: a ticket already exists for this email — switch straight to it.
-          setCreatedTicketNumber(res.data.data.ticket_number);
+          setCreatedTicketNumber(payload.ticket_number || payload.ticket_id);
+          if (payload.embed_token) setTicketEmbedToken(payload.embed_token);
         } else {
-          setPendingEmail(res.data.data);
+          setPendingEmail(payload);
         }
       })
       .catch(err => setPendingError(err?.response?.data?.message || 'Unable to load email.'))
       .finally(() => setPendingLoading(false));
-  }, [pendingParam, ticketParam]);
+  }, [pendingParam, ticketParam, embedToken]);
 
   const handleCreateTicket = async () => {
     setCreatingTicket(true);
     setPendingError(null);
     try {
-      const res = await api.post('/tickets/from-email', {
-        email_message_id: pendingParam,
-        department: triageDept,
-        category: triageCategory,
-      });
+      const res = embedToken
+        ? await api.post('/public/pending-emails/create-ticket', {
+            token: embedToken,
+            department: triageDept,
+            category: triageCategory,
+          })
+        : await api.post('/tickets/from-email', {
+            email_message_id: pendingParam,
+            department: triageDept,
+            category: triageCategory,
+          });
       if (res.data.success) {
-        setCreatedTicketNumber(res.data.data.ticket_number);
+        setCreatedTicketNumber(res.data.data.ticket_number || res.data.data.ticket_id);
+        if (res.data.data.embed_token) setTicketEmbedToken(res.data.data.embed_token);
       } else {
         setPendingError(res.data.message || 'Failed to create ticket.');
       }
@@ -791,9 +825,13 @@ const EmailInteractionPage = () => {
       // resets every individual expand/collapse state back to its default.
       if (!dataRef.current) setLoading(true);
       setError(null);
-      const url = refParam
-        ? `/tickets/${ticketParam}/email-thread?ref=${refParam}`
+      const base = ticketEmbedToken
+        ? `/public/tickets/${ticketParam}/email-thread`
         : `/tickets/${ticketParam}/email-thread`;
+      const qs = new URLSearchParams();
+      if (refParam) qs.set('ref', refParam);
+      if (ticketEmbedToken) qs.set('token', ticketEmbedToken);
+      const url = qs.toString() ? `${base}?${qs}` : base;
       const res = await api.get(url);
       if (res.data.success) setData(res.data.data);
       else setError(res.data.message || 'Failed to load email thread.');
@@ -802,10 +840,58 @@ const EmailInteractionPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [ticketParam, pendingParam]);
+  }, [ticketParam, pendingParam, ticketEmbedToken]);
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => { dataRef.current = data; }, [data]);
+
+  // ── Confirm department/category on every accept ──────────────────────────────
+  // Re-shown every time a ticket is opened here (new or already-existing) so
+  // triage stays a deliberate per-acceptance step, not something baked in once
+  // at ticket creation and never revisited.
+  const [triageConfirmed, setTriageConfirmed] = useState(false);
+  const [confirmDept, setConfirmDept]         = useState('Customer Service');
+  const [confirmCategory, setConfirmCategory] = useState('general');
+  const [confirmSaving, setConfirmSaving]     = useState(false);
+  const [confirmError, setConfirmError]       = useState(null);
+  const confirmInitRef = useRef(null); // ticket id already initialized — avoids resetting on poll refreshes
+
+  useEffect(() => {
+    if (!data?.ticket?.id) return;
+    if (confirmInitRef.current === data.ticket.id) return;
+    confirmInitRef.current = data.ticket.id;
+    setConfirmDept(data.ticket.department || 'Customer Service');
+    setConfirmCategory(data.ticket.category || 'general');
+    setTriageConfirmed(false);
+    setConfirmError(null);
+  }, [data?.ticket?.id]);
+
+  const handleConfirmTriage = async () => {
+    setConfirmSaving(true);
+    setConfirmError(null);
+    try {
+      const res = ticketEmbedToken
+        ? await api.post(`/public/tickets/${data.ticket.ticket_number}/triage`, {
+            token: ticketEmbedToken,
+            department: confirmDept,
+            category: confirmCategory,
+          })
+        : await api.put(`/tickets/${data.ticket.id}`, {
+            department: confirmDept,
+            category: confirmCategory,
+          });
+      if (res.data.success === false) {
+        setConfirmError(res.data.message || 'Failed to save.');
+        return;
+      }
+      setTriageConfirmed(true);
+      load();
+    } catch (err) {
+      setConfirmError(err?.response?.data?.message || 'Failed to save.');
+    } finally {
+      setConfirmSaving(false);
+    }
+  };
 
   // Accept the Mitel interaction as soon as the email is opened so Ignite
   // doesn't time it out and mark it "Abandoned" before the agent responds.
@@ -899,7 +985,11 @@ const EmailInteractionPage = () => {
 
     const poll = async () => {
       try {
-        const res = await api.get(`/tickets/${data.ticket.ticket_number}/email-thread`);
+        const base = ticketEmbedToken
+          ? `/public/tickets/${data.ticket.ticket_number}/email-thread`
+          : `/tickets/${data.ticket.ticket_number}/email-thread`;
+        const url = ticketEmbedToken ? `${base}?token=${encodeURIComponent(ticketEmbedToken)}` : base;
+        const res = await api.get(url);
         if (res.data?.success) {
           const newCount = res.data.data?.messages?.length ?? 0;
           if (newCount > knownCount) {
@@ -911,7 +1001,7 @@ const EmailInteractionPage = () => {
 
     const timer = setInterval(poll, 20000);
     return () => clearInterval(timer);
-  }, [data?.ticket?.id, data?.ticket?.status, data?.messages?.length, load]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [data?.ticket?.id, data?.ticket?.status, data?.messages?.length, load, ticketEmbedToken]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // C) MCX polling — checks Mitel interaction state every 5 s via CRM backend.
   // Works without mitel_token or SignalR. When the interaction is gone (agent hung up),
@@ -923,7 +1013,10 @@ const EmailInteractionPage = () => {
 
     const poll = async () => {
       try {
-        const res = await api.post(`/tickets/${data.ticket.id}/mitel-ping`);
+        const url = ticketEmbedToken
+          ? `/public/tickets/${data.ticket.id}/mitel-ping?token=${encodeURIComponent(ticketEmbedToken)}`
+          : `/tickets/${data.ticket.id}/mitel-ping`;
+        const res = await api.post(url);
         if (res.data?.closed) {
           console.log('[Email MCX poll] Interaction ended — refreshing ticket');
           await load();
@@ -933,7 +1026,7 @@ const EmailInteractionPage = () => {
 
     const timer = setInterval(poll, 5000);
     return () => clearInterval(timer);
-  }, [data?.ticket?.id, data?.ticket?.mitel_interaction_id, data?.ticket?.status, load]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [data?.ticket?.id, data?.ticket?.mitel_interaction_id, data?.ticket?.status, load, ticketEmbedToken]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // B) Mitel SignalR — real-time hangup detection via employeeHub.
   // Connects once mitelToken is available (either from localStorage or postMessage from Ignite).
@@ -1036,10 +1129,16 @@ const EmailInteractionPage = () => {
     if (TERMINAL.includes(data?.ticket?.status)) return;
     setClosing(true);
     try {
-      await api.post(`/tickets/${data.ticket.id}/close`);
+      const closeUrl = ticketEmbedToken
+        ? `/public/tickets/${data.ticket.id}/close?token=${encodeURIComponent(ticketEmbedToken)}`
+        : `/tickets/${data.ticket.id}/close`;
+      await api.post(closeUrl);
       // Tell Mitel the agent-side conversation is done so Ignite shows "Handled"
       if (data.ticket.mitel_interaction_id && mitelToken) {
-        try { await api.post(`/tickets/${data.ticket.id}/mitel-end-conversation`, { mitel_token: mitelToken }); } catch { /* ignore */ }
+        const endUrl = ticketEmbedToken
+          ? `/public/tickets/${data.ticket.id}/mitel-end-conversation?token=${encodeURIComponent(ticketEmbedToken)}`
+          : `/tickets/${data.ticket.id}/mitel-end-conversation`;
+        try { await api.post(endUrl, { mitel_token: mitelToken }); } catch { /* ignore */ }
       }
       await load();
     } catch {
@@ -1140,6 +1239,69 @@ const EmailInteractionPage = () => {
             className="w-full bg-primary text-primary-foreground rounded-md py-2 text-sm font-medium disabled:opacity-50"
           >
             {creatingTicket ? 'Creating…' : 'Create Ticket'}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Confirm department/category before showing the conversation — every accept ──
+  if (!triageConfirmed) {
+    const t = data.ticket;
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-background p-6">
+        <div className="w-full max-w-lg bg-card border border-border rounded-lg shadow-lg p-6">
+          <h2 className="text-base font-semibold mb-1">Confirm Department &amp; Category</h2>
+          <p className="text-xs text-muted-foreground mb-4">
+            Confirm or change the department and category for this ticket before continuing.
+          </p>
+
+          <div className="bg-muted/50 rounded-md p-3 mb-4 text-sm">
+            <p><span className="text-muted-foreground">Ticket:</span> {t.ticket_number}</p>
+            <p className="mt-1"><span className="text-muted-foreground">Subject:</span> {t.subject || '(no subject)'}</p>
+          </div>
+
+          <div className="mb-3">
+            <label className="block text-xs font-medium mb-1">Department</label>
+            <select
+              value={confirmDept}
+              onChange={(e) => setConfirmDept(e.target.value)}
+              className="w-full border border-border rounded-md px-2 py-2 text-sm bg-background"
+            >
+              <option value="Customer Service">Customer Service</option>
+              <option value="Customs Operations">Customs Operations</option>
+              <option value="Trade Compliance">Trade Compliance</option>
+              {!['Customer Service', 'Customs Operations', 'Trade Compliance'].includes(confirmDept) && (
+                <option value={confirmDept}>{confirmDept}</option>
+              )}
+            </select>
+          </div>
+
+          <div className="mb-4">
+            <label className="block text-xs font-medium mb-1">Category</label>
+            <select
+              value={confirmCategory}
+              onChange={(e) => setConfirmCategory(e.target.value)}
+              className="w-full border border-border rounded-md px-2 py-2 text-sm bg-background"
+            >
+              <option value="permit">Permit Inquiry</option>
+              <option value="declaration">Customs Declaration</option>
+              <option value="enforcement">Enforcement Matter</option>
+              <option value="general">General Inquiry</option>
+              {!['permit', 'declaration', 'enforcement', 'general'].includes(confirmCategory) && (
+                <option value={confirmCategory}>{confirmCategory}</option>
+              )}
+            </select>
+          </div>
+
+          {confirmError && <p className="text-xs text-red-600 mb-3">{confirmError}</p>}
+
+          <button
+            onClick={handleConfirmTriage}
+            disabled={confirmSaving}
+            className="w-full bg-primary text-primary-foreground rounded-md py-2 text-sm font-medium disabled:opacity-50"
+          >
+            {confirmSaving ? 'Saving…' : 'Confirm & Open Ticket'}
           </button>
         </div>
       </div>
@@ -1254,6 +1416,7 @@ const EmailInteractionPage = () => {
           onSent={load}
           onError={setError}
           mitelToken={mitelToken}
+          ticketEmbedToken={ticketEmbedToken}
         />
       )}
     </div>
