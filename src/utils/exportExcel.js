@@ -37,7 +37,7 @@ export async function exportToExcel({ rows, filename, title = 'Ticket Report', l
 
   const [cxImageId, customImageId] = await Promise.all([
     fetchImage(logoUrl || '/assets/cxlogo.png'),
-    fetchImage('/assets/custom.png'),
+    fetchImage('/Mitel2.png'),
   ]);
 
   // Reserve rows 1-4 for logo + title block; data starts at row 6
@@ -63,12 +63,17 @@ export async function exportToExcel({ rows, filename, title = 'Ticket Report', l
 
   // custom (Kastam) logo immediately adjacent — starts at exactly 140px from left (120px CX logo + 20px gap)
   if (customImageId !== null) {
-    sheet.addImage(customImageId, {
-      tl: { nativeCol: 0, nativeColOff: 140 * 9525, nativeRow: 0, nativeRowOff: 0 },
-      ext: { width: 100, height: 72 },
-      editAs: 'oneCell',
-    });
-  }
+  sheet.addImage(customImageId, {
+    tl: {
+      nativeCol: 0,
+      nativeColOff: 140 * 9525,
+      nativeRow: 0,
+      nativeRowOff: 0,
+    },
+    ext: { width: 180, height: 72 },
+    editAs: 'oneCell',
+  });
+}
 
   // ── Title row ──────────────────────────────────────────────────────────────
   sheet.getRow(TITLE_ROW).height = 24;

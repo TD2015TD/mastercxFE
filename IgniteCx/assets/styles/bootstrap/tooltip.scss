@@ -1,0 +1,48 @@
+::ng-deep {
+    .cat-tooltip {
+        &.show {
+            opacity: 1;
+        }
+
+        .tooltip-inner {
+            background-color: #464b51;
+            font-family: 'Open sans', sans-serif;
+            font-size: 14px;
+            line-height: 20px;
+            padding: 8px;
+            border-radius: 8px;
+        }
+
+        &.bs-tooltip-bottom {
+            .arrow {
+                &::before {
+                    border-bottom-color: #464b51;
+                }
+            }
+        }
+
+        &.bs-tooltip-top {
+            .arrow {
+                &::before {
+                    border-top-color: #464b51;
+                }
+            }
+        }
+
+        &.bs-tooltip-left {
+            .arrow {
+                &::before {
+                    border-left-color: #464b51;
+                }
+            }
+        }
+
+        &.bs-tooltip-right {
+            .arrow {
+                &::before {
+                    border-right-color: #464b51;
+                }
+            }
+        }
+    }
+}

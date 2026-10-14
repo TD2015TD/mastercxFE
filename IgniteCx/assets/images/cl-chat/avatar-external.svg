@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="110" height="110" viewBox="0 0 110 110">
+    <defs>
+        <linearGradient id="mitel-avatar-external-b" x1="0%" x2="102%" y1="0%" y2="101%">
+            <stop offset="0%" stop-color="#3762F9"/>
+            <stop offset="100%" stop-color="#6DBED7"/>
+        </linearGradient>
+        <circle id="mitel-avatar-external-a" cx="55" cy="55" r="55"/>
+        <linearGradient id="mitel-avatar-external-c" x1="0%" x2="99.006%" y1="0%" y2="98.035%">
+            <stop offset="0%" stop-color="#007AEF" stop-opacity=".55"/>
+            <stop offset="100%" stop-color="#6DD795"/>
+        </linearGradient>
+        <radialGradient id="mitel-avatar-external-e" r="32.122%" fx="50%" fy="50%">
+            <stop offset="0%" stop-color="#060655"/>
+            <stop offset="100%" stop-color="#00A8E6" stop-opacity="0"/>
+        </radialGradient>
+    </defs>
+    <g fill="none" fill-rule="evenodd">
+        <mask id="mitel-avatar-external-d" fill="#fff">
+            <use xlink:href="#mitel-avatar-external-a"/>
+        </mask>
+        <use fill="url( #mitel-avatar-external-b)" fill-rule="nonzero" xlink:href="#mitel-avatar-external-a"/>
+        <circle cx="55" r="55" fill="url( #mitel-avatar-external-c)" fill-rule="nonzero" mask="url( #mitel-avatar-external-d)"/>
+        <circle cx="55" cy="55" r="55" fill="url( #mitel-avatar-external-e)" fill-rule="nonzero" mask="url( #mitel-avatar-external-d)" opacity=".21"/>
+        <g fill="#FFF" mask="url( #mitel-avatar-external-d)">
+            <path d="M98.46 102.089c0-16.843-13.76-30.497-30.73-30.497-16.972 0-30.73 13.654-30.73 30.497v9.464h61.46v-9.464zM48.104 48.29c0 11.036 9.014 19.981 20.134 19.981 11.12 0 20.133-8.945 20.133-19.98v-6.31C88.37 30.945 79.358 22 68.238 22s-20.134 8.945-20.134 19.98v6.31z"/>
+        </g>
+    </g>
+</svg>

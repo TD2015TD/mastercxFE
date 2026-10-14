@@ -214,6 +214,7 @@ const TicketList = ({ filter = 'all' }) => {
               'Customer',
               'Email',
               'Priority',
+              'Urgency',
               'Status',
               'Assigned To',
               'Department',
@@ -251,6 +252,7 @@ const TicketList = ({ filter = 'all' }) => {
                 t.customer?.name || '',
                 t.customer?.email || '',
                 t.priority,
+                t.urgency,
                 t.status,
                 t.assigned_agent?.user?.name || t.assigned_agent?.employee_id || 'Unassigned',
                 t.department || '',
@@ -282,7 +284,7 @@ const TicketList = ({ filter = 'all' }) => {
         exportTickets = response.data.data || response.data;
       }
       const rows = [
-         ['Ticket ID', 'Case ID', 'Subject', 'Customer', 'Email', 'Priority', 'Status', 'Assigned To', 'Department', 'Category', 'Channel', 'Created Date', 'Created Time', 'Updated Date', 'Updated Time'],
+         ['Ticket ID', 'Case ID', 'Subject', 'Customer', 'Email', 'Priority', 'Urgency', 'Status', 'Assigned To', 'Department', 'Category', 'Channel', 'Created Date', 'Created Time', 'Updated Date', 'Updated Time'],
         ...((Array.isArray(exportTickets) ? exportTickets : []).map(t => {
            const fmtDate = (d) =>
             d
@@ -309,6 +311,7 @@ const TicketList = ({ filter = 'all' }) => {
             t.customer?.name || '',
             t.customer?.email || '',
             t.priority,
+            t.urgency,
             t.status,
             t.assigned_agent?.user?.name || t.assigned_agent?.employee_id || 'Unassigned',
             t.department || '',
@@ -505,7 +508,8 @@ const TicketList = ({ filter = 'all' }) => {
                   <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Case ID</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Subject</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Customer</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase hidden">Priority</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Priority</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Urgency</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Status</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Assigned To</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Updated</th>
@@ -551,10 +555,13 @@ const TicketList = ({ filter = 'all' }) => {
                         </div>
                       )}
                     </td>
-                    <td className="px-6 py-4 hidden">
+                    <td className="px-6 py-4">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPriorityColor(ticket.priority)}`}>
                         {ticket.priority}
                       </span>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-foreground">
+                      {ticket.urgency || '—'}
                     </td>
                     <td className="px-6 py-4">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(ticket.status)}`}>

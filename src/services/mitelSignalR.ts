@@ -1,9 +1,20 @@
 import * as signalR from "signalr-no-jquery";
+import { getMitelEmployeeState } from "./mitelService";
 
 export interface SignalRConfig {
     baseUrl: string;     // e.g. "https://micc.telediant.com.my/MiccSdk/signalr"
     token?: string;
     hubs: string[];
+    // The specific employee this connection should monitor. Without this,
+    // the client is connected and authenticated but never told Mitel WHICH
+    // employee's/agent's state it cares about — confirmed via a HAR capture
+    // of a real, working Ignite session: every state-changing action there
+    // is preceded by explicit addStateMonitor calls for both the employee
+    // and their voice agent/device. Skipping this is why REST state PUTs
+    // (e.g. going Available) return 200 OK from Mitel but are silently
+    // never applied — the server has no record of this session managing
+    // that employee.
+    employeeId?: string;
 }
 
 
@@ -30,6 +41,14 @@ export class SignalRService {
 
     constructor(config: SignalRConfig) {
         this.config = config;
+    }
+
+    // The React hook constructs this service once, before baseUrl/token are
+    // actually known (they arrive later via async fetch) — call this right
+    // before connect() so the service isn't stuck using the empty values it
+    // was originally constructed with.
+    updateConfig(config: Partial<SignalRConfig>) {
+        this.config = { ...this.config, ...config };
     }
 
     private getToken(): string {
@@ -161,6 +180,36 @@ export class SignalRService {
             if (this.proxies['employeeHub']) {
                 await this.invoke('employeeHub', 'addSelfMonitor');
                 console.log("✅ Employee self-monitor added");
+            }
+
+            // The remaining monitors below exactly mirror a real Ignite
+            // session's HAR capture — same hub, same method names, same
+            // argument shapes ([[id]] — a single argument that is itself an
+            // array of ids). Without these, this session is connected but
+            // not actually registered as managing this employee/agent's
+            // state, so subsequent REST PUTs to change presence silently
+            // no-op even though they return 200 OK.
+            if (this.config.employeeId) {
+                if (this.proxies['employeeHub']) {
+                    await this.invoke('employeeHub', 'addStateMonitor', [this.config.employeeId]);
+                    console.log("✅ Employee state monitor added");
+                }
+
+                if (this.proxies['agentHub']) {
+                    try {
+                        const employeeState = await getMitelEmployeeState(this.config.employeeId);
+                        const voiceDeviceId = employeeState?.data?.presence?.voice?.[0]?.deviceId;
+                        if (voiceDeviceId) {
+                            await this.invoke('agentHub', 'addStateMonitor', [voiceDeviceId]);
+                            console.log("✅ Agent (voice device) state monitor added");
+                        }
+                    } catch (err) {
+                        console.error("❌ Failed to resolve voice device for agent state monitor:", err);
+                    }
+
+                    await this.invoke('agentHub', 'addConcurrentStateMonitor');
+                    console.log("✅ Agent concurrent state monitor added");
+                }
             }
 
             // You can add queue monitors here if needed

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="20" height="20" viewBox="0 0 20 20">
+    <defs>
+        <path id="mitel-cross-circle-minus-path" d="M0 10C0 4.478 4.476 0 10 0c5.523 0 10 4.478 10 10 0 5.523-4.477 10-10 10-5.524 0-10-4.477-10-10zm5.58.781h8.84a.781.781 0 0 0 0-1.562H5.58a.781.781 0 0 0 0 1.562z"/>
+    </defs>
+    <g fill-rule="evenodd">
+        <mask id="mitel-cross-circle-minus-mask" fill="#fff">
+            <use xlink:href="#mitel-cross-circle-minus-path"/>
+        </mask>
+        <g mask="url('#mitel-cross-circle-minus-mask')">
+            <path d="M-1-1h21.5v21.5H-1z"/>
+        </g>
+    </g>
+</svg>

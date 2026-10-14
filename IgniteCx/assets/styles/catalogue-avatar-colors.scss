@@ -1,0 +1,53 @@
+.bg-0 {
+    background: linear-gradient(115.53deg, #76dd9b, #409d99);
+}
+
+.bg-1 {
+    background: linear-gradient(115.53deg, #ffc37e, #ff8178);
+}
+
+.bg-2 {
+    background: linear-gradient(115.53deg, #fbda67, #faa82c);
+}
+
+.bg-3 {
+    background: linear-gradient(115.53deg, #a4e7ff, #606eed);
+}
+
+.bg-4 {
+    background: linear-gradient(115.53deg, #ffbbec, #db51a4);
+}
+
+.bg-5 {
+    background: linear-gradient(115.53deg, #e796da, #9d4dd7);
+}
+
+.bg-0,
+.bg-1,
+.bg-2,
+.bg-3,
+.bg-4,
+.bg-5 {
+    font-family: OpenSans-Bold;
+    letter-spacing: calculateRem(1px);
+    color: #ffffff;
+    text-shadow: 0px calculateRem(1px) calculateRem(2px) rgba(0, 0, 0, 0.24);
+    user-select: none;
+    line-height: 100%;
+}
+
+.presence-cx {
+    padding: 2px;
+}
+
+.presence-cx-available {
+    border: calculateRem(2px) solid #57c261;
+}
+
+.presence-cx-busy {
+    border: calculateRem(2px) solid #cd2b26;
+}
+
+.presence-cx-away {
+    border: calculateRem(2px) solid #fdc53a;
+}

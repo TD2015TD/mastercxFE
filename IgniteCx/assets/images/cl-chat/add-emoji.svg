@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="24" height="24" viewBox="0 0 24 24">
+    <defs>
+        <path id="mitel-add-emoji-path" d="M14.98 13.255a.5.5 0 0 1 .873.49c-1.176 2.092-3.366 3.364-5.829 3.364-2.543 0-4.738-1.238-5.88-3.358a.5.5 0 1 1 .88-.475c.963 1.788 2.816 2.833 5 2.833 2.103 0 3.959-1.078 4.957-2.854zM18.5 11A8.5 8.5 0 0 0 10 2.5 8.5 8.5 0 0 0 1.5 11a8.5 8.5 0 1 0 17 0zm1.5-.083c0 5.522-4.477 10-10 10s-10-4.477-10-10c0-5.524 4.477-10 10-10s10 4.476 10 10zM8 8.25a1.75 1.75 0 1 1-3.5 0 1.75 1.75 0 0 1 3.5 0zm4 0a1.75 1.75 0 1 1 3.5 0 1.75 1.75 0 0 1-3.5 0z"/>
+    </defs>
+    <g fill-rule="evenodd" transform="translate(2 1)" stroke="none">
+        <mask id="mitel-add-emoji-mask">
+            <use xlink:href="#mitel-add-emoji-path"/>
+        </mask>
+        <use fill-rule="nonzero" xlink:href="#mitel-add-emoji-path"/>
+        <g mask="url('#mitel-add-emoji-mask')">
+            <path d="M-2-1h24v24H-2z"/>
+        </g>
+    </g>
+</svg>

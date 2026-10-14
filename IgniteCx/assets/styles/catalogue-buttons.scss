@@ -1,0 +1,294 @@
+@use './catalogue-global' as *;
+
+@mixin button-focus() {
+    box-shadow: 0px 0px 0px calculateRem(3px) rgba(0, 115, 208, 0.24);
+}
+
+@mixin round-button() {
+    border-radius: 50%;
+}
+
+@mixin oval-button() {
+    border-radius: calculateRem(20px);
+}
+
+.cat-button-remove-style {
+    border: none;
+    background: none;
+    color: inherit;
+    padding: 0;
+    cursor: pointer;
+    font: inherit;
+    -moz-appearance: none;
+    -webkit-appearance: none;
+    outline: none;
+    font-size: inherit;
+    box-shadow: none;
+}
+
+$one-app-button-box-shadow:
+    calculateRem(-4px) calculateRem(-4px) calculateRem(16px) #ffffff,
+    calculateRem(4px) calculateRem(4px) calculateRem(16px) rgba(8, 44, 99, 0.4);
+$one-app-button-active-shadow: calculateRem(0px) calculateRem(0px) calculateRem(20px);
+$one-app-button-inset-shadow-1: calculateRem(0px) calculateRem(6px) calculateRem(16px);
+$one-app-button-inset-shadow-2: calculateRem(4px) calculateRem(4px) calculateRem(8px);
+
+//box-shadow needs to be on the button element, otherwise the outside edge of the button element can receive focus without the inner element getting it on click
+.cat-one-app-button-container {
+    overflow: hidden;
+    @include round-button();
+    &.cat-modal-button {
+        @include oval-button();
+    }
+    &.cat-disabled {
+        box-shadow: none !important;
+    }
+    &.cat-primary-blue {
+        box-shadow: $one-app-button-box-shadow;
+        &:active:not(.cat-disabled),
+        &.cat-one-app-button-activated {
+            box-shadow: none;
+        }
+    }
+    &.cat-primary-red {
+        box-shadow: $one-app-button-box-shadow;
+        &:active:not(.cat-disabled),
+        &.cat-one-app-button-activated {
+            box-shadow: none;
+        }
+    }
+    &.cat-primary-grey {
+        box-shadow: $one-app-button-box-shadow;
+        &:active:not(.cat-disabled),
+        &.cat-one-app-button-activated {
+            box-shadow: none;
+        }
+    }
+    &.cat-primary-dark {
+        box-shadow:
+            calculateRem(8px) calculateRem(8px) calculateRem(24px) rgba(12, 12, 13, 0.56),
+            calculateRem(-12px) calculateRem(-12px) calculateRem(20px) rgba(255, 255, 255, 0.08);
+        &:active:not(.cat-disabled),
+        &.cat-one-app-button-activated {
+            box-shadow: none;
+        }
+    }
+    &.cat-primary-green {
+        box-shadow: $one-app-button-box-shadow;
+        &:active:not(.cat-disabled),
+        &.cat-one-app-button-activated {
+            box-shadow: none;
+        }
+    }
+    &.cat-primary-orange {
+        box-shadow:
+            calculateRem(8px) calculateRem(8px) calculateRem(24px) rgba(166, 180, 200, 0.72),
+            calculateRem(-8px) calculateRem(-8px) calculateRem(16px) rgba(255, 255, 255, 0.72);
+        &:active:not(.cat-disabled),
+        &.cat-one-app-button-activated {
+            box-shadow: none;
+        }
+    }
+}
+
+.cat-one-app-button {
+    font-size: calculateRem(14px);
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    outline: none;
+    width: calculateRem(40px);
+    height: calculateRem(40px);
+    border: solid calculateRem(3px) transparent;
+    @include round-button();
+    background-origin: border-box;
+    background-clip: padding-box, border-box;
+    &.cat-disabled {
+        cursor: not-allowed !important;
+        mi-svg {
+            pointer-events: none !important;
+        }
+    }
+    &:hover:not(.cat-disabled):not(:active) {
+        background-clip: padding-box, padding-box, border-box;
+    }
+
+    &.cat-modal-button {
+        min-width: calculateRem(115px);
+        width: initial;
+        height: calculateRem(40px);
+        @include oval-button();
+        padding: 0 1rem;
+        font-weight: 600;
+    }
+
+    &.cat-primary-blue {
+        background-image: linear-gradient(#0073d0, #0073d0), linear-gradient(136.4deg, #218adf 13.14%, #00589f 90.06%);
+        &:active:not(.cat-disabled),
+        &.cat-one-app-button-activated {
+            background-image: linear-gradient(#2354a0, #2354a0),
+                linear-gradient(132.16deg, #051935 26.7%, #c6ceda 96.52%);
+            box-shadow:
+                $one-app-button-active-shadow rgba(28, 67, 127, 0.16),
+                inset $one-app-button-inset-shadow-1 rgba(31, 31, 31, 0.72),
+                inset $one-app-button-inset-shadow-2 rgba(11, 59, 126, 0.48);
+        }
+        &.cat-modal-button {
+            color: #ffffff;
+        }
+        &.cat-disabled {
+            background: #afd7e7;
+            border: solid #afd7e7 calculateRem(3px);
+        }
+        &:hover:not(.cat-disabled):not(:active) {
+            background-image: linear-gradient(0deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.1)),
+                linear-gradient(0deg, #0073d0, #0073d0), linear-gradient(136.4deg, #218adf 13.14%, #00589f 90.06%);
+        }
+        &.cat-one-app-button-activated:hover:not(.cat-disabled):not(:active) {
+            background-image: linear-gradient(0deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.1)),
+                linear-gradient(#2354a0, #2354a0), linear-gradient(132.16deg, #051935 26.7%, #c6ceda 96.52%);
+        }
+    }
+
+    &.cat-primary-red {
+        background-image: linear-gradient(#cd2b26, #cd2b26), linear-gradient(132.16deg, #e03933 0%, #ac2420 100%);
+        &:active:not(.cat-disabled),
+        &.cat-one-app-button-activated {
+            background-image: linear-gradient(#a4221e, #a4221e), linear-gradient(132.16deg, #a4221e 0%, #f59a98 100%);
+            box-shadow:
+                $one-app-button-active-shadow rgba(123, 26, 23, 0.16),
+                inset $one-app-button-inset-shadow-1 rgba(82, 17, 15, 0.88),
+                inset $one-app-button-inset-shadow-2 rgba(123, 26, 23, 0.48);
+        }
+        &.cat-modal-button {
+            color: #ffffff;
+        }
+        &.cat-disabled {
+            background: #f59a98;
+            border: solid #f59a98 calculateRem(3px);
+        }
+        &:hover:not(.cat-disabled):not(:active) {
+            background-image: linear-gradient(0deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.1)),
+                linear-gradient(#cd2b26, #cd2b26), linear-gradient(132.16deg, #e03933 0%, #ac2420 100%);
+        }
+        &.cat-one-app-button-activated:hover:not(.cat-disabled):not(:active) {
+            background-image: linear-gradient(0deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.1)),
+                linear-gradient(#a4221e, #a4221e), linear-gradient(132.16deg, #a4221e 0%, #f59a98 100%);
+        }
+    }
+
+    &.cat-primary-grey {
+        color: var(--mi-text);
+        background-image: linear-gradient(#eef0f5, #eef0f5), linear-gradient(132.16deg, #fefeff 26.7%, #c6ceda 96.52%);
+        &:active:not(.cat-disabled),
+        &.cat-one-app-button-activated {
+            background: radial-gradient(68.1% 68.1% at 32.76% 24.46%, #e2e5eb 0%, rgba(236, 236, 236, 0) 91.69%),
+                #ebeff3;
+            border: calculateRem(3px) solid rgba(255, 255, 255, 0.48);
+            box-shadow:
+                $one-app-button-active-shadow rgba(31, 31, 31, 0.08),
+                inset calculateRem(0px) calculateRem(0px) calculateRem(16px) #ffffff,
+                inset $one-app-button-inset-shadow-2 rgba(0, 0, 0, 0.48);
+        }
+        &.cat-modal-button {
+            color: #595e64;
+        }
+        &.cat-disabled {
+            background: #ebeff3;
+            color: #989da3;
+            border: solid #ebeff3 calculateRem(3px);
+        }
+        &:hover:not(.cat-disabled):not(:active) {
+            background-image: linear-gradient(0deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.1)),
+                linear-gradient(#eef0f5, #eef0f5), linear-gradient(132.16deg, #fefeff 26.7%, #c6ceda 96.52%);
+        }
+        &.cat-one-app-button-activated:hover:not(.cat-disabled):not(:active) {
+            background-clip: padding-box, border-box;
+            background-image: linear-gradient(0deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.1)),
+                radial-gradient(68.1% 68.1% at 32.76% 24.46%, #e2e5eb 0%, rgba(236, 236, 236, 0) 91.69%), #ebeff3;
+        }
+    }
+
+    &.cat-primary-dark {
+        background-image: linear-gradient(#1f1f1f, #1f1f1f), linear-gradient(132.16deg, #4f5256 26.7%, #101315 96.52%);
+        &:active:not(.cat-disabled),
+        &.cat-one-app-button-activated {
+            background-image: linear-gradient(#1f1f1f, #1f1f1f), linear-gradient(132.16deg, #2b2b2b 0%, #dadada 100%);
+            box-shadow:
+                calculateRem(0px) calculateRem(0px) calculateRem(20px) rgba(255, 255, 255, 0.08),
+                inset calculateRem(0px) calculateRem(8px) calculateRem(16px) rgba(0, 0, 0, 0.64),
+                inset calculateRem(8px) calculateRem(8px) calculateRem(24px) rgba(65, 70, 74, 0.72);
+        }
+        &.cat-modal-button {
+            color: #ffffff;
+        }
+        &.cat-disabled {
+            background: #595e64;
+            border: solid #595e64 calculateRem(3px);
+        }
+        &:hover:not(.cat-disabled):not(:active) {
+            background-image: linear-gradient(0deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.1)),
+                linear-gradient(#1f1f1f, #1f1f1f), linear-gradient(132.16deg, #4f5256 26.7%, #101315 96.52%);
+        }
+        &.cat-one-app-button-activated:hover:not(.cat-disabled):not(:active) {
+            background-image: linear-gradient(0deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.1)),
+                linear-gradient(#1f1f1f, #1f1f1f), linear-gradient(132.16deg, #2b2b2b 0%, #dadada 100%);
+        }
+    }
+
+    &.cat-primary-green {
+        background-image: linear-gradient(#3fac49, #3fac49), linear-gradient(132.16deg, #58cd63 26.7%, #2e7134 96.52%);
+        &:active:not(.cat-disabled),
+        &.cat-one-app-button-activated {
+            background-image: linear-gradient(#107419, #1c5f22),
+                linear-gradient(132.16deg, #105216 26.7%, #127d1b 96.52%);
+            box-shadow:
+                $one-app-button-active-shadow rgba(41, 134, 50, 0.16),
+                inset $one-app-button-inset-shadow-1 rgba(21, 57, 24, 0.8),
+                inset $one-app-button-inset-shadow-2 rgba(41, 134, 50, 0.48);
+        }
+        &.cat-modal-button {
+            color: #ffffff;
+        }
+        &.cat-disabled {
+            background: #9adaa0;
+            border: solid #9adaa0 calculateRem(3px);
+        }
+        &:hover:not(.cat-disabled):not(:active) {
+            background-image: linear-gradient(0deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.1)),
+                linear-gradient(#3fac49, #3fac49), linear-gradient(132.16deg, #58cd63 26.7%, #2e7134 96.52%);
+        }
+        &.cat-one-app-button-activated:hover:not(.cat-disabled):not(:active) {
+            background-image: linear-gradient(0deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.1)),
+                linear-gradient(#107419, #1c5f22), linear-gradient(132.16deg, #105216 26.7%, #127d1b 96.52%);
+        }
+    }
+
+    &.cat-primary-orange {
+        background-image: linear-gradient(#ff7900, #ff7900), linear-gradient(132.16deg, #ff9230 26.7%, #cf4f09 96.52%);
+        &:active:not(.cat-disabled),
+        &.cat-one-app-button-activated {
+            background-image: linear-gradient(#c24501, #c24501), linear-gradient(132.16deg, #9d3f07 0%, #fcc07a 100%);
+            box-shadow:
+                $one-app-button-active-shadow rgba(41, 134, 50, 0.16),
+                inset $one-app-button-inset-shadow-1 rgba(121, 47, 4, 0.8),
+                inset $one-app-button-inset-shadow-2 rgba(255, 121, 0, 0.48);
+        }
+        &.cat-modal-button {
+            color: #ffffff;
+        }
+        &.cat-disabled {
+            background: #fcc07a;
+            border: solid #fcc07a calculateRem(3px);
+        }
+        &:hover:not(.cat-disabled):not(:active) {
+            background-image: linear-gradient(0deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.1)),
+                linear-gradient(#ff7900, #ff7900), linear-gradient(132.16deg, #ff9230 26.7%, #cf4f09 96.52%);
+        }
+        &.cat-one-app-button-activated:hover:not(.cat-disabled):not(:active) {
+            background-image: linear-gradient(0deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.1)),
+                linear-gradient(#c24501, #c24501), linear-gradient(132.16deg, #9d3f07 0%, #fcc07a 100%);
+        }
+    }
+}

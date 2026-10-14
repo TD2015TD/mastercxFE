@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import Icon from '../AppIcon';
 import { menuService } from '../../services/menuService';
 import cxLogo from '../../assets/cxlogo.png';
+import mitelLogo from '../../../public/Mitel2.png';
 
 // Maps a parent menu path to its "Create" child route shown when can_create is true
 const CREATE_CHILD_ROUTES = {
@@ -153,7 +154,7 @@ const NavigationSidebar = ({ isCollapsed = false, onToggleCollapse, userRole = '
                 <img src={cxLogo} alt="CRM Logo" className="w-full h-full object-contain" />
               </div>
               <div>
-                <h1 className="text-lg font-semibold text-foreground">JKDM CRM</h1>
+                <h1 className="text-lg font-semibold text-foreground">CX CRM</h1>
                 <p className="text-xs text-muted-foreground">Portal</p>
               </div>
             </div>
@@ -262,7 +263,7 @@ const NavigationSidebar = ({ isCollapsed = false, onToggleCollapse, userRole = '
         <div className="border-t border-border p-4">
           {!isCollapsed ? (
             <div className="text-xs text-muted-foreground text-center">
-              <p>Government of Malaysia</p>
+              {/* <p>Government of Malaysia</p> */}
               <p className="mt-1">Secure Portal v2.1</p>
             </div>
           ) : (

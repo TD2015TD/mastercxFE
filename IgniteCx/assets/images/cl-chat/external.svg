@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="23" height="23" viewBox="0 0 23 23">
+    <defs>
+        <path id="mitel-external-path" d="M20.472 10.216H11.5a2.844 2.844 0 0 0-2.844 2.844.75.75 0 1 1-1.5 0A4.344 4.344 0 0 1 11.5 8.716h8.972L18.877 7.12a.75.75 0 0 1 1.06-1.06l2.876 2.875a.75.75 0 0 1 0 1.06l-2.875 2.875a.75.75 0 0 1-1.061-1.06l1.595-1.595zm-3.19-5.063a.75.75 0 1 1-1.5 0 .687.687 0 0 0-.687-.687H2.157a.688.688 0 0 0-.687.687v12.938c0 .38.308.687.687.687h12.938c.38 0 .687-.307.687-.687v-4.313a.75.75 0 0 1 1.5 0v4.313c0 1.208-.98 2.187-2.187 2.187H2.157A2.187 2.187 0 0 1-.03 18.091V5.153c0-1.208.98-2.187 2.187-2.187h12.938c1.208 0 2.187.98 2.187 2.187z"/>
+    </defs>
+    <g fill-rule="evenodd" stroke="none" color="transparent">
+        <mask id="mitel-external-mask" fill="#fff">
+            <use xlink:href="#mitel-external-path"/>
+        </mask>
+        <use fill="#3A393A" fill-rule="nonzero" xlink:href="#mitel-external-path"/>
+        <g mask="url('#mitel-external-mask')">
+            <path d="M-.5-.5h24v24h-24z"/>
+        </g>
+    </g>
+</svg>

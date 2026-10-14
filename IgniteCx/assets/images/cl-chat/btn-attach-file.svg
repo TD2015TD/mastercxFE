@@ -1,0 +1,13 @@
+<svg width="20px" height="20px" viewBox="0 0 20 20" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <g id="2018.4" stroke-width="1" fill="none" fill-rule="evenodd" stroke-linecap="round" stroke-linejoin="round">
+        <g id="Chat-UI-Component" transform="translate(-148.000000, -3622.000000)">
+            <g id="+-popup" transform="translate(136.000000, 3611.000000)">
+                <g id="btnAttachFile" transform="translate(12.000000, 11.000000)">
+                    <g id="paperclip" transform="translate(10.500000, 10.000000) scale(-1, 1) rotate(-180.000000) translate(-10.500000, -10.000000) translate(2.500000, 2.500000)">
+                        <path d="M4.84379133,9.42166453 L10.7416064,3.45492037 C11.282754,2.90668187 12.1617719,2.90668187 12.7036133,3.45492037 C13.2454547,4.00315886 13.2447609,4.89115078 12.7036133,5.44009125 L4.73764315,13.5253806 C3.65396039,14.6218576 1.89661826,14.6218576 0.81224173,13.5260825 C-0.270747243,12.4289036 -0.270747243,10.6515158 0.81224173,9.55433684 L9.13758938,1.13139999 C10.6285204,-0.37713333 13.0442588,-0.37713333 14.534496,1.13139999 C16.0247332,2.63852937 16.0247332,5.08349054 14.534496,6.58991795 L8.63737474,12.5566621" id="iconPaperClip" transform="translate(7.826087, 7.173913) scale(-1, 1) rotate(-360.000000) translate(-7.826087, -7.173913) "></path>
+                    </g>
+                </g>
+            </g>
+        </g>
+    </g>
+</svg>

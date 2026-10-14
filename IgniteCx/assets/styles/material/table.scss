@@ -1,0 +1,134 @@
+@import '../catalogue-global.scss';
+
+::ng-deep {
+    .mat-mdc-table {
+        background-color: unset;
+
+        line-height: calculateRem(19px);
+        font-family: 'Open Sans', sans-serif;
+
+        &.cat-primary {
+            .mat-mdc-header-row {
+                background-color: #0073d0;
+
+                .mat-mdc-header-cell {
+                    color: #ffffff;
+                }
+            }
+        }
+
+        &.cat-secondary {
+            .mat-mdc-header-row {
+                background-color: #ebeff3;
+
+                .mat-mdc-header-cell {
+                    color: #595e64;
+                }
+            }
+        }
+
+        .mat-mdc-header-row {
+            padding: 0;
+            min-height: calculateRem(50px);
+            border-top-left-radius: calculateRem(4px);
+            border-top-right-radius: calculateRem(4px);
+            border-top: calculateRem(1px) solid rgba(31, 31, 31, 0.16);
+            border-bottom: unset;
+
+            .mat-mdc-header-cell {
+                &:first-of-type {
+                    padding-left: 0.5rem;
+                }
+
+                font-size: calculateRem(14px);
+                font-weight: 700;
+                text-transform: uppercase;
+            }
+        }
+
+        .mat-mdc-row {
+            background-color: #ffffff;
+            border-bottom: calculateRem(1px) solid #d8d8d8;
+            min-height: calculateRem(64px);
+            padding: 0;
+
+            color: #464b51;
+
+            &.active {
+                background-color: #e5f5fc;
+            }
+
+            &:last-of-type {
+                border-bottom-left-radius: calculateRem(4px);
+                border-bottom-right-radius: calculateRem(4px);
+            }
+
+            .mat-mdc-cell {
+                &:first-of-type {
+                    padding-left: calculateRem(8px);
+                }
+
+                &:last-of-type {
+                    padding-right: calculateRem(8px);
+                }
+            }
+        }
+    }
+
+    mat-header-cell:first-of-type {
+        padding-left: calculateRem(8px);
+    }
+
+    mat-header-cell:last-of-type {
+        padding-right: calculateRem(8px);
+    }
+
+    // Hides default sort arrow icons (so we can use our custom ones)
+    &.mat-sort-header-arrow[style] {
+        // Hide default arrow stem
+        .mat-sort-header-stem {
+            display: none;
+        }
+        .mat-sort-header-indicator {
+            opacity: 1;
+            color: black;
+            font-weight: bold;
+
+            // Hide default arrow as its composed of left, right and middle
+            .mat-sort-header-pointer-left,
+            .mat-sort-header-pointer-right,
+            .mat-sort-header-pointer-middle {
+                display: none;
+            }
+        }
+    }
+
+    &.mat-sort-header-arrow {
+        opacity: 1 !important;
+        transform: unset !important;
+    }
+
+    [aria-sort='ascending'] {
+        ::ng-deep .mat-sort-header-arrow {
+            .mat-sort-header-indicator {
+                &::before {
+                    content: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAYAAADED76LAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAABKSURBVHgBlYxLCQAgEEQ9GMAIRjGCEWxkBZtpAyOMu7Agrh/wwbvMDGPMDwAieys9WclOutOgYJJ1mbAT9LWGM2dpw8smLsfSvRmr11tNSitliwAAAABJRU5ErkJggg==');
+                    top: calculateRem(-5.5px);
+                    position: absolute;
+                }
+            }
+        }
+    }
+
+    [aria-sort='descending'] {
+        ::ng-deep .mat-sort-header-arrow {
+            .mat-sort-header-indicator {
+                &::before {
+                    content: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAYAAADED76LAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAABbSURBVHgBjU6BDYAgDNsSD+AET/EEPzBe4Ct+oJ/pB/rBKGQQCBBosmxpm3ZEHbCIrNhHQ78JBoN5pITjjLfhWCqGLcsCcSbiVZRp1afRc+Cn+C3zD2HX+6VRWGIcWvQw0ycyAAAAAElFTkSuQmCC');
+                    top: calculateRem(-15.5px);
+                    position: absolute;
+                }
+            }
+        }
+    }
+}

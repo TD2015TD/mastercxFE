@@ -45,6 +45,32 @@ const TicketDetailPage = () => {
       return;
     }
 
+    // While the SLA clock is paused (e.g. status is On Hold with "Pause on
+    // Hold" enabled), the backend freezes sla_due_at/sla_remaining_minutes
+    // via sla_paused_at (see Ticket::pauseSla) — but this effect was still
+    // recomputing "dueDate - now" from the wall clock every second
+    // regardless, so the displayed countdown kept ticking down the whole
+    // time the ticket was on hold even though the backend had genuinely
+    // frozen it. Show the backend's own frozen sla_remaining_minutes
+    // instead, and don't start a ticking interval at all while paused.
+    if (ticket.sla_paused_at) {
+      const remaining = ticket.sla_remaining_minutes;
+      if (remaining === null || remaining === undefined) {
+        setLiveTimeRemaining(null);
+        return;
+      }
+      const isOverdue = remaining < 0;
+      const absMinutes = Math.abs(remaining);
+      const hours = Math.floor(absMinutes / 60);
+      const mins = absMinutes % 60;
+      const formatted = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
+      setLiveTimeRemaining({
+        formatted: `${isOverdue ? `Overdue by ${formatted}` : formatted} (paused)`,
+        isOverdue,
+      });
+      return;
+    }
+
     const calculateTimeRemaining = () => {
       const now = new Date();
       const dueDate = new Date(ticket.sla_due_at);

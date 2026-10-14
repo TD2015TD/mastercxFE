@@ -8,6 +8,7 @@ export interface SignalRConfig {
   hubs: string[];
   token?: string;
   enabled?: boolean; // Allow disabling the connection
+  employeeId?: string; // Passed through to SignalRService — see its own config for why this matters
 }
 
 export interface UseMitelSignalROptions {
@@ -48,6 +49,10 @@ export function useMitelSignalR(
 
     let isMounted = true;
 
+    // The service was constructed on first render, potentially before
+    // baseUrl/token were actually available — sync the current values in
+    // before every connect attempt, not just at construction time.
+    service.updateConfig(config);
     service
       .connect()
       .catch((err) => isMounted && setError(err));

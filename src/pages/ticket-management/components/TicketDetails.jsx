@@ -576,7 +576,7 @@ const TicketDetails = ({ ticket, onUpdate }) => {
                     {esc.status === 'pending' && (
                       <Button size="sm" variant="outline" onClick={() => handleAcknowledgeEscalation(esc.id)}>Acknowledge</Button>
                     )}
-                    {esc.status !== 'completed' && (
+                    {esc.status !== 'resolved' && (
                       <Button size="sm" variant="outline" onClick={() => handleResolveEscalation(esc.id)}>Resolve</Button>
                     )}
                   </div>

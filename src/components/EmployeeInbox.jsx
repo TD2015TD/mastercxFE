@@ -14,11 +14,57 @@ const EmployeeInbox = ({ className = '', onConversationEvent }) => {
   const [isExpanded, setIsExpanded] = useState(true);
   const [agentStatus, setAgentStatus] = useState('Offline');
   const [signalRUrl, setSignalRUrl] = useState('');
+  const [telephonyEnabled, setTelephonyEnabled] = useState(false);
 
   useEffect(() => {
     mitelConfigService.getSignalRUrl()
       .then(url => setSignalRUrl(url))
       .catch(err => console.error('Failed to fetch SignalR URL:', err));
+  }, []);
+
+  // Fetch telephony enabled state from admin configuration. This used to
+  // read a `telephony_enabled` localStorage key that nothing in the
+  // codebase ever set, so the badge below never rendered regardless of
+  // the real flag value — same pattern as TelephonyBar.jsx/
+  // UserProfileDropdown.jsx, including the live-update mechanisms.
+  useEffect(() => {
+    mitelConfigService.getTelephonyEnabled()
+      .then(enabled => setTelephonyEnabled(enabled))
+      .catch(() => setTelephonyEnabled(false));
+  }, []);
+
+  useEffect(() => {
+    const handler = (e) => setTelephonyEnabled(e.detail);
+    window.addEventListener('telephony_enabled_changed', handler);
+    return () => window.removeEventListener('telephony_enabled_changed', handler);
+  }, []);
+
+  // Instant push for a DIFFERENT agent's tab: backend broadcasts
+  // TelephonyConfigChanged over Reverb the moment an admin flips the flag,
+  // so this reacts immediately instead of waiting on the poll below.
+  useEffect(() => {
+    return mitelConfigService.onTelephonyEnabledChanged(setTelephonyEnabled);
+  }, []);
+
+  // Also checks the instant the tab regains focus/visibility, not just on
+  // the interval — matches TelephonyBar.jsx/UserProfileDropdown.jsx.
+  useEffect(() => {
+    const checkFresh = () => {
+      mitelConfigService.getTelephonyEnabledFresh()
+        .then(enabled => setTelephonyEnabled(prev => (prev !== enabled ? enabled : prev)))
+        .catch(() => {});
+    };
+
+    const interval = setInterval(checkFresh, 5000);
+    const onVisible = () => { if (document.visibilityState === 'visible') checkFresh(); };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', checkFresh);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', checkFresh);
+    };
   }, []);
 
   // ---- Helper: Log Customer Interaction Asynchronously ----
@@ -404,7 +450,7 @@ const EmployeeInbox = ({ className = '', onConversationEvent }) => {
           </span>
 
           {/* Agent Status - Only show if telephony is enabled */}
-          {agentStatus && localStorage.getItem('telephony_enabled') === 'true' && (
+          {agentStatus && telephonyEnabled && (
             <div className="flex items-center px-2 py-1 rounded-md text-xs bg-muted text-muted-foreground border border-border">
               <Icon
                 name={agentStatus === 'Available' ? 'CheckCircle2' : agentStatus === 'Busy' ? 'AlertCircle' : 'Circle'}

@@ -5,6 +5,7 @@ import LanguageToggle from './components/LanguageToggle';
 import SecurityBadges from './components/SecurityBadges';
 import LoginHeader from './components/LoginHeader';
 import cxLogo from '../../assets/cxlogo.png';
+import mitelLogo from '../../../public/Mitel2.png';
 
 const AgentLogin = () => {
   const navigate = useNavigate();
@@ -48,19 +49,22 @@ const AgentLogin = () => {
                 <div className="w-20 h-20 flex items-center justify-center">
                   <img src={cxLogo} alt="CRM Logo" className="w-full h-full object-contain" />
                 </div>
+                <div className="w-21 h-20 flex items-center justify-center">
+                  <img src={mitelLogo} alt="Mitel Logo" className="w-full h-full object-contain" />
+                </div>
                 <div>
                   <h1 className="text-3xl font-bold text-foreground">
-                    JKDM CRM Portal
+                    CX CRM Portal
                   </h1>
                   <p className="text-lg text-muted-foreground">
-                    Jabatan Kastam Diraja Malaysia
+                    CX CRM Portal
                   </p>
                 </div>
               </div>
               
               <div className="space-y-4 text-left">
                 <h2 className="text-xl font-semibold text-foreground">
-                  Secure Government Portal
+                  CX CRM Portal
                 </h2>
                 <p className="text-muted-foreground leading-relaxed">
                   Access the comprehensive customer relationship management system 

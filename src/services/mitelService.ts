@@ -205,6 +205,23 @@ export const getMitelEmployeeDetails = async (employeeId: string): Promise<Mitel
 };
 
 /**
+ * Link the current agent's real Mitel password so future logins
+ * authenticate as the agent themselves instead of this app impersonating
+ * them — required for presence/state changes (e.g. going Available) to
+ * actually apply. One-time setup; goes through our own backend
+ * (POST /mitel/connect-account), never calls Mitel directly.
+ */
+export const connectMitelAccount = async (password: string, username?: string) => {
+  const response = await api.post('/mitel/connect-account', { password, username });
+  return response.data;
+};
+
+export const disconnectMitelAccount = async () => {
+  const response = await api.delete('/mitel/connect-account');
+  return response.data;
+};
+
+/**
  * Get Mitel employee presence state (Often returns /stats data)
  * Maps to: GET /mitel/employees/{id}/state
  */
@@ -546,28 +563,49 @@ export const mapStatusToAvailableReason = (status: string): number => {
 
 /**
  * Create presence state payload for Mitel API
+ *
+ * `previousStatus` (the UI's current `availability` value, before this
+ * transition) decides WHICH availableReason to send when going back to
+ * Available. Confirmed directly by extracting Mitel's own AvailableReason
+ * enum from Ignite's production bundle — it's string-valued, not the
+ * integer enum this file used to assume, and it has distinct members for
+ * each prior state: Available, ClearWorkTimer, ClearBusy,
+ * ClearDoNotDisturb, Login. This always sent "Login" regardless of what
+ * was being cleared — correct for the very first Offline→Available login
+ * (confirmed via a real Ignite HAR capture), but WRONG for Busy→Available:
+ * confirmed directly against this tenant that sending "Login" to clear a
+ * Busy/MakeBusy state gets a 200 OK yet the voice ACD state stays stuck on
+ * "MakeBusy" forever — "Login" doesn't mean "clear whatever I was", Mitel
+ * takes it literally as a fresh login and never cancels MakeBusy. Same
+ * class of bug plausibly affects DoNotDisturb→Available, which has its own
+ * ClearDoNotDisturb reason that was likewise never being sent.
  */
-export const createPresenceStatePayload = (status: string, reasonCodeId?: string | null): MitelStateUpdatePayload => {
+export const createPresenceStatePayload = (status: string, reasonCodeId?: string | null, previousStatus?: string | null): MitelStateUpdatePayload => {
   if (status === 'Available') {
+    let availableReason = 'Login';
+    if (previousStatus === 'Busy') {
+      availableReason = 'ClearBusy';
+    } else if (previousStatus === 'Do Not Disturb' || previousStatus === 'DoNotDisturb') {
+      availableReason = 'ClearDoNotDisturb';
+    }
     return {
       state: status,
-      availableReason: "Login"
-    };
-  } else if (status === 'Busy') {
-    return {
-      state: "Busy",
-      reason: reasonCodeId || "54bbba16-7858-4f62-b89a-4d4d5ed1d69e" // Use provided reason or default
-    };
-  } else if (status === 'DoNotDisturb') {
-    return {
-      state: "DoNotDisturb",
-      reason: reasonCodeId || "eb591174-3ba3-441a-bf1f-6553bf6de8ef" // Use provided reason or default
+      availableReason
     };
   }
-  return {
-    state: status,
-    reason: reasonCodeId || null
-  };
+  // Busy/DoNotDisturb previously fell back to hardcoded reason-code UUIDs
+  // when none was supplied. Reason codes are configured per Mitel tenant —
+  // those hardcoded IDs don't exist on this tenant at all. Confirmed
+  // directly: sending one for "Busy" gets a 200 OK, but Mitel doesn't apply
+  // Busy at all — the agent gets logged out (state ends up "Offline"/
+  // "LoggedOut") instead, with no error to explain why. Omitting `reason`
+  // entirely when none was actually selected lets Mitel apply its own
+  // tenant-specific default instead of a made-up one.
+  const payload: MitelStateUpdatePayload = { state: status };
+  if (reasonCodeId) {
+    payload.reason = reasonCodeId;
+  }
+  return payload;
 };
 
 // ========================================================================
@@ -832,6 +870,44 @@ export const getIntegratedSoftphoneCredentials = async (agentId: string = 'me') 
   }
 
   // This endpoint DOES return JSON (credentials, gateway, username, password, etc.)
+  return await response.json();
+};
+
+/**
+ * Get TURN server credentials for the integrated softphone's WebRTC media.
+ * Without these the JsSIP UA has no ICE/TURN server configured at all —
+ * fine on an open network, but audio can fail to establish a path whenever
+ * either side sits behind a restrictive/symmetric NAT.
+ *
+ * Mitel API: GET /MiccSdk/api/v1/agents/{agentId}/integratedSoftphone/turn?server={domain}
+ * `server` = the same gatewayMediaServerDomain returned by
+ * getIntegratedSoftphoneCredentials() above.
+ */
+export const getIntegratedSoftphoneTurnCredentials = async (
+  agentId: string = 'me',
+  server: string
+) => {
+  const mitelToken = authService.getMitelToken();
+  const mitelBaseUrl = await mitelConfigService.getBaseUrl();
+
+  const response = await fetch(
+    `${mitelBaseUrl}/MiccSdk/api/v1/agents/${agentId}/integratedSoftphone/turn?server=${encodeURIComponent(server)}`,
+    {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${mitelToken}`,
+        'Accept': 'application/json'
+      }
+    }
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(
+      `Failed to get integrated softphone TURN credentials: ${response.status} ${response.statusText} - ${errorText}`
+    );
+  }
+
   return await response.json();
 };
 

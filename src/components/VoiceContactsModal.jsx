@@ -3,21 +3,50 @@ import Icon from './AppIcon';
 import Button from './ui/Button';
 import { authService } from '../services/authService';
 import mitelConfigService from '../services/mitelConfigService';
+import { getUsers, getRoles } from '../services/userService';
+import { toast } from 'react-toastify';
 
 const VoiceContactsModal = ({ isOpen, onClose, onSelect, currentExtension }) => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState('All');
+  const [activeTab, setActiveTab] = useState('Employees');
   const [dialAsIs, setDialAsIs] = useState(false);
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [mitelBaseUrl, setMitelBaseUrl] = useState('');
+  const [excludedEmployeeIds, setExcludedEmployeeIds] = useState(new Set());
 
   useEffect(() => {
     mitelConfigService.getBaseUrl()
       .then(url => setMitelBaseUrl(url))
       .catch(err => console.error('Failed to fetch Mitel base URL:', err));
   }, []);
+
+  // Super-admins shouldn't show up as callable voice contacts. Mitel has no
+  // concept of CRM roles, so cross-reference against CRM's own user list.
+  useEffect(() => {
+    const loadExcludedIds = async () => {
+      try {
+        const rolesRes = await getRoles();
+        const roles = rolesRes?.data || rolesRes || [];
+        const superAdminRole = roles.find?.(r => r.slug === 'super_admin');
+        if (!superAdminRole) return;
+
+        const usersRes = await getUsers({ role_id: superAdminRole.id, per_page: 100 });
+        const users = usersRes?.data?.data || usersRes?.data || usersRes || [];
+        const ids = new Set(
+          users
+            .map(u => u.agent?.employee_id)
+            .filter(Boolean)
+        );
+        setExcludedEmployeeIds(ids);
+      } catch (err) {
+        console.error('Failed to load super-admin exclusion list:', err);
+      }
+    };
+
+    if (isOpen) loadExcludedIds();
+  }, [isOpen]);
 
   const tabs = ['All', 'Employees', 'Queues', 'External', 'Active Directory', 'Extension'];
 
@@ -34,9 +63,48 @@ const VoiceContactsModal = ({ isOpen, onClose, onSelect, currentExtension }) => 
     return filters[tab] || '';
   };
 
-  // Search directory using Mitel API
+  // Fetch a single page of directory results for one search term.
+  const fetchDirectoryPage = useCallback(async (term) => {
+    const mitelToken = authService.getMitelToken();
+
+    const params = new URLSearchParams();
+    const filter = getFilterForTab(activeTab);
+    if (filter) {
+      params.append('$filter', filter);
+    }
+    params.append('$search', `'${term}'`);
+    params.append('dialAsIs', dialAsIs.toString());
+    params.append('voiceOnly', 'true');
+    // Remove $orderby as it causes errors with non-primitive collections
+    params.append('$skip', '0');
+    params.append('$top', '25');
+
+    const response = await fetch(
+      `${mitelBaseUrl}/MiccSdk/api/v1/directory/?${params.toString()}`,
+      {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': `Bearer ${mitelToken}`
+        }
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to search directory: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data._embedded?.items || [];
+  }, [activeTab, dialAsIs, mitelBaseUrl]);
+
+  // Search directory using Mitel API. Confirmed via live testing: Mitel's
+  // directory endpoint returns count:0 for ANY filter when $search is
+  // omitted — it's a search-only endpoint, not a browsable listing. Don't
+  // call it without a search term; that's not a bug to work around here.
   const searchDirectory = useCallback(async () => {
-    if (!searchQuery.trim()) {
+    const term = searchQuery.trim();
+    if (!term) {
       setResults([]);
       return;
     }
@@ -45,37 +113,22 @@ const VoiceContactsModal = ({ isOpen, onClose, onSelect, currentExtension }) => 
     setError(null);
 
     try {
-      const mitelToken = authService.getMitelToken();
+      let items = await fetchDirectoryPage(term);
 
-      const params = new URLSearchParams();
-      const filter = getFilterForTab(activeTab);
-      if (filter) {
-        params.append('$filter', filter);
-      }
-      params.append('$search', `'${searchQuery}'`);
-      params.append('dialAsIs', dialAsIs.toString());
-      params.append('voiceOnly', 'true');
-      // Remove $orderby as it causes errors with non-primitive collections
-      params.append('$skip', '0');
-      params.append('$top', '25');
-
-      const response = await fetch(
-        `${mitelBaseUrl}/MiccSdk/api/v1/directory/?${params.toString()}`,
-        {
-          method: 'GET',
-          headers: {
-            'Accept': 'application/json',
-            'Authorization': `Bearer ${mitelToken}`
-          }
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error(`Failed to search directory: ${response.status} ${response.statusText}`);
+      // Mitel's search chokes on a name + trailing number typed exactly as
+      // shown ("Demo 1") — confirmed directly against the API: it returns
+      // either zero results, or only the generic undialable "Dummy"
+      // placeholder, never the real Employee record. Searching just the
+      // alphabetic prefix ("Demo") DOES find it. Since users will naturally
+      // type the name exactly as displayed, retry with the prefix whenever
+      // the exact query didn't turn up anything actually dialable.
+      const hasDialableMatch = items.some(item => item.type !== 'Dummy');
+      const strippedTerm = term.replace(/\s+\d+$/, '');
+      if (!hasDialableMatch && strippedTerm && strippedTerm !== term) {
+        items = await fetchDirectoryPage(strippedTerm);
       }
 
-      const data = await response.json();
-      setResults(data._embedded?.items || []);
+      setResults(items.filter(item => !excludedEmployeeIds.has(item.id)));
     } catch (err) {
       console.error('Directory search error:', err);
       setError(err.message);
@@ -83,7 +136,7 @@ const VoiceContactsModal = ({ isOpen, onClose, onSelect, currentExtension }) => 
     } finally {
       setLoading(false);
     }
-  }, [searchQuery, activeTab, dialAsIs]);
+  }, [searchQuery, excludedEmployeeIds, fetchDirectoryPage]);
 
   // Search when query or tab changes
   useEffect(() => {
@@ -98,7 +151,7 @@ const VoiceContactsModal = ({ isOpen, onClose, onSelect, currentExtension }) => 
   useEffect(() => {
     if (isOpen) {
       setSearchQuery('');
-      setActiveTab('All');
+      setActiveTab('Employees');
       setDialAsIs(false);
       setResults([]);
       setError(null);
@@ -106,13 +159,48 @@ const VoiceContactsModal = ({ isOpen, onClose, onSelect, currentExtension }) => 
   }, [isOpen]);
 
   const handleSelect = (contact) => {
-    const destination = contact.phoneDialable || contact.phone || contact.mobilePhoneDialable || contact.mobilePhone || contact.name;
-
-    // For employees, extract the agent ID from presence.voice[0].deviceId
+    // For employees, prefer their real extension (presence.voice[0].reporting)
+    // over the phone/mobile fields — those are frequently empty for internal
+    // staff, and falling back to contact.name (not dialable) silently broke
+    // every internal call before this fix.
     let agentId = null;
+    let employeeExtension = null;
     if (contact.type === 'Employee' && contact.presence?.voice?.length > 0) {
       agentId = contact.presence.voice[0].deviceId;
-      console.log('📞 Extracted agent ID from presence.voice for employee:', contact.name, agentId);
+      employeeExtension = contact.presence.voice[0].reporting;
+      console.log('📞 Extracted agent ID/extension from presence.voice for employee:', contact.name, agentId, employeeExtension);
+    }
+
+    let destination = employeeExtension || contact.phoneDialable || contact.phone || contact.mobilePhoneDialable || contact.mobilePhone;
+
+    // Mitel's directory search matches by display name and always includes
+    // a generic "Dummy" placeholder entry alongside any real match (e.g.
+    // searching a login username like "Demo1" that doesn't equal the
+    // employee's actual name returns ONLY this Dummy entry, no Employee
+    // record at all) — it carries no id, no extension, no phone, nothing
+    // dialable. The old fallback to contact.name here masked that by
+    // silently "selecting" the contact's NAME as if it were a phone number,
+    // which Mitel then can't actually dial — this is what made clicking
+    // Demo1 in the directory look like nothing happened at all.
+    //
+    // A raw-digit search (e.g. "5000", a real ACD queue extension) is a
+    // different case entirely, confirmed directly: Mitel still comes back
+    // as a Dummy placeholder (it has no friendly directory record for a bare
+    // extension), but its name IS the extension itself — the same thing
+    // "Dial as is" would send if typed directly. Refusing that one the same
+    // way as a genuinely-nameless Demo1 match wrongly blocked a real,
+    // dialable extension.
+    if (!destination && contact.type === 'Dummy') {
+      // The name can be just the extension ("5000") or the extension
+      // repeated as its own display name ("5000 5000") — either way the
+      // leading numeric token IS the dialable destination.
+      const rawExtensionMatch = /^(\d{2,})\b/.exec(String(contact.name || '').trim());
+      if (rawExtensionMatch) destination = rawExtensionMatch[1];
+    }
+
+    if (!destination) {
+      toast.error(`${contact.name} has no dialable number on file — try searching their real name instead of a login username.`);
+      return;
     }
 
     // Pass the full contact object with id, type, and other metadata
@@ -127,6 +215,22 @@ const VoiceContactsModal = ({ isOpen, onClose, onSelect, currentExtension }) => 
     };
     onSelect(destination, contactInfo);
     onClose();
+  };
+
+  // Mitel's raw-extension Dummy placeholders (see handleSelect above) can
+  // repeat the extension as its own whole name (e.g. "5000 5000") and/or
+  // duplicate it again in the phone field — confirmed directly against this
+  // tenant's queue 5000. Collapses either case down to a single "5000"
+  // instead of showing it twice.
+  const getDisplayName = (contact) => {
+    let name = String(contact.name || '').trim();
+    const dupMatch = /^(\S+)\s+\1$/.exec(name);
+    if (dupMatch) name = dupMatch[1];
+    const extra = contact.phone || contact.mobilePhone;
+    if (extra && extra !== name && !name.includes(extra)) {
+      return `${name} ${extra}`;
+    }
+    return name;
   };
 
   // Get initials for avatar
@@ -180,7 +284,7 @@ const VoiceContactsModal = ({ isOpen, onClose, onSelect, currentExtension }) => 
 
           {/* From Extension Display */}
           <div className="flex items-center gap-2 mb-4">
-            <label className="text-sm font-medium text-muted-foreground px-3 py-2 bg-accent rounded-md">
+            <label className="text-sm font-medium text-accent-foreground px-3 py-2 bg-accent rounded-md">
               From
             </label>
             <div className="flex-1 px-4 py-2 bg-background border border-border rounded-md text-foreground">
@@ -254,32 +358,45 @@ const VoiceContactsModal = ({ isOpen, onClose, onSelect, currentExtension }) => 
             </div>
           )}
 
-          {!loading && !error && results.length === 0 && searchQuery && (
+          {!loading && !error && results.length === 0 && !searchQuery.trim() && (
+            <div className="text-muted-foreground text-center py-8">
+              <Icon name="Search" className="mx-auto mb-2" size={32} />
+              <p>Type a name or extension above to search</p>
+            </div>
+          )}
+
+          {!loading && !error && results.length === 0 && searchQuery.trim() && (
             <div className="text-muted-foreground text-center py-8">
               <Icon name="Search" className="mx-auto mb-2" size={32} />
               <p>No contacts found</p>
             </div>
           )}
 
-          {!loading && !error && results.length === 0 && !searchQuery && (
-            <div className="text-muted-foreground text-center py-8">
-              <Icon name="Users" className="mx-auto mb-2" size={32} />
-              <p>Enter a search term to find contacts</p>
-            </div>
-          )}
-
           {!loading && !error && results.length > 0 && (
             <div className="space-y-2">
-              {results.map((contact, index) => (
+              {results.map((contact, index) => {
+                // Dummy entries are Mitel's generic placeholder, always
+                // tossed in alongside any real match — most carry no
+                // phone/extension/id at all (e.g. a username search with no
+                // real match) and are genuinely not dialable. The one
+                // exception, confirmed directly: a raw-digit search (a bare
+                // extension like a queue's "5000") also comes back as a
+                // Dummy, with that extension leading its name (sometimes
+                // repeated as the whole name, e.g. "5000 5000") — same
+                // destination handleSelect() above resolves to, so it's
+                // fully dialable despite the generic type.
+                const isRawExtensionDummy = contact.type === 'Dummy' && /^\d{2,}\b/.test(String(contact.name || '').trim());
+                const notDialable = contact.type === 'Dummy' && !isRawExtensionDummy;
+                return (
                 <div
                   key={`${contact.name}-${index}`}
                   onClick={() => handleSelect(contact)}
-                  className="flex items-center gap-4 p-4 rounded-lg border border-border hover:bg-accent cursor-pointer transition-colors"
+                  className={`flex items-center gap-4 p-4 rounded-lg border border-border transition-colors ${notDialable ? 'opacity-50 cursor-not-allowed' : 'hover:bg-muted cursor-pointer'}`}
                 >
                   {/* Avatar */}
                   <div className={`w-12 h-12 rounded-full ${getAvatarColor(contact.type)} flex items-center justify-center text-white font-semibold flex-shrink-0 relative`}>
                     {getInitials(contact.name)}
-                    {contact.type !== 'Dummy' && (
+                    {!notDialable && (
                       <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-card"></div>
                     )}
                   </div>
@@ -287,14 +404,16 @@ const VoiceContactsModal = ({ isOpen, onClose, onSelect, currentExtension }) => 
                   {/* Contact Info */}
                   <div className="flex-1 min-w-0">
                     <div className="font-semibold text-foreground truncate">
-                      {contact.name} {contact.phone || contact.mobilePhone}
+                      {getDisplayName(contact)}
+                      {notDialable && <span className="ml-2 text-xs text-muted-foreground font-normal">(not dialable)</span>}
                     </div>
                     <div className="text-sm text-muted-foreground">
                       Type: {formatType(contact.type)}
                     </div>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

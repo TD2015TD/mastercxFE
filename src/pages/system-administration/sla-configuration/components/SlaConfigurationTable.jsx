@@ -60,8 +60,10 @@ const SlaConfigurationTable = forwardRef((props, ref) => {
         console.log('Departments from API:', deptData);
         console.log('Priorities from API:', prioData);
         
-        // Map departments to simple strings for compatibility
-        const mappedDepts = deptData.map(d => d.name);
+        // Store the department *code* ("SALES TAX") and only display the name ("Sales Tax").
+        // Tickets carry the code, so saving the name here produces SLA rules that can never
+        // match a ticket and the SLA silently never applies.
+        const mappedDepts = deptData.map(d => ({ value: d.code, label: d.name || d.code }));
         setDepartments(mappedDepts);
         
         // Map priorities to the expected format with metadata
@@ -286,8 +288,13 @@ const SlaConfigurationTable = forwardRef((props, ref) => {
     return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
   };
 
+  // Rows store the department code; show the human-readable name where one is known.
+  const departmentLabel = (code) =>
+    departments.find(d => d.value === code)?.label || code;
+
   const filteredConfigurations = configurations.filter(config => {
-    const matchesSearch = 
+    const matchesSearch =
+      departmentLabel(config.department).toLowerCase().includes(searchQuery.toLowerCase()) ||
       config.department.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (config.description && config.description.toLowerCase().includes(searchQuery.toLowerCase()));
     
@@ -354,7 +361,7 @@ const SlaConfigurationTable = forwardRef((props, ref) => {
             onChange={(value) => setFilterDepartment(value)}
             options={[
               { value: 'all', label: t('sla.configuration.allDepartments') || 'All Departments' },
-              ...departments.map(dept => ({ value: dept, label: dept }))
+              ...departments
             ]}
             placeholder={t('sla.configuration.filterByDepartment') || 'Filter by department'}
           />
@@ -415,7 +422,7 @@ const SlaConfigurationTable = forwardRef((props, ref) => {
                   <td className="px-6 py-4">
                     <div className="flex items-center">
                       <Icon name="Building" size={16} className="text-muted-foreground mr-2" />
-                      <span className="font-medium text-foreground">{config.department}</span>
+                      <span className="font-medium text-foreground">{departmentLabel(config.department)}</span>
                     </div>
                   </td>
                   <td className="px-6 py-4">
@@ -550,7 +557,7 @@ const SlaConfigurationTable = forwardRef((props, ref) => {
               onChange={(value) => setFormData({ ...formData, department: value })}
               options={[
                 { value: '', label: t('sla.configuration.selectDepartment') || 'Select Department' },
-                ...departments.map(dept => ({ value: dept, label: dept }))
+                ...departments
               ]}
               placeholder={t('sla.configuration.selectDepartment') || 'Select Department'}
             />

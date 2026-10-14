@@ -249,7 +249,7 @@ const AnalyticsAndReporting = () => {
       const res = await api.get('/reports/all-tickets', { params: { ...scopeParams, start_date, end_date, page: 1, per_page: 5000 } });
       const allTickets = res.data.data.data || [];
       const rows = [
-        ['Ticket ID', 'Channel', 'Created', 'Closed', 'Status', 'Agent', 'Category', 'Priority'],
+        ['Ticket ID', 'Channel', 'Created', 'Closed', 'Status', 'Agent', 'Category', 'Urgency', 'Impact', 'Priority'],
         ...allTickets.map((t) => [
           t.ticket_id,
           CHANNEL_LABELS[t.channel] || t.channel,
@@ -258,6 +258,8 @@ const AnalyticsAndReporting = () => {
           t.status,
           t.agent_name || 'Unassigned',
           t.category || '',
+          t.urgency || '',
+          t.impact || '',
           t.priority || '',
         ]),
       ];

@@ -11,6 +11,7 @@ import MitelAgentSelector from '../../../components/MitelAgentSelector';
 import { createUser, getUser, updateUser } from '../../../services/userService';
 import { getRoles } from '../../../services/roleService';
 import { languageService } from '../../../services/languageService';
+import { getDepartments } from '../../../services/lookupService';
 
 const CreateUser = () => {
   const navigate = useNavigate();
@@ -24,6 +25,24 @@ const CreateUser = () => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [initialLoading, setInitialLoading] = useState(isEditMode);
+
+  // Departments must come from the same lookup ticket departments are matched against —
+  // otherwise an agent's department can never match a ticket's, and department-scoped routing
+  // (e.g. auto-escalation to a supervisor "in the ticket's department") silently never finds
+  // one. This form used to carry its own separate hardcoded list (Customer Service/Technical
+  // Support/Sales/Billing/General) that never overlapped with any real ticket department at
+  // all — same bug already fixed in AgentForm.jsx, but this "Create User" form has its own
+  // independent Agent Profile section and never got the same fix.
+  const [departmentOptions, setDepartmentOptions] = useState([]);
+
+  useEffect(() => {
+    getDepartments()
+      .then((depts) => setDepartmentOptions(depts.map((d) => ({ value: d.code, label: d.name || d.code }))))
+      .catch((err) => {
+        console.error('Error loading departments:', err);
+        setDepartmentOptions([]);
+      });
+  }, []);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -352,14 +371,6 @@ const CreateUser = () => {
     navigate('/system-administration');
   };
 
-  const departments = [
-    { value: 'Customer Service', label: 'Customer Service' },
-    { value: 'Technical Support', label: 'Technical Support' },
-    { value: 'Sales', label: 'Sales' },
-    { value: 'Billing', label: 'Billing' },
-    { value: 'General', label: 'General' },
-  ];
-
   const statusOptions = [
     { value: 'active', label: 'Active' },
     { value: 'inactive', label: 'Inactive' },
@@ -593,7 +604,7 @@ const CreateUser = () => {
                     </label>
                     <Select
                       placeholder="Select department"
-                      options={departments}
+                      options={departmentOptions}
                       value={agentData.department}
                       onChange={(value) => handleAgentDataChange('department', value)}
                       required

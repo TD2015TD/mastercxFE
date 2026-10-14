@@ -1,0 +1,11 @@
+﻿.swagger-ui .topbar {
+    display: none;
+}
+
+.swagger-ui .btn.authorize {
+    display: none;
+}
+
+.swagger-ui .scheme-container {
+    display: none;
+}

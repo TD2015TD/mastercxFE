@@ -55,6 +55,13 @@ export interface AuthResponse {
         mitel_last_state_change: string;
         agent_username: string;
       };
+      // 'per_agent' = genuine password-grant login as the agent themselves;
+      // 'impersonation' = the backend fell back to a client_credentials +
+      // Impersonate token because no Mitel password was on file at login.
+      // An impersonation token's principal is the app itself, not the
+      // agent — Mitel silently rejects privileged actions (presence
+      // changes, call origination) submitted with it. See authService.login.
+      mitelAuthMode?: 'per_agent' | 'impersonation';
       MitelToken: string;
     };
     MitelToken: string;
@@ -240,6 +247,17 @@ export const authService = {
   // Get Mitel token from localStorage
   getMitelToken: (): string | null => {
     return localStorage.getItem('mitel_token');
+  },
+
+  // True when the current Mitel token came from impersonation (no agent
+  // password on file at login) rather than a genuine per-agent login — see
+  // AuthResponse['data']['user']['mitelAuthMode'] for why this matters.
+  // Confirmed directly: an impersonation-mode session can silently fail to
+  // originate calls (Mitel rejects with "FeatureNotAllowed") with no
+  // indication to the agent of why, since presence reads and other
+  // lower-privilege calls still succeed normally with it.
+  isMitelImpersonated: (): boolean => {
+    return authService.getCurrentUser()?.mitelAuthMode === 'impersonation';
   },
 
   // Get user permissions from localStorage

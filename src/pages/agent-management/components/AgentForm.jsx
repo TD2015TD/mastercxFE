@@ -14,6 +14,7 @@ import {
   Switch,
   FormControlLabel,
 } from '@mui/material';
+import { getDepartments } from '../../../services/lookupService';
 
 const AgentForm = ({ agent, onSubmit, onCancel }) => {
   const [formData, setFormData] = useState({
@@ -33,6 +34,20 @@ const AgentForm = ({ agent, onSubmit, onCancel }) => {
   });
 
   const [errors, setErrors] = useState({});
+
+  // Departments must come from the same lookup ticket departments are matched against —
+  // otherwise an agent's department can never match a ticket's, and department-scoped routing
+  // (e.g. auto-escalation to a supervisor "in the ticket's department") silently never finds one.
+  const [departmentOptions, setDepartmentOptions] = useState([]);
+
+  useEffect(() => {
+    getDepartments()
+      .then((depts) => setDepartmentOptions(depts.map((d) => ({ value: d.code, label: d.name || d.code }))))
+      .catch((err) => {
+        console.error('Error loading departments:', err);
+        setDepartmentOptions([]);
+      });
+  }, []);
 
   useEffect(() => {
     if (agent) {
@@ -140,11 +155,9 @@ const AgentForm = ({ agent, onSubmit, onCancel }) => {
               onChange={handleChange('department')}
               label="Department"
             >
-              <MenuItem value="Sales">Sales</MenuItem>
-              <MenuItem value="Support">Support</MenuItem>
-              <MenuItem value="Technical">Technical</MenuItem>
-              <MenuItem value="Billing">Billing</MenuItem>
-              <MenuItem value="Customer Service">Customer Service</MenuItem>
+              {departmentOptions.map((dept) => (
+                <MenuItem key={dept.value} value={dept.value}>{dept.label}</MenuItem>
+              ))}
             </Select>
             {errors.department && <FormHelperText>{errors.department}</FormHelperText>}
           </FormControl>

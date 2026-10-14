@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="16" height="16" viewBox="0 0 16 16">
+    <defs>
+        <path id="mitel-icon-caution-path" d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8zm7-3.997v4.994A.994.994 0 0 0 8 10c.556 0 1-.449 1-1.003V4.003A.994.994 0 0 0 8 3c-.556 0-1 .449-1 1.003zm1 9.221a1 1 0 1 0 0-2 1 1 0 0 0 0 2z"/>
+    </defs>
+    <g fill-rule="evenodd">
+        <mask id="mitel-icon-caution-mask">
+            <use xlink:href="#mitel-icon-caution-path"/>
+        </mask>
+        <g mask="url('#mitel-icon-caution-mask')">
+            <path d="M0 0h16v16H0z"/>
+        </g>
+    </g>
+</svg>
